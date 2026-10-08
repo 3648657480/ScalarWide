@@ -12,8 +12,11 @@ import java.math.BigInteger;
  * {@link #compareSigned} for signed order. Shift amounts must lie in
  * {@code [0, 256)} or {@link IllegalArgumentException} is thrown.
  *
- * <p>Arithmetic is register-specialized (no intermediate arrays or loops);
- * the generic {@link Limbs} engine remains as the internal correctness oracle.
+ * <p>Arithmetic is register-specialized (no intermediate arrays or loops).
+ * Multiplication is structured as a small inlinable orchestrator plus
+ * per-column chunks (each chunk well below the C2 inline size threshold), with
+ * the running carry passed through a scalar-replaceable {@code MulAcc}. The
+ * generic {@link Limbs} engine remains as the internal correctness oracle.
  */
 public final class Wide256 implements Comparable<Wide256> {
 
@@ -144,158 +147,26 @@ public final class Wide256 implements Comparable<Wide256> {
 
     /** Low 256 bits of the 512-bit product, i.e. {@code (a*b) mod 2^256}. */
     public Wide256 mul(Wide256 o) {
-        long lo00 = l0 * o.l0;
-        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
-        long lo01 = l0 * o.l1;
-        long lo10 = l1 * o.l0;
-
-        long t1 = hi00 + lo01;
-        long k1 = Carry.addCarryOut(hi00, lo01, t1);
-        long c1 = t1 + lo10;
-        k1 += Carry.addCarryOut(t1, lo10, c1);
-
-        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
-        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
-        long lo02 = l0 * o.l2;
-        long lo11 = l1 * o.l1;
-        long lo20 = l2 * o.l0;
-
-        long t2 = hi01 + hi10;
-        long k2 = Carry.addCarryOut(hi01, hi10, t2);
-        long t2b = t2 + lo02;
-        k2 += Carry.addCarryOut(t2, lo02, t2b);
-        long t2c = t2b + lo11;
-        k2 += Carry.addCarryOut(t2b, lo11, t2c);
-        long t2d = t2c + lo20;
-        k2 += Carry.addCarryOut(t2c, lo20, t2d);
-        long c2 = t2d + k1;
-        k2 += Carry.addCarryOut(t2d, k1, c2);
-
-        long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
-        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
-        long hi20 = Math.unsignedMultiplyHigh(l2, o.l0);
-        long lo03 = l0 * o.l3;
-        long lo12 = l1 * o.l2;
-        long lo21 = l2 * o.l1;
-        long lo30 = l3 * o.l0;
-
-        long t3 = hi02 + hi11;
-        long k3 = Carry.addCarryOut(hi02, hi11, t3);
-        long t3b = t3 + hi20;
-        k3 += Carry.addCarryOut(t3, hi20, t3b);
-        long t3c = t3b + lo03;
-        k3 += Carry.addCarryOut(t3b, lo03, t3c);
-        long t3d = t3c + lo12;
-        k3 += Carry.addCarryOut(t3c, lo12, t3d);
-        long t3e = t3d + lo21;
-        k3 += Carry.addCarryOut(t3d, lo21, t3e);
-        long t3f = t3e + lo30;
-        k3 += Carry.addCarryOut(t3e, lo30, t3f);
-        long c3 = t3f + k2;
-
-        return new Wide256(lo00, c1, c2, c3);
+        MulAcc acc = new MulAcc();
+        col0(acc, o);
+        col1(acc, o);
+        col2(acc, o);
+        col3(acc, o);
+        return new Wide256(acc.c0, acc.c1, acc.c2, acc.c3);
     }
 
     /** High 256 bits of the 512-bit product, i.e. {@code (a*b) >>> 256}. */
     public Wide256 mulHigh(Wide256 o) {
-        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
-        long lo01 = l0 * o.l1;
-        long lo10 = l1 * o.l0;
-        long t1 = hi00 + lo01;
-        long k1 = Carry.addCarryOut(hi00, lo01, t1);
-        long t1b = t1 + lo10;
-        k1 += Carry.addCarryOut(t1, lo10, t1b);
-
-        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
-        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
-        long lo02 = l0 * o.l2;
-        long lo11 = l1 * o.l1;
-        long lo20 = l2 * o.l0;
-        long t2 = hi01 + hi10;
-        long k2 = Carry.addCarryOut(hi01, hi10, t2);
-        long t2b = t2 + lo02;
-        k2 += Carry.addCarryOut(t2, lo02, t2b);
-        long t2c = t2b + lo11;
-        k2 += Carry.addCarryOut(t2b, lo11, t2c);
-        long t2d = t2c + lo20;
-        k2 += Carry.addCarryOut(t2c, lo20, t2d);
-        long t2e = t2d + k1;
-        k2 += Carry.addCarryOut(t2d, k1, t2e);
-
-        long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
-        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
-        long hi20 = Math.unsignedMultiplyHigh(l2, o.l0);
-        long lo03 = l0 * o.l3;
-        long lo12 = l1 * o.l2;
-        long lo21 = l2 * o.l1;
-        long lo30 = l3 * o.l0;
-        long t3 = hi02 + hi11;
-        long k3 = Carry.addCarryOut(hi02, hi11, t3);
-        long t3b = t3 + hi20;
-        k3 += Carry.addCarryOut(t3, hi20, t3b);
-        long t3c = t3b + lo03;
-        k3 += Carry.addCarryOut(t3b, lo03, t3c);
-        long t3d = t3c + lo12;
-        k3 += Carry.addCarryOut(t3c, lo12, t3d);
-        long t3e = t3d + lo21;
-        k3 += Carry.addCarryOut(t3d, lo21, t3e);
-        long t3f = t3e + lo30;
-        k3 += Carry.addCarryOut(t3e, lo30, t3f);
-        long t3g = t3f + k2;
-        k3 += Carry.addCarryOut(t3f, k2, t3g);
-
-        long hi03 = Math.unsignedMultiplyHigh(l0, o.l3);
-        long hi12 = Math.unsignedMultiplyHigh(l1, o.l2);
-        long hi21 = Math.unsignedMultiplyHigh(l2, o.l1);
-        long hi30 = Math.unsignedMultiplyHigh(l3, o.l0);
-        long lo13 = l1 * o.l3;
-        long lo22 = l2 * o.l2;
-        long lo31 = l3 * o.l1;
-        long t4 = hi03 + hi12;
-        long k4 = Carry.addCarryOut(hi03, hi12, t4);
-        long t4b = t4 + hi21;
-        k4 += Carry.addCarryOut(t4, hi21, t4b);
-        long t4c = t4b + hi30;
-        k4 += Carry.addCarryOut(t4b, hi30, t4c);
-        long t4d = t4c + lo13;
-        k4 += Carry.addCarryOut(t4c, lo13, t4d);
-        long t4e = t4d + lo22;
-        k4 += Carry.addCarryOut(t4d, lo22, t4e);
-        long t4f = t4e + lo31;
-        k4 += Carry.addCarryOut(t4e, lo31, t4f);
-        long c4 = t4f + k3;
-        k4 += Carry.addCarryOut(t4f, k3, c4);
-
-        long hi13 = Math.unsignedMultiplyHigh(l1, o.l3);
-        long hi22 = Math.unsignedMultiplyHigh(l2, o.l2);
-        long hi31 = Math.unsignedMultiplyHigh(l3, o.l1);
-        long lo23 = l2 * o.l3;
-        long lo32 = l3 * o.l2;
-        long t5 = hi13 + hi22;
-        long k5 = Carry.addCarryOut(hi13, hi22, t5);
-        long t5b = t5 + hi31;
-        k5 += Carry.addCarryOut(t5, hi31, t5b);
-        long t5c = t5b + lo23;
-        k5 += Carry.addCarryOut(t5b, lo23, t5c);
-        long t5d = t5c + lo32;
-        k5 += Carry.addCarryOut(t5c, lo32, t5d);
-        long c5 = t5d + k4;
-        k5 += Carry.addCarryOut(t5d, k4, c5);
-
-        long hi23 = Math.unsignedMultiplyHigh(l2, o.l3);
-        long hi32 = Math.unsignedMultiplyHigh(l3, o.l2);
-        long lo33 = l3 * o.l3;
-        long t6 = hi23 + hi32;
-        long k6 = Carry.addCarryOut(hi23, hi32, t6);
-        long t6b = t6 + lo33;
-        k6 += Carry.addCarryOut(t6, lo33, t6b);
-        long c6 = t6b + k5;
-        k6 += Carry.addCarryOut(t6b, k5, c6);
-
-        long hi33 = Math.unsignedMultiplyHigh(l3, o.l3);
-        long c7 = hi33 + k6;
-
-        return new Wide256(c4, c5, c6, c7);
+        MulAcc acc = new MulAcc();
+        col0(acc, o);
+        col1(acc, o);
+        col2(acc, o);
+        col3(acc, o);
+        col4(acc, o);
+        col5(acc, o);
+        col6(acc, o);
+        col7(acc, o);
+        return new Wide256(acc.c4, acc.c5, acc.c6, acc.c7);
     }
 
     /**
@@ -306,105 +177,155 @@ public final class Wide256 implements Comparable<Wide256> {
      *         (equal to {@link #mulHigh})
      */
     public Wide512 mulFull(Wide256 o) {
-        long c0 = l0 * o.l0;
-        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
-        long lo01 = l0 * o.l1;
-        long lo10 = l1 * o.l0;
-        long t1 = hi00 + lo01;
-        long k1 = Carry.addCarryOut(hi00, lo01, t1);
-        long c1 = t1 + lo10;
-        k1 += Carry.addCarryOut(t1, lo10, c1);
+        MulAcc acc = new MulAcc();
+        col0(acc, o);
+        col1(acc, o);
+        col2(acc, o);
+        col3(acc, o);
+        col4(acc, o);
+        col5(acc, o);
+        col6(acc, o);
+        col7(acc, o);
+        return Wide512.of(acc.c0, acc.c1, acc.c2, acc.c3, acc.c4, acc.c5, acc.c6, acc.c7);
+    }
 
-        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
-        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
-        long lo02 = l0 * o.l2;
-        long lo11 = l1 * o.l1;
-        long lo20 = l2 * o.l0;
-        long t2 = hi01 + hi10;
-        long k2 = Carry.addCarryOut(hi01, hi10, t2);
-        long t2b = t2 + lo02;
-        k2 += Carry.addCarryOut(t2, lo02, t2b);
-        long t2c = t2b + lo11;
-        k2 += Carry.addCarryOut(t2b, lo11, t2c);
-        long t2d = t2c + lo20;
-        k2 += Carry.addCarryOut(t2c, lo20, t2d);
-        long c2 = t2d + k1;
-        k2 += Carry.addCarryOut(t2d, k1, c2);
+    private static final class MulAcc {
+        long carry;
+        long c0;
+        long c1;
+        long c2;
+        long c3;
+        long c4;
+        long c5;
+        long c6;
+        long c7;
+    }
 
-        long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
-        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
-        long hi20 = Math.unsignedMultiplyHigh(l2, o.l0);
-        long lo03 = l0 * o.l3;
-        long lo12 = l1 * o.l2;
-        long lo21 = l2 * o.l1;
-        long lo30 = l3 * o.l0;
-        long t3 = hi02 + hi11;
-        long k3 = Carry.addCarryOut(hi02, hi11, t3);
-        long t3b = t3 + hi20;
-        k3 += Carry.addCarryOut(t3, hi20, t3b);
-        long t3c = t3b + lo03;
-        k3 += Carry.addCarryOut(t3b, lo03, t3c);
-        long t3d = t3c + lo12;
-        k3 += Carry.addCarryOut(t3c, lo12, t3d);
-        long t3e = t3d + lo21;
-        k3 += Carry.addCarryOut(t3d, lo21, t3e);
-        long t3f = t3e + lo30;
-        k3 += Carry.addCarryOut(t3e, lo30, t3f);
-        long c3 = t3f + k2;
-        k3 += Carry.addCarryOut(t3f, k2, c3);
+    private void col0(MulAcc acc, Wide256 o) {
+        acc.c0 = l0 * o.l0;
+        acc.carry = 0;
+    }
 
-        long hi03 = Math.unsignedMultiplyHigh(l0, o.l3);
-        long hi12 = Math.unsignedMultiplyHigh(l1, o.l2);
-        long hi21 = Math.unsignedMultiplyHigh(l2, o.l1);
-        long hi30 = Math.unsignedMultiplyHigh(l3, o.l0);
-        long lo13 = l1 * o.l3;
-        long lo22 = l2 * o.l2;
-        long lo31 = l3 * o.l1;
-        long t4 = hi03 + hi12;
-        long k4 = Carry.addCarryOut(hi03, hi12, t4);
-        long t4b = t4 + hi21;
-        k4 += Carry.addCarryOut(t4, hi21, t4b);
-        long t4c = t4b + hi30;
-        k4 += Carry.addCarryOut(t4b, hi30, t4c);
-        long t4d = t4c + lo13;
-        k4 += Carry.addCarryOut(t4c, lo13, t4d);
-        long t4e = t4d + lo22;
-        k4 += Carry.addCarryOut(t4d, lo22, t4e);
-        long t4f = t4e + lo31;
-        k4 += Carry.addCarryOut(t4e, lo31, t4f);
-        long c4 = t4f + k3;
-        k4 += Carry.addCarryOut(t4f, k3, c4);
+    private void col1(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l0, o.l0);
+        long b = l0 * o.l1;
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = l1 * o.l0;
+        long r = t + c;
+        k += Carry.addCarryOut(t, c, r);
+        acc.c1 = r;
+        acc.carry = k;
+    }
 
-        long hi13 = Math.unsignedMultiplyHigh(l1, o.l3);
-        long hi22 = Math.unsignedMultiplyHigh(l2, o.l2);
-        long hi31 = Math.unsignedMultiplyHigh(l3, o.l1);
-        long lo23 = l2 * o.l3;
-        long lo32 = l3 * o.l2;
-        long t5 = hi13 + hi22;
-        long k5 = Carry.addCarryOut(hi13, hi22, t5);
-        long t5b = t5 + hi31;
-        k5 += Carry.addCarryOut(t5, hi31, t5b);
-        long t5c = t5b + lo23;
-        k5 += Carry.addCarryOut(t5b, lo23, t5c);
-        long t5d = t5c + lo32;
-        k5 += Carry.addCarryOut(t5c, lo32, t5d);
-        long c5 = t5d + k4;
-        k5 += Carry.addCarryOut(t5d, k4, c5);
+    private void col2(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l0, o.l1);
+        long b = Math.unsignedMultiplyHigh(l1, o.l0);
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = l0 * o.l2;
+        long t2 = t + c;
+        k += Carry.addCarryOut(t, c, t2);
+        long d = l1 * o.l1;
+        long t3 = t2 + d;
+        k += Carry.addCarryOut(t2, d, t3);
+        long e = l2 * o.l0;
+        long t4 = t3 + e;
+        k += Carry.addCarryOut(t3, e, t4);
+        long r = t4 + acc.carry;
+        k += Carry.addCarryOut(t4, acc.carry, r);
+        acc.c2 = r;
+        acc.carry = k;
+    }
 
-        long hi23 = Math.unsignedMultiplyHigh(l2, o.l3);
-        long hi32 = Math.unsignedMultiplyHigh(l3, o.l2);
-        long lo33 = l3 * o.l3;
-        long t6 = hi23 + hi32;
-        long k6 = Carry.addCarryOut(hi23, hi32, t6);
-        long t6b = t6 + lo33;
-        k6 += Carry.addCarryOut(t6, lo33, t6b);
-        long c6 = t6b + k5;
-        k6 += Carry.addCarryOut(t6b, k5, c6);
+    private void col3(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l0, o.l2);
+        long b = Math.unsignedMultiplyHigh(l1, o.l1);
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = Math.unsignedMultiplyHigh(l2, o.l0);
+        long t2 = t + c;
+        k += Carry.addCarryOut(t, c, t2);
+        long d = l0 * o.l3;
+        long t3 = t2 + d;
+        k += Carry.addCarryOut(t2, d, t3);
+        long e = l1 * o.l2;
+        long t4 = t3 + e;
+        k += Carry.addCarryOut(t3, e, t4);
+        long f = l2 * o.l1;
+        long t5 = t4 + f;
+        k += Carry.addCarryOut(t4, f, t5);
+        long g = l3 * o.l0;
+        long t6 = t5 + g;
+        k += Carry.addCarryOut(t5, g, t6);
+        long r = t6 + acc.carry;
+        k += Carry.addCarryOut(t6, acc.carry, r);
+        acc.c3 = r;
+        acc.carry = k;
+    }
 
-        long hi33 = Math.unsignedMultiplyHigh(l3, o.l3);
-        long c7 = hi33 + k6;
+    private void col4(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l0, o.l3);
+        long b = Math.unsignedMultiplyHigh(l1, o.l2);
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = Math.unsignedMultiplyHigh(l2, o.l1);
+        long t2 = t + c;
+        k += Carry.addCarryOut(t, c, t2);
+        long d = Math.unsignedMultiplyHigh(l3, o.l0);
+        long t3 = t2 + d;
+        k += Carry.addCarryOut(t2, d, t3);
+        long e = l1 * o.l3;
+        long t4 = t3 + e;
+        k += Carry.addCarryOut(t3, e, t4);
+        long f = l2 * o.l2;
+        long t5 = t4 + f;
+        k += Carry.addCarryOut(t4, f, t5);
+        long g = l3 * o.l1;
+        long t6 = t5 + g;
+        k += Carry.addCarryOut(t5, g, t6);
+        long r = t6 + acc.carry;
+        k += Carry.addCarryOut(t6, acc.carry, r);
+        acc.c4 = r;
+        acc.carry = k;
+    }
 
-        return Wide512.of(c0, c1, c2, c3, c4, c5, c6, c7);
+    private void col5(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l1, o.l3);
+        long b = Math.unsignedMultiplyHigh(l2, o.l2);
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = Math.unsignedMultiplyHigh(l3, o.l1);
+        long t2 = t + c;
+        k += Carry.addCarryOut(t, c, t2);
+        long d = l2 * o.l3;
+        long t3 = t2 + d;
+        k += Carry.addCarryOut(t2, d, t3);
+        long e = l3 * o.l2;
+        long t4 = t3 + e;
+        k += Carry.addCarryOut(t3, e, t4);
+        long r = t4 + acc.carry;
+        k += Carry.addCarryOut(t4, acc.carry, r);
+        acc.c5 = r;
+        acc.carry = k;
+    }
+
+    private void col6(MulAcc acc, Wide256 o) {
+        long a = Math.unsignedMultiplyHigh(l2, o.l3);
+        long b = Math.unsignedMultiplyHigh(l3, o.l2);
+        long t = a + b;
+        long k = Carry.addCarryOut(a, b, t);
+        long c = l3 * o.l3;
+        long t2 = t + c;
+        k += Carry.addCarryOut(t, c, t2);
+        long r = t2 + acc.carry;
+        k += Carry.addCarryOut(t2, acc.carry, r);
+        acc.c6 = r;
+        acc.carry = k;
+    }
+
+    private void col7(MulAcc acc, Wide256 o) {
+        acc.c7 = Math.unsignedMultiplyHigh(l3, o.l3) + acc.carry;
     }
 
     public Wide256 and(Wide256 o) {

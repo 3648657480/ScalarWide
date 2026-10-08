@@ -2,6 +2,24 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.4.0
+
+### Changed
+
+- `Wide256` multiplication (`mul` / `mulHigh` / `mulFull`) is restructured into a
+  small inlinable orchestrator plus per-column chunks (`col0..col7`), with the
+  running carry passed through a scalar-replaceable `MulAcc`.
+  Probe (PrintInlining): orchestrators 56/92B, chunks <= 243B - all hot-inlined;
+  escape analysis removes `MulAcc` (allocation rate unchanged: 80.001 B/op).
+- Performance: neutral within harness noise (pinned JMH; unchanged 128 code as
+  drift control) - call overhead was not the bottleneck. This is the structural
+  prerequisite for the 1.5 composition step.
+
+### Docs
+
+- `docs/INLINE.md`: inline probe records (0.3.0 monolith verdicts, 0.4.0
+  re-verification).
+
 ## 0.3.0
 
 ### Added
