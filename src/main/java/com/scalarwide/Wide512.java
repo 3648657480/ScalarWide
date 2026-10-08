@@ -143,24 +143,18 @@ public final class Wide512 implements Comparable<Wide512> {
     public Wide512 add(Wide512 o) {
         long r0 = l0 + o.l0;
         long c = Carry.addCarryOut(l0, o.l0, r0);
-        long s = l1 + o.l1;
-        long r1 = s + c;
-        c = Carry.addCarryOut(l1, o.l1, s) + Carry.addCarryOut(s, c, r1);
-        s = l2 + o.l2;
-        long r2 = s + c;
-        c = Carry.addCarryOut(l2, o.l2, s) + Carry.addCarryOut(s, c, r2);
-        s = l3 + o.l3;
-        long r3 = s + c;
-        c = Carry.addCarryOut(l3, o.l3, s) + Carry.addCarryOut(s, c, r3);
-        s = l4 + o.l4;
-        long r4 = s + c;
-        c = Carry.addCarryOut(l4, o.l4, s) + Carry.addCarryOut(s, c, r4);
-        s = l5 + o.l5;
-        long r5 = s + c;
-        c = Carry.addCarryOut(l5, o.l5, s) + Carry.addCarryOut(s, c, r5);
-        s = l6 + o.l6;
-        long r6 = s + c;
-        c = Carry.addCarryOut(l6, o.l6, s) + Carry.addCarryOut(s, c, r6);
+        long r1 = l1 + o.l1 + c;
+        c = Carry.addCarryOut(l1, o.l1, r1);
+        long r2 = l2 + o.l2 + c;
+        c = Carry.addCarryOut(l2, o.l2, r2);
+        long r3 = l3 + o.l3 + c;
+        c = Carry.addCarryOut(l3, o.l3, r3);
+        long r4 = l4 + o.l4 + c;
+        c = Carry.addCarryOut(l4, o.l4, r4);
+        long r5 = l5 + o.l5 + c;
+        c = Carry.addCarryOut(l5, o.l5, r5);
+        long r6 = l6 + o.l6 + c;
+        c = Carry.addCarryOut(l6, o.l6, r6);
         long r7 = l7 + o.l7 + c;
         return new Wide512(r0, r1, r2, r3, r4, r5, r6, r7);
     }
@@ -201,15 +195,9 @@ public final class Wide512 implements Comparable<Wide512> {
         Wide512 hi = highHalf().mulFull(o.highHalf());
         Wide512 midSum = m1.add(m2);
         long c1 = midSum.compareUnsigned(m1) < 0 ? 1 : 0;
-        long c2 = lo.add(midSum.shiftLeft256()).compareUnsigned(lo) < 0 ? 1 : 0;
-        Wide512 high = midSum.shiftRight256();
-        if (c1 != 0) {
-            high = high.add(Wide512.of(0, 0, 0, 0, 1, 0, 0, 0));
-        }
-        if (c2 != 0) {
-            high = high.add(Wide512.of(1, 0, 0, 0, 0, 0, 0, 0));
-        }
-        return hi.add(high);
+        long c2 = lo.highHalf().add(midSum.lowHalf()).compareUnsigned(lo.highHalf()) < 0 ? 1 : 0;
+        return hi.add(midSum.shiftRight256())
+                .add(Wide512.of(c2, 0, 0, 0, c1, 0, 0, 0));
     }
 
     private Wide256 lowHalf() {

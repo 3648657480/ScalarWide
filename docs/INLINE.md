@@ -60,3 +60,10 @@ java -jar build\libs\ScalarWide-0.3.0-jmh.jar "Wide128Bench\.(add|mul|mulFull)$|
 - 新消息 "already compiled into a big method"：编排器字节码小、但其编译体大（内联了叶子），
   故不再向调用方内联——符合预期（调用开销 ~1ns 量级，已知非瓶颈）。
 - 1.5b 实测：512 mul 3.15×、反超 BigInteger 1.5×（详见 BENCH.md）。
+
+## 2026-10-08 · Round A（0.6.1）
+
+- `Wide512::add` 单进位式：**319 → 235B**（进位入 ∈ {0,1} 已证明）。
+- `Wide512::mulHigh` = 130B（无分支版），但**其内联树 ~1.5kB 超预算**：
+  `-prof gc` 832 B/op vs `mul` 的 80 B/op——EA 全线失败，两轮修复无效（存档）。
+- 现象：`DesiredMethodLimit` 式预算 ≈ 1kB 级；`mul` 的内联树 ~0.9kB 恰好放行。

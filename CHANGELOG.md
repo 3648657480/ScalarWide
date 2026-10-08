@@ -2,6 +2,22 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.6.1
+
+### Changed
+
+- `Wide512.add` now uses a single carry computation per limb (valid because the
+  carry-in is provably in {0,1}); bytecode 319 -> 235B. Pinned JMH: add
+  14.5 -> 10.2 ns/op (1.4x), mul 58.5 -> 50.4 ns/op (1.2x); control stable.
+- `Wide512.mulHigh` rewritten branchless (neutral performance, simpler shape).
+
+### Known issue
+
+- `Wide512.mulHigh` still fails escape analysis (832 B/op vs 80 B/op for mul):
+  its inline tree (~1.5kB) exceeds the C2 inlining budget; two attempted fixes
+  (branchless body, smaller `add`) did not change the allocation rate. Parked
+  with measurements in `docs/BENCH.md` and `docs/INLINE.md`.
+
 ## 0.6.0
 
 ### Changed

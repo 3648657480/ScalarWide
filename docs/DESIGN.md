@@ -95,3 +95,5 @@
 - Karatsuba 展平正确性：三路对拍兜底。
 - `toString`：JDK 18+ 的 `BigInteger.toString` 已分治化，先借用；自研暂无必要。
 - Valhalla 未落地：512 单行目标接受跨行，未来迁移。
+- **已知限制（0.6.1）**：`Wide512.mulHigh` 的 EA 失败（832 B/op）——内联树超 C2 预算；
+  两轮修复被数据否决，候选方案（chunked/limb 域重写）待专门实验。
