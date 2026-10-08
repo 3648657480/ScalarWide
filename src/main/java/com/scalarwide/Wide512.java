@@ -252,11 +252,11 @@ public final class Wide512 implements Comparable<Wide512> {
         return new Wide512(r0, r1, r2, r3, r4, r5, r6, r7);
     }
 
-    private Wide256 lowHalf() {
+    Wide256 lowHalf() {
         return Wide256.of(l0, l1, l2, l3);
     }
 
-    private Wide256 highHalf() {
+    Wide256 highHalf() {
         return Wide256.of(l4, l5, l6, l7);
     }
 

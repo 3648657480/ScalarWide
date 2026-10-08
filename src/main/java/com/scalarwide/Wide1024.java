@@ -221,11 +221,70 @@ public final class Wide1024 implements Comparable<Wide1024> {
         return unpack(out);
     }
 
-    /** Low 1024 bits of the 2048-bit product, i.e. {@code (a*b) mod 2^1024}. */
+    /**
+     * Low 1024 bits of the 2048-bit product, i.e. {@code (a*b) mod 2^1024},
+     * composed from 256-bit atom block products (six full, four low-block-only).
+     */
     public Wide1024 mul(Wide1024 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulLow(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 q00 = block0().mulFull(o.block0());
+        Wide512 q01 = block0().mulFull(o.block1());
+        Wide512 q10 = block1().mulFull(o.block0());
+        Wide512 q02 = block0().mulFull(o.block2());
+        Wide512 q11 = block1().mulFull(o.block1());
+        Wide512 q20 = block2().mulFull(o.block0());
+        Wide256 q03l = block0().mul(o.block3());
+        Wide256 q12l = block1().mul(o.block2());
+        Wide256 q21l = block2().mul(o.block1());
+        Wide256 q30l = block3().mul(o.block0());
+
+        Wide256 s1 = q00.highHalf().add(q01.lowHalf());
+        long w1 = s1.compareUnsigned(q00.highHalf()) < 0 ? 1 : 0;
+        Wide256 b1v = s1.add(q10.lowHalf());
+        long w2 = b1v.compareUnsigned(s1) < 0 ? 1 : 0;
+        long carry1 = w1 + w2;
+
+        Wide256 t1 = q01.highHalf().add(q10.highHalf());
+        long c1 = t1.compareUnsigned(q01.highHalf()) < 0 ? 1 : 0;
+        Wide256 t2 = t1.add(q02.lowHalf());
+        long c2 = t2.compareUnsigned(t1) < 0 ? 1 : 0;
+        Wide256 t3 = t2.add(q11.lowHalf());
+        long c3 = t3.compareUnsigned(t2) < 0 ? 1 : 0;
+        Wide256 t4 = t3.add(q20.lowHalf());
+        long c4 = t4.compareUnsigned(t3) < 0 ? 1 : 0;
+        Wide256 t5 = t4.add(Wide256.of(carry1, 0, 0, 0));
+        long c5 = t5.compareUnsigned(t4) < 0 ? 1 : 0;
+        long carry2 = c1 + c2 + c3 + c4 + c5;
+
+        Wide256 u1 = q02.highHalf().add(q11.highHalf());
+        Wide256 u2 = u1.add(q20.highHalf());
+        Wide256 u3 = u2.add(q03l);
+        Wide256 u4 = u3.add(q12l);
+        Wide256 u5 = u4.add(q21l);
+        Wide256 u6 = u5.add(q30l);
+        Wide256 b3v = u6.add(Wide256.of(carry2, 0, 0, 0));
+
+        Wide256 b0v = q00.lowHalf();
+        return Wide1024.of(
+                b0v.limb(0), b0v.limb(1), b0v.limb(2), b0v.limb(3),
+                b1v.limb(0), b1v.limb(1), b1v.limb(2), b1v.limb(3),
+                t5.limb(0), t5.limb(1), t5.limb(2), t5.limb(3),
+                b3v.limb(0), b3v.limb(1), b3v.limb(2), b3v.limb(3));
+    }
+
+    private Wide256 block0() {
+        return Wide256.of(l0, l1, l2, l3);
+    }
+
+    private Wide256 block1() {
+        return Wide256.of(l4, l5, l6, l7);
+    }
+
+    private Wide256 block2() {
+        return Wide256.of(l8, l9, l10, l11);
+    }
+
+    private Wide256 block3() {
+        return Wide256.of(l12, l13, l14, l15);
     }
 
     /** High 1024 bits of the 2048-bit product, i.e. {@code (a*b) >>> 1024}. */

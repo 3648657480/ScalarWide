@@ -189,11 +189,49 @@ public final class Wide768 implements Comparable<Wide768> {
         return unpack(out);
     }
 
-    /** Low 768 bits of the 1536-bit product, i.e. {@code (a*b) mod 2^768}. */
+    /**
+     * Low 768 bits of the 1536-bit product, i.e. {@code (a*b) mod 2^768},
+     * composed from 256-bit atom block products
+     * ({@code q00}, {@code q01}, {@code q10} full; {@code q02}, {@code q11},
+     * {@code q20} low blocks only).
+     */
     public Wide768 mul(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulLow(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 q00 = block0().mulFull(o.block0());
+        Wide512 q01 = block0().mulFull(o.block1());
+        Wide512 q10 = block1().mulFull(o.block0());
+        Wide256 q02l = block0().mul(o.block2());
+        Wide256 q11l = block1().mul(o.block1());
+        Wide256 q20l = block2().mul(o.block0());
+
+        Wide256 s1 = q00.highHalf().add(q01.lowHalf());
+        long w1 = s1.compareUnsigned(q00.highHalf()) < 0 ? 1 : 0;
+        Wide256 b1v = s1.add(q10.lowHalf());
+        long w2 = b1v.compareUnsigned(s1) < 0 ? 1 : 0;
+        long carry = w1 + w2;
+
+        Wide256 t1 = q01.highHalf().add(q10.highHalf());
+        Wide256 t2 = t1.add(q02l);
+        Wide256 t3 = t2.add(q11l);
+        Wide256 t4 = t3.add(q20l);
+        Wide256 b2v = t4.add(Wide256.of(carry, 0, 0, 0));
+
+        Wide256 b0v = q00.lowHalf();
+        return Wide768.of(
+                b0v.limb(0), b0v.limb(1), b0v.limb(2), b0v.limb(3),
+                b1v.limb(0), b1v.limb(1), b1v.limb(2), b1v.limb(3),
+                b2v.limb(0), b2v.limb(1), b2v.limb(2), b2v.limb(3));
+    }
+
+    private Wide256 block0() {
+        return Wide256.of(l0, l1, l2, l3);
+    }
+
+    private Wide256 block1() {
+        return Wide256.of(l4, l5, l6, l7);
+    }
+
+    private Wide256 block2() {
+        return Wide256.of(l8, l9, l10, l11);
     }
 
     /** High 768 bits of the 1536-bit product, i.e. {@code (a*b) >>> 768}. */

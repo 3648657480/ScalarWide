@@ -1,0 +1,2 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.Wide768Bench.mul","avgt",1,15,502.222047,18.757740,"ns/op"

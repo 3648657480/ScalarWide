@@ -2,6 +2,20 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.9.0
+
+### Changed
+
+- `Wide768.mul` and `Wide1024.mul` are now composed from 256-bit atom block
+  products (768: 3 full + 3 low-block; 1024: 6 full + 4 low-block). Pinned JMH
+  vs 0.8.0 (engine-backed): 768: 502.2 -> 253.9 ns/op (1.98x); 1024:
+  770.5 -> 540.2 ns/op (1.43x). Versus `BigInteger.multiply` the composed
+  versions are 1.42x / 1.81x behind - the "wide widths bow to the intrinsic"
+  expectation is now measured. No differential-test catches this round (all
+  three carry traps were handled in the derivation phase).
+- `Wide512.lowHalf` / `highHalf` became package-private (block composition
+  support). `mulHigh` for 768/1024 is still engine-backed (last two methods).
+
 ## 0.8.0
 
 ### Changed
