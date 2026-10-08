@@ -1,0 +1,83 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'com.scalarwide'
+version = file('VERSION').text.trim()
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+sourceSets {
+    jmh {
+        java.srcDirs = ['src/jmh/java']
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    jmhImplementation.extendsFrom implementation
+    jmhRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
+}
+
+test {
+    useJUnitPlatform()
+    maxHeapSize = '2G'
+}
+
+tasks.named('compileJmhJava') {
+    options.annotationProcessorPath = configurations.jmhAnnotationProcessor
+}
+
+tasks.register('jmh', JavaExec) {
+    group = 'benchmark'
+    description = 'Run JMH benchmarks, e.g. gradlew jmh --args="com.scalarwide.bench.Wide128Bench -wi 3 -i 5 -f 1"'
+    dependsOn tasks.named('jmhClasses')
+    classpath = sourceSets.jmh.runtimeClasspath
+    mainClass = 'org.openjdk.jmh.Main'
+}
+
+tasks.register('jmhJar', Jar) {
+    group = 'benchmark'
+    description = 'Build a self-contained JMH runner jar.'
+    dependsOn tasks.named('jmhClasses')
+    archiveClassifier = 'jmh'
+    from sourceSets.jmh.output
+    from sourceSets.main.output
+    from({
+        configurations.jmhRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'org.openjdk.jmh.Main'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'Implementation-Title': 'ScalarWide',
+                'Implementation-Version': version
+        )
+    }
+}
