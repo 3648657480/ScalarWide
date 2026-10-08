@@ -1,29 +1,23 @@
 # ScalarWide
 
-> A pure scalar fixed-width big-integer library (128 / 256 / 384 bits).
-> Zero SIMD, zero platform detection.
-> Correctness is gated by BigInteger differential testing; performance is
-> measured with JMH.
+> [English](README.en.md) | 中文
 
-Version: see repo-root `VERSION` (single authority). Current `0.6.0`: first
-512-bit composition (mul 1.5x faster than BigInteger); shape and data in
-`CHANGELOG.md`, `docs/BENCH.md`, `docs/INLINE.md`.
+> 纯标量定点大数库（**128 → 1024 位，六档**），零 SIMD、零平台探测。
+> 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
-## What it is
+版本：见仓库根 `VERSION`（唯一权威）。当前 `0.10.1`（库化打包）；实现矩阵与全部实测
+（含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`。
 
-- `Wide128` / `Wide256` / `Wide384`: fixed-width two's-complement big ints
-  (little-endian limbs).
-- Ops: `add` `sub` `neg` `mul` (low N bits) `mulHigh` (high N bits) `and` `or`
-  `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned`
-  `bitLength`, plus `fromBigInteger` / `toBigInteger` / `toHexString`.
-- Semantics: arithmetic wraps mod 2^N; `compareTo` is unsigned (consistent with
-  `equals`, suitable for keys); shift amounts must be in `[0, N)` or an
-  `IllegalArgumentException` is thrown.
-- The package-private `Limbs` engine is the shared correctness baseline for all
-  widths. Register-specialized hot paths and zero-allocation APIs are the
-  upcoming "enchantment" rounds (see `docs/DESIGN.md`).
+## 这是什么
 
-## Build / test / bench
+- `Wide128` / `Wide256` / `Wide384` / `Wide512` / `Wide768` / `Wide1024`：定宽二补码大整数（little-endian limbs）；
+  `MutableWide128/256` 为零分配 scratch 载体。
+- 运算：`add` `sub` `neg` `mul`（低 N 位）`mulHigh`（高 N 位）`and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned` `bitLength`，以及 `fromBigInteger` / `toBigInteger` / `toHexString`。
+- 默认语义：算术按 2^N 回绕；`compareTo` = 无符号序（与 `equals` 一致，适合做 key）；移位量必须在 `[0, N)`，否则抛 `IllegalArgumentException`。
+- 组合层：384/512/768/1024 的乘法由 128/256 原子块积组合而成（512/384 档另有直算 add/比较）；
+  设计与边界见 `docs/DESIGN.md` / `docs/INLINE.md`；`Limbs`（包私有）为常驻内部 oracle，参与三路对拍。
+
+## 构建 / 测试 / 跑分
 
 ```powershell
 .\gradlew.bat build
@@ -31,29 +25,26 @@ Version: see repo-root `VERSION` (single authority). Current `0.6.0`: first
 .\gradlew.bat jmh --args="com.scalarwide.bench.Wide128Bench -wi 3 -i 5 -f 1"
 .\gradlew.bat jmhJar
 ```
+- 构建需 **JDK 21+**（字节码 release 21；本机默认 java 过旧时，在用户级
+  `~/.gradle/gradle.properties` 里固定 `org.gradle.java.home=<JDK 路径>`）；Gradle 9.5（wrapper 走腾讯镜像）。
+- 测试 = BigInteger 差分对拍：全极端值两两组合 + 固定种子（12345）随机 5000 对 × 每个运算，另含移位边界与构造器边界。
 
-- Build requires **JDK 21+** (bytecode release 21). Gradle 9.5 wrapper.
-- Tests: differential vs BigInteger - all extreme values in pairs, plus 5000
-  seeded (12345) random pairs per operation, plus shift/constructor boundaries.
+## 作为依赖使用（库的用法）
 
-## Using as a dependency
-
-- **JitPack (recommended, zero install)**:
+- **JitPack（推荐，零安装）**：
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
   dependencies { implementation 'com.github.3648657480:ScalarWide:v0.10.1' }
   ```
 
-- **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:0.10.1` for any local Gradle/Maven project.
-- **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
-  GitHub Releases and put it on the classpath.
-- API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
-  `MutableWide128/256` (allocation-free scratch); semantics in the Javadoc and
-  `docs/DESIGN.md`.
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.10.1`
+  （之后本机任何 Gradle/Maven 工程可直接引用）；
+- **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
+- API 入口：`Wide128/256/384/512/768/1024`（不可变值类型）、`MutableWide128/256`（零分配 scratch）、
+  语义见各类 Javadoc 与 `docs/DESIGN.md`。
 
-## Quick use
+## 快速使用
 
 ```java
 Wide256 k0 = Wide256.of(0x0123456789ABCDEFL, 0xFEDCBA9876543210L, 0, 0);
@@ -62,41 +53,36 @@ Wide256 mixed = k0.xor(k1);
 BigInteger hi = k0.mulHigh(k1).toBigInteger();
 ```
 
-## Widths and coordinate range
+## 宽度与坐标范围（必读）
 
-| Width | Role | Notes |
+| 宽度 | 定位 | 说明 |
 |---|---|---|
-| 128 | atom - storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
-| 256 | atom - general purpose (keys, hashing, mixing) | main atom |
-| 384 | 3x128 - relay | composed: add/compare/mul (mul 10x, 2.55x over BigInteger); mulHigh pending |
-| 512 | 2x256 - single-cache-line data domain | composed: add/compare/mul (mul 1.5x over BigInteger); sub/shifts pending |
-| 768 | 3x256 - extra-large coordinates | engine-backed; composition pending |
-| 1024 | 4x256 - double's exponent ceiling | engine-backed; composition pending |
+| 128 | 原子 · 存储 key / Long128 的替代 | 实测 key 场景只需 59+59 位；128 是收益/代价甜点 |
+| 256 | 原子 · 通用档（key、哈希、混合运算） | 主原子 |
+| 384 | 3×128 · 中继 | 组合：add/比较/乘（mul 10×、反超 big 2.55×）；mulHigh 待做 |
+| 512 | 2×256 · 数据域单缓存行 | 组合：add/比较/乘（mul 3.15×、反超 big 1.5×）；sub/移位待做 |
+| 768 | 3×256 · 超大坐标 | 组合：mul（vs 引擎 1.98×；落后 big 1.42×）；mulHigh 待做 |
+| 1024 | 4×256 · 逼近 double 上限 | 组合：mul（vs 引擎 1.43×；落后 big 1.81×）；mulHigh 待做 |
 
-**Not covered**: raw coordinates near 1e306 (~1020 bits). Raw coordinates stay
-on the "big coordinate + local window" layered design; this library covers the
-key / hash / short big-integer math inside it.
+**不覆盖**：1e306 量级的原始坐标（≈1020 bit）。原始坐标应保持"大数坐标 + 局部窗口"的分层设计，本库负责其中的 key / 哈希 / 短大数运算。
 
-## Layout
+## 目录
 
 ```
-src/main/java/com/scalarwide/     Limbs (reference engine), Wide128/256/384
-src/test/java/com/scalarwide/     BigInteger differential tests
-src/jmh/java/com/scalarwide/bench JMH benches (BigInteger side by side)
-docs/DESIGN.md                    decisions / enchantment roadmap / acceptance
+src/main/java/com/scalarwide/     Limbs（参考引擎）、Wide128/256/384
+src/test/java/com/scalarwide/     BigInteger 对拍测试
+src/jmh/java/com/scalarwide/bench JMH 基准（BigInteger 同场对照）
+docs/DESIGN.md                    设计决策 / 附魔路线 / 验收标准
 ```
 
-## Roadmap
+## 路线
 
-1. **0.1.x baseline**: correctness loop + JMH baseline numbers (`docs/BENCH.md`).
-2. **Enchantment 1 (done in 0.2.0)**: register/unrolled hot paths for 128/256
-   (one variable per round, CPU-pinned JMH before/after).
-3. **Enchantment 2**: zero-allocation API (output buffers / pooling).
-4. **Enchantment 3**: inlining verification (`-XX:+PrintInlining`), `VarHandle`
-   evaluation.
-5. SIMD stays frozen as an experiment (scalar is the product, SIMD is the
-   experiment against the scalar oracle).
+1. **0.1.x 基线**：正确性闭环 + JMH 基线数字（记录在 `docs/BENCH.md`）。
+2. **附魔轮 1（0.2.0 已完成）**：128/256 热路径寄存器化 + 手动展开（一次一变量，JMH 锁核前后对照）。
+3. **附魔轮 2**：零分配 API（结果写调用方缓冲 / 对象池）。
+4. **附魔轮 3**：内联验证（`-XX:+PrintInlining`）、`VarHandle` 评估。
+5. SIMD 冻结为实验项（标量是产品，SIMD 是 oracle 对照下的实验）。
 
-## License
+## 许可
 
-MIT (see `LICENSE.txt`).
+MIT（见 `LICENSE.txt`）。
