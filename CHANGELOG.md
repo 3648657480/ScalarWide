@@ -2,6 +2,23 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.6.2
+
+### Fixed
+
+- `Wide512.mulHigh` escape analysis: rewritten as a single open-coded method
+  (four quarter products + one limb-level carry pass). Allocation rate
+  832 -> 80 B/op (now identical to `mul`); latency 148 -> 137 ns/op (pinned JMH).
+  Three-way differential testing caught two formulation bugs during the rewrite
+  (wrong identity; a missing low-limb carry) - the gate works.
+
+### Known issue (narrowed)
+
+- `mulHigh` is still ~1.6x slower than `BigInteger.multiply` (86 ns/op):
+  137 ns is about 4x the standalone cost of one 256-bit quarter product - the
+  four independent chains are not overlapped (suspected JIT scheduling /
+  register pressure). Needs assembly-level dissection.
+
 ## 0.6.1
 
 ### Changed

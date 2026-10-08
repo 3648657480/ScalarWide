@@ -542,6 +542,10 @@ public final class Wide256 implements Comparable<Wide256> {
         return new long[] { l0, l1, l2, l3 };
     }
 
+    Wide512 widenLow() {
+        return Wide512.of(l0, l1, l2, l3, 0, 0, 0, 0);
+    }
+
     private static void checkShift(int k) {
         if (k < 0 || k >= BITS) {
             throw new IllegalArgumentException("shift amount out of range: " + k);

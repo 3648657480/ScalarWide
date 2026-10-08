@@ -160,3 +160,25 @@ cmd /c start "swM" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "build\libs\
   按纪律停手存档。候选下一步（未验证）：chunked mulHigh 或 limb 域重写；
   在此之前 mulHigh 记为已知限制（对象 API 口径落后 BigInteger 约 1.6×）。
 
+## 2026-10-08 · Round B：512 `mulHigh` 攻坚（0.6.1 → 0.6.2，锁核）
+
+用户拍板"没那么快认输"，继续攻。尝试轨迹（每步都测）：
+
+1. **错误恒等式**（误删 aL·bL 的贡献）→ 对拍当场抓住（差 1~2）→ 废弃。
+2. **两段法**（prepHigh 预算内 + 轻量组合）→ 分配 **832 → 480 B/op**；时间 148 → 144ns（不变）。
+3. **全开码单方法**（4 季积 + limb 级进位一体化，零中间对象）→ 分配 **480 → 80 B/op**
+   （EA 完美，与 `mul` 同级）；途中对拍又抓住一处漏加 hh 低 4 limb 的进位 bug。
+
+现状（锁核，同 run 对照；CSV：`BENCH-2026-10-08-roundB-before/after.csv`）：
+
+| 基准 | 0.6.1 | 0.6.2 | 对照（0.6.2 run） |
+|---|---|---|---|
+| Wide512.mulHigh | 148.1ns / 832 B/op | **137.5ns / 80 B/op** | bigMul 86.4ns |
+| Wide512.mul | 48.7ns | 53.9ns | — |
+
+结论（仅限本条件）：
+- **分配问题解决**：832 → 80 B/op（10×），与 `mul` 同级——对 GC 噪声/吞吐是实质改善。
+- **时间仍差 bigMul 1.6×**：137 ≈ 4 × 34.9ns（`Wide256.mulFull` 单测值）——四个季积的
+  独立链没有被 ILP 重叠（疑似 JIT 调度/寄存器压力），需 `-XX:+PrintAssembly` 级剖析。
+- **三路对拍两次守门**（错误恒等式、漏 limb）——验证体系再次兑现。
+
