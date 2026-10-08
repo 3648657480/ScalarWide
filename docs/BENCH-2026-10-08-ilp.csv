@@ -1,0 +1,5 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.Wide512Bench.mul","avgt",1,10,53.192306,1.533792,"ns/op"
+"com.scalarwide.bench.Wide512Bench.mulFullOne","avgt",1,10,32.335437,3.489346,"ns/op"
+"com.scalarwide.bench.Wide512Bench.mulFullTwo","avgt",1,10,65.361466,3.083361,"ns/op"
+"com.scalarwide.bench.Wide512Bench.mulHigh","avgt",1,10,143.444494,5.059519,"ns/op"

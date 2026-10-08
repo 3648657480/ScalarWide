@@ -1,5 +1,6 @@
 package com.scalarwide.bench;
 
+import com.scalarwide.Wide256;
 import com.scalarwide.Wide512;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -28,6 +29,10 @@ public class Wide512Bench {
     public Wide512 b;
     public BigInteger ra;
     public BigInteger rb;
+    public Wide256 aLow;
+    public Wide256 aHigh;
+    public Wide256 bLow;
+    public Wide256 bHigh;
 
     @Setup
     public void setup() {
@@ -39,6 +44,20 @@ public class Wide512Bench {
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
         ra = a.toBigInteger();
         rb = b.toBigInteger();
+        aLow = Wide256.of(a.limb(0), a.limb(1), a.limb(2), a.limb(3));
+        aHigh = Wide256.of(a.limb(4), a.limb(5), a.limb(6), a.limb(7));
+        bLow = Wide256.of(b.limb(0), b.limb(1), b.limb(2), b.limb(3));
+        bHigh = Wide256.of(b.limb(4), b.limb(5), b.limb(6), b.limb(7));
+    }
+
+    @Benchmark
+    public Wide512 mulFullOne() {
+        return aLow.mulFull(bLow);
+    }
+
+    @Benchmark
+    public Wide512 mulFullTwo() {
+        return aLow.mulFull(bLow).add(aHigh.mulFull(bHigh));
     }
 
     @Benchmark
