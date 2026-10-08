@@ -2,6 +2,19 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.5.0
+
+### Added
+
+- `Wide768` (12-limb) and `Wide1024` (16-limb): the width ladder is complete
+  through 1024 bits (double's exponent ceiling). Flat limbs, engine-backed
+  (correctness first), full differential suites (`Wide768Test`, `Wide1024Test`).
+
+### Notes
+
+- Composition from the atoms (384 = 3x128, 512/768/1024 = n x 256) is the next
+  step (1.5b); these types currently route through the `Limbs` engine.
+
 ## 0.4.0
 
 ### Changed

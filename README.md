@@ -5,9 +5,9 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.4.0`: enchantment
-round 1 + `mulFull` + the 1.4 chunk refactor (inlinable orchestrators/columns);
-shape and data in `CHANGELOG.md`, `docs/BENCH.md`, `docs/INLINE.md`.
+Version: see repo-root `VERSION` (single authority). Current `0.5.0`: the width
+ladder is complete (768/1024 added); shape and data in `CHANGELOG.md`,
+`docs/BENCH.md`, `docs/INLINE.md`.
 
 ## What it is
 
@@ -49,9 +49,12 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 
 | Width | Role | Notes |
 |---|---|---|
-| 128 | storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
-| 256 | general purpose (keys, hashing, mixing) | |
-| 384 | fallback (correctness first, perf P1) | |
+| 128 | atom - storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
+| 256 | atom - general purpose (keys, hashing, mixing) | main atom |
+| 384 | 3x128 - relay | engine-backed; composition pending |
+| 512 | 2x256 - single-cache-line data domain | engine-backed; composition pending |
+| 768 | 3x256 - extra-large coordinates | engine-backed; composition pending |
+| 1024 | 4x256 - double's exponent ceiling | engine-backed; composition pending |
 
 **Not covered**: raw coordinates near 1e306 (~1020 bits). Raw coordinates stay
 on the "big coordinate + local window" layered design; this library covers the
