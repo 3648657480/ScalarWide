@@ -2,6 +2,24 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.10.0
+
+### Added
+
+- `MutableWide128` / `MutableWide256`: reusable mutable accumulators whose
+  operations (set/add/sub/mul/bitwise/shifts/compare) write into the instance
+  and allocate nothing - the zero-allocation ("*Into") track of the API.
+  Not thread-safe; never valid as map keys (documented red line). Verified by a
+  4000-step differential state-machine fuzz through one reused instance.
+
+### Measured
+
+- Pinned JMH (with `-prof gc`): for in-method chains the immutable API is
+  already allocation-free thanks to escape analysis (48 B/op = result only,
+  same as the mutable chain), so the carrier API wins nothing there; its value
+  is limited to scratch living across method boundaries or in fields
+  (`docs/BENCH.md`, Round F).
+
 ## 0.9.0
 
 ### Changed

@@ -250,3 +250,22 @@ cmd /c start "swM" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "build\libs\
     （链数随块数平方增长，且无 ILP 重叠）；
   - `mulHigh`(768/1024) 仍引擎背底，是最后两个待组合方法。
 
+## 2026-10-08 · Round F：零分配载体 API 首测（0.10.0，锁核 + -prof gc）
+
+- 设计决策：零分配 API 采用 **Mutable 载体（*Into 对象风）**——`MutableWide128/256`
+  （set/add/sub/mul/位运算/移位/比较，全部写字段、构造上零分配；文档红线：载体只做 scratch、
+  永不做 key；线程不安全）。
+- 公平对照（同为 3 步链：set→add→mul→add）：
+
+| 基准 | ns/op | 分配 |
+|---|---|---|
+| immutableChain（`a.add(b).mul(c).add(d)`） | 16.70 | **48 B/op（仅最终结果）** |
+| mutableChain（载体链） | 17.51 | 48 B/op（同上，载体在 setup 一次） |
+
+- 结论（仅限本条件）：
+  - **在 EA 覆盖的局部链场景，零分配 API 收益为零**——JIT 本就把中间对象全部标量替换；
+    mutable 版还多付 ~5% 的字段读写。
+  - 载体 API 的价值限定于 **跨方法边界/字段驻留的 scratch 累加器**（EA 够不着的场景），
+    构造上保证零分配；是否在 V2 用得上由真实用例决定。
+  - 纪律执行：此为"API 交付 + 负收益面记录"（区别于 mulBoth 的纯实验撤销）。
+
