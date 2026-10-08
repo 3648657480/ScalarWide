@@ -52,3 +52,11 @@ java -jar build\libs\ScalarWide-0.3.0-jmh.jar "Wide128Bench\.(add|mul|mulFull)$|
 - `MulAcc` 被逃逸分析抹除（`-prof gc`：两版均 80.001 B/op，仅结果对象分配）。
 - 结论：组合层的叶子现在都是可内联小块——1.5/1.6 的"套娃扁平化"前提成立；
   性能是否受益由 1.5 实测（叶子基准显示内联本身无收益，调用开销非瓶颈）。
+
+## 2026-10-08 · 1.5b 512 组合尺寸（0.6.0）
+
+- `Wide512::mul` 编排器 51B、`mulHigh` 162B；`lowHalf`/`highHalf` 20B、`shiftLeft/Right256` 28B、
+  `compareUnsigned` 140B——全部可热内联；**`add` = 319B（边界：部分调用点被拒）**。
+- 新消息 "already compiled into a big method"：编排器字节码小、但其编译体大（内联了叶子），
+  故不再向调用方内联——符合预期（调用开销 ~1ns 量级，已知非瓶颈）。
+- 1.5b 实测：512 mul 3.15×、反超 BigInteger 1.5×（详见 BENCH.md）。

@@ -5,9 +5,9 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.5.0`: the width
-ladder is complete (768/1024 added); shape and data in `CHANGELOG.md`,
-`docs/BENCH.md`, `docs/INLINE.md`.
+Version: see repo-root `VERSION` (single authority). Current `0.6.0`: first
+512-bit composition (mul 1.5x faster than BigInteger); shape and data in
+`CHANGELOG.md`, `docs/BENCH.md`, `docs/INLINE.md`.
 
 ## What it is
 
@@ -52,7 +52,7 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 | 128 | atom - storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
 | 256 | atom - general purpose (keys, hashing, mixing) | main atom |
 | 384 | 3x128 - relay | engine-backed; composition pending |
-| 512 | 2x256 - single-cache-line data domain | engine-backed; composition pending |
+| 512 | 2x256 - single-cache-line data domain | composed: add/compare/mul (mul 1.5x over BigInteger); sub/shifts pending |
 | 768 | 3x256 - extra-large coordinates | engine-backed; composition pending |
 | 1024 | 4x256 - double's exponent ceiling | engine-backed; composition pending |
 

@@ -2,6 +2,17 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.6.0
+
+### Changed
+
+- `Wide512` addition, comparison and multiplication are now register-specialized;
+  `mul` / `mulHigh` compose four 256-bit atom products (`Wide256.mulFull`).
+  Pinned JMH vs 0.5.0 (engine-backed): add 22.6 -> 12.1 ns/op (1.9x), mul
+  199.9 -> 63.4 ns/op (3.2x; now 1.5x faster than `BigInteger.multiply`),
+  mulHigh 190.8 -> 174.8 ns/op (1.1x only - restructuring target), compare flat.
+- `384` (3x128) composition is still pending.
+
 ## 0.5.0
 
 ### Added

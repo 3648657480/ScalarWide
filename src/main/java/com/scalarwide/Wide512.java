@@ -12,8 +12,9 @@ import java.math.BigInteger;
  * {@link #compareSigned} for signed order. Shift amounts must lie in
  * {@code [0, 512)} or {@link IllegalArgumentException} is thrown.
  *
- * <p>Current implementation delegates to the generic {@link Limbs} engine
- * (correctness first); register-specialized composition is planned.
+ * <p>Addition, comparison and multiplication are register-specialized (the
+ * multiplication composes four 256-bit atom products); the remaining operations
+ * still route through the generic {@link Limbs} engine.
  */
 public final class Wide512 implements Comparable<Wide512> {
 
@@ -140,9 +141,28 @@ public final class Wide512 implements Comparable<Wide512> {
 
     /** Wrapping addition modulo 2^512. */
     public Wide512 add(Wide512 o) {
-        long[] out = new long[LIMBS];
-        Limbs.add(pack(), o.pack(), out);
-        return unpack(out);
+        long r0 = l0 + o.l0;
+        long c = Carry.addCarryOut(l0, o.l0, r0);
+        long s = l1 + o.l1;
+        long r1 = s + c;
+        c = Carry.addCarryOut(l1, o.l1, s) + Carry.addCarryOut(s, c, r1);
+        s = l2 + o.l2;
+        long r2 = s + c;
+        c = Carry.addCarryOut(l2, o.l2, s) + Carry.addCarryOut(s, c, r2);
+        s = l3 + o.l3;
+        long r3 = s + c;
+        c = Carry.addCarryOut(l3, o.l3, s) + Carry.addCarryOut(s, c, r3);
+        s = l4 + o.l4;
+        long r4 = s + c;
+        c = Carry.addCarryOut(l4, o.l4, s) + Carry.addCarryOut(s, c, r4);
+        s = l5 + o.l5;
+        long r5 = s + c;
+        c = Carry.addCarryOut(l5, o.l5, s) + Carry.addCarryOut(s, c, r5);
+        s = l6 + o.l6;
+        long r6 = s + c;
+        c = Carry.addCarryOut(l6, o.l6, s) + Carry.addCarryOut(s, c, r6);
+        long r7 = l7 + o.l7 + c;
+        return new Wide512(r0, r1, r2, r3, r4, r5, r6, r7);
     }
 
     /** Wrapping subtraction modulo 2^512. */
@@ -159,18 +179,53 @@ public final class Wide512 implements Comparable<Wide512> {
         return unpack(out);
     }
 
-    /** Low 512 bits of the 1024-bit product, i.e. {@code (a*b) mod 2^512}. */
+    /**
+     * Low 512 bits of the 1024-bit product, i.e. {@code (a*b) mod 2^512},
+     * composed from four 256-bit atom products.
+     */
     public Wide512 mul(Wide512 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulLow(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 lo = lowHalf().mulFull(o.lowHalf());
+        Wide512 m1 = lowHalf().mulFull(o.highHalf());
+        Wide512 m2 = highHalf().mulFull(o.lowHalf());
+        return lo.add(m1.add(m2).shiftLeft256());
     }
 
-    /** High 512 bits of the 1024-bit product, i.e. {@code (a*b) >>> 512}. */
+    /**
+     * High 512 bits of the 1024-bit product, i.e. {@code (a*b) >>> 512},
+     * composed from four 256-bit atom products.
+     */
     public Wide512 mulHigh(Wide512 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulHigh(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 lo = lowHalf().mulFull(o.lowHalf());
+        Wide512 m1 = lowHalf().mulFull(o.highHalf());
+        Wide512 m2 = highHalf().mulFull(o.lowHalf());
+        Wide512 hi = highHalf().mulFull(o.highHalf());
+        Wide512 midSum = m1.add(m2);
+        long c1 = midSum.compareUnsigned(m1) < 0 ? 1 : 0;
+        long c2 = lo.add(midSum.shiftLeft256()).compareUnsigned(lo) < 0 ? 1 : 0;
+        Wide512 high = midSum.shiftRight256();
+        if (c1 != 0) {
+            high = high.add(Wide512.of(0, 0, 0, 0, 1, 0, 0, 0));
+        }
+        if (c2 != 0) {
+            high = high.add(Wide512.of(1, 0, 0, 0, 0, 0, 0, 0));
+        }
+        return hi.add(high);
+    }
+
+    private Wide256 lowHalf() {
+        return Wide256.of(l0, l1, l2, l3);
+    }
+
+    private Wide256 highHalf() {
+        return Wide256.of(l4, l5, l6, l7);
+    }
+
+    private Wide512 shiftLeft256() {
+        return new Wide512(0, 0, 0, 0, l0, l1, l2, l3);
+    }
+
+    private Wide512 shiftRight256() {
+        return new Wide512(l4, l5, l6, l7, 0, 0, 0, 0);
     }
 
     public Wide512 and(Wide512 o) {
@@ -240,11 +295,61 @@ public final class Wide512 implements Comparable<Wide512> {
     }
 
     public int compareUnsigned(Wide512 o) {
-        return Limbs.compareUnsigned(pack(), o.pack());
+        int c = Long.compareUnsigned(l7, o.l7);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l6, o.l6);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     public int compareSigned(Wide512 o) {
-        return Limbs.compareSigned(pack(), o.pack());
+        int c = Long.compare(l7, o.l7);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l6, o.l6);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     /**
