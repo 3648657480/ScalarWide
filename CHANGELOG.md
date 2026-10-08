@@ -2,6 +2,20 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.10.1
+
+### Changed
+
+- **Consumable as a library**: `maven-publish` added (coordinates
+  `com.scalarwide:scalarwide`), `sourcesJar` added, and `jitpack.yml` added so
+  the repo builds on JitPack (`com.github.3648657480:ScalarWide:v0.10.1`).
+- **Portable build**: the machine-specific JDK path moved out of the committed
+  `gradle.properties` (now in the user-level `~/.gradle/gradle.properties`);
+  the build uses the running JVM with `--release 21` instead of a pinned
+  toolchain - `git clone` + `gradlew build` now works on any machine with
+  JDK 21+.
+- README (EN/zh) gained a "Using as a dependency" section.
+
 ## 0.10.0
 
 ### Added

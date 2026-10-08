@@ -21,8 +21,24 @@
 .\gradlew.bat jmh --args="com.scalarwide.bench.Wide128Bench -wi 3 -i 5 -f 1"
 .\gradlew.bat jmhJar
 ```
-- 工具链：JDK 25（toolchain，字节码 release 21）；Gradle 9.5（wrapper 走腾讯镜像）。
+- 构建需 **JDK 21+**（字节码 release 21；本机默认 java 过旧时，在用户级
+  `~/.gradle/gradle.properties` 里固定 `org.gradle.java.home=<JDK 路径>`）；Gradle 9.5（wrapper 走腾讯镜像）。
 - 测试 = BigInteger 差分对拍：全极端值两两组合 + 固定种子（12345）随机 5000 对 × 每个运算，另含移位边界与构造器边界。
+
+## 作为依赖使用（库的用法）
+
+- **JitPack（推荐，零安装）**：
+
+  ```groovy
+  repositories { maven { url 'https://jitpack.io' } }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.10.1' }
+  ```
+
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.10.1`
+  （之后本机任何 Gradle/Maven 工程可直接引用）；
+- **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
+- API 入口：`Wide128/256/384/512/768/1024`（不可变值类型）、`MutableWide128/256`（零分配 scratch）、
+  语义见各类 Javadoc 与 `docs/DESIGN.md`。
 
 ## 快速使用
 

@@ -32,9 +32,26 @@ Version: see repo-root `VERSION` (single authority). Current `0.6.0`: first
 .\gradlew.bat jmhJar
 ```
 
-- Toolchain: JDK 25 (bytecode release 21); Gradle 9.5 wrapper.
+- Build requires **JDK 21+** (bytecode release 21). Gradle 9.5 wrapper.
 - Tests: differential vs BigInteger - all extreme values in pairs, plus 5000
   seeded (12345) random pairs per operation, plus shift/constructor boundaries.
+
+## Using as a dependency
+
+- **JitPack (recommended, zero install)**:
+
+  ```groovy
+  repositories { maven { url 'https://jitpack.io' } }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.10.1' }
+  ```
+
+- **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
+  `com.scalarwide:scalarwide:0.10.1` for any local Gradle/Maven project.
+- **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
+  GitHub Releases and put it on the classpath.
+- API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
+  `MutableWide128/256` (allocation-free scratch); semantics in the Javadoc and
+  `docs/DESIGN.md`.
 
 ## Quick use
 

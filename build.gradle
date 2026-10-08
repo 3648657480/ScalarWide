@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
 
 group = 'com.scalarwide'
@@ -11,7 +12,7 @@ repositories {
 }
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+    withSourcesJar()
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -78,6 +79,15 @@ tasks.register('jmhJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes 'Main-Class': 'org.openjdk.jmh.Main'
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifactId = 'scalarwide'
+        }
     }
 }
 
