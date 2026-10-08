@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> Version 0.1.0 (authority: repo-root VERSION)
+> Version 0.3.0 (authority: repo-root VERSION)
 
 Working rules for any agent or contributor on ScalarWide. Binding.
 
@@ -26,7 +26,12 @@ Working rules for any agent or contributor on ScalarWide. Binding.
 ## Engineering
 
 - Java toolchain 25, bytecode release 21 (Gradle 9.5 wrapper; Tencent mirror).
-- Code is comment-free; semantics live in README / docs/DESIGN.md.
+- Public API semantics live in Javadoc (unsigned compareTo, mul low/high/full,
+  shift range, mod-2^N wrapping); internal code stays comment-free.
+- Representation red line: flat little-endian limbs only - composition stays at
+  the algorithm level, never object nesting in fields.
+- Benchmarks: CPU-affinity-pinned JMH (`docs/BENCH.md`); every ratio must state
+  its caliber (object API; cold/warm; low-half vs full product).
 - Chinese docs/files: edit only via editor tools (UTF-8), never PowerShell
   Get-Content/Set-Content.
 - Version bumps: `VERSION` + `CHANGELOG.md` only.

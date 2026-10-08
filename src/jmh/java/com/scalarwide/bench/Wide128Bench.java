@@ -1,6 +1,7 @@
 package com.scalarwide.bench;
 
 import com.scalarwide.Wide128;
+import com.scalarwide.Wide256;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -68,6 +69,11 @@ public class Wide128Bench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    @Benchmark
+    public Wide256 mulFull() {
+        return a.mulFull(b);
     }
 
     @Benchmark

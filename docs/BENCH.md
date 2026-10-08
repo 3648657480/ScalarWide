@@ -51,3 +51,31 @@ cmd /c start "sw" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "<before|afte
 - `-wi 1 -i 1 -f 1 -w/-r 200ms`（Samples=1，无误差棒，非权威）：
   `BENCH-2026-10-08-smoke.csv`（本库）、`BENCH-2026-10-08-smoke-big.csv`（BigInteger）。
 - 用途：验证 JMH 链路 + 给附魔轮前值提供粗参照；结论未采纳。
+
+## 2026-10-08 · mulFull 首测（0.3.0，锁核）
+
+- 命令（锁核口径同前，仅换 jar 与筛选）：
+
+```
+cmd /c start "swM" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "build\libs\ScalarWide-0.3.0-jmh.jar" "(Wide128Bench|Wide256Bench)\.(mulFull|bigMul|mul|add)$" -wi 5 -i 10 -f 1 -w 500ms -r 500ms -rf csv -rff docs\BENCH-2026-10-08-mulFull-pinned.csv
+```
+
+- **口径（关键）**：`mulFull` = 全积，`BigInteger.multiply` = 全积——两边对齐；
+  `mul`（低半）保留作参考，不与 `BigInteger.multiply` 直接比值。
+- 数据：`BENCH-2026-10-08-mulFull-pinned.csv`。
+
+| 基准 | ns/op | 对照 | 比值 |
+|---|---|---|---|
+| Wide128.add | 3.03 | — | 参考 |
+| Wide128.mul（低半） | 2.81 | — | — |
+| Wide128.mulFull（全积） | **6.16** | bigMul 19.25 | **3.1x** |
+| Wide256.add | 5.62 | — | 参考 |
+| Wide256.mul（低半） | 12.64 | — | — |
+| Wide256.mulFull（全积） | **34.94** | bigMul 35.59 | **1.02x（持平）** |
+
+- 现象（仅限本条件）：
+  - 128 全积对 BigInteger 3.1× 领先——"乘法低头"在 128 档（对象 API、全积口径）不成立。
+  - 256 全积与 intrinsic 支持的 BigInteger 打平（1.02×）——"低头但不投降"成立的最低档位；
+    宽度上到 512+ 时 intrinsic 的每-limb 优势是否显形，待测。
+  - 256 全积(34.9ns) ≈ 2.8× 低半(12.6ns)：额外列进位 + 方法体尺寸（内联预算）是下一轮靶子。
+

@@ -2,6 +2,19 @@ package com.scalarwide;
 
 import java.math.BigInteger;
 
+/**
+ * Fixed-width 384-bit integer held in six little-endian {@code long} limbs
+ * ({@code l0} least significant .. {@code l5} most significant); the value is
+ * interpreted as unsigned by default, but the bit pattern is two's complement.
+ *
+ * <p>All arithmetic wraps modulo 2^384. {@link #compareTo} is unsigned and
+ * consistent with {@link #equals} (suitable for map keys); use
+ * {@link #compareSigned} for signed order. Shift amounts must lie in
+ * {@code [0, 384)} or {@link IllegalArgumentException} is thrown.
+ *
+ * <p>Current implementation delegates to the generic {@link Limbs} engine
+ * (correctness first); composition from the 128-bit atom is planned.
+ */
 public final class Wide384 implements Comparable<Wide384> {
 
     public static final int BITS = 384;
@@ -119,12 +132,14 @@ public final class Wide384 implements Comparable<Wide384> {
         return unpack(out);
     }
 
+    /** Low 384 bits of the 768-bit product, i.e. {@code (a*b) mod 2^384}. */
     public Wide384 mul(Wide384 o) {
         long[] out = new long[LIMBS];
         Limbs.mulLow(pack(), o.pack(), out);
         return unpack(out);
     }
 
+    /** High 384 bits of the 768-bit product, i.e. {@code (a*b) >>> 384}. */
     public Wide384 mulHigh(Wide384 o) {
         long[] out = new long[LIMBS];
         Limbs.mulHigh(pack(), o.pack(), out);
@@ -161,6 +176,11 @@ public final class Wide384 implements Comparable<Wide384> {
         return unpack(out);
     }
 
+    /**
+     * Logical left shift by {@code k} bits; bits shifted out are discarded.
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 384)}
+     */
     public Wide384 shl(int k) {
         checkShift(k);
         long[] out = new long[LIMBS];
@@ -168,6 +188,11 @@ public final class Wide384 implements Comparable<Wide384> {
         return unpack(out);
     }
 
+    /**
+     * Logical right shift by {@code k} bits (zero fill).
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 384)}
+     */
     public Wide384 ushr(int k) {
         checkShift(k);
         long[] out = new long[LIMBS];
@@ -175,6 +200,11 @@ public final class Wide384 implements Comparable<Wide384> {
         return unpack(out);
     }
 
+    /**
+     * Arithmetic right shift by {@code k} bits (sign-extending).
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 384)}
+     */
     public Wide384 shr(int k) {
         checkShift(k);
         long[] out = new long[LIMBS];
@@ -190,6 +220,11 @@ public final class Wide384 implements Comparable<Wide384> {
         return Limbs.compareSigned(pack(), o.pack());
     }
 
+    /**
+     * Unsigned comparison; consistent with {@link #equals}.
+     *
+     * @see #compareSigned(Wide384)
+     */
     @Override
     public int compareTo(Wide384 o) {
         return compareUnsigned(o);

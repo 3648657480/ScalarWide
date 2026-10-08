@@ -2,6 +2,19 @@ package com.scalarwide;
 
 import java.math.BigInteger;
 
+/**
+ * Fixed-width 256-bit integer held in four little-endian {@code long} limbs
+ * ({@code l0} least significant .. {@code l3} most significant); the value is
+ * interpreted as unsigned by default, but the bit pattern is two's complement.
+ *
+ * <p>All arithmetic wraps modulo 2^256. {@link #compareTo} is unsigned and
+ * consistent with {@link #equals} (suitable for map keys); use
+ * {@link #compareSigned} for signed order. Shift amounts must lie in
+ * {@code [0, 256)} or {@link IllegalArgumentException} is thrown.
+ *
+ * <p>Arithmetic is register-specialized (no intermediate arrays or loops);
+ * the generic {@link Limbs} engine remains as the internal correctness oracle.
+ */
 public final class Wide256 implements Comparable<Wide256> {
 
     public static final int BITS = 256;
@@ -22,10 +35,12 @@ public final class Wide256 implements Comparable<Wide256> {
         this.l3 = l3;
     }
 
+    /** Zero-extends a {@code long} value. */
     public static Wide256 of(long v) {
         return new Wide256(v, 0, 0, 0);
     }
 
+    /** Sign-extends a {@code long} value. */
     public static Wide256 ofSigned(long v) {
         long fill = v >> 63;
         return new Wide256(v, fill, fill, fill);
@@ -35,6 +50,10 @@ public final class Wide256 implements Comparable<Wide256> {
         return new Wide256(l0, l1, l2, l3);
     }
 
+    /**
+     * @throws IllegalArgumentException if {@code v} is negative or does not
+     *         fit in 256 bits
+     */
     public static Wide256 fromBigInteger(BigInteger v) {
         if (v.signum() < 0) {
             throw new IllegalArgumentException("negative value: " + v);
@@ -49,10 +68,12 @@ public final class Wide256 implements Comparable<Wide256> {
                 v.shiftRight(192).longValue());
     }
 
+    /** Unsigned value as a non-negative {@link BigInteger}. */
     public BigInteger toBigInteger() {
         return Limbs.toBigInteger(pack());
     }
 
+    /** {@code i}-th limb, {@code 0} = least significant. */
     public long limb(int i) {
         return switch (i) {
             case 0 -> l0;
@@ -63,6 +84,7 @@ public final class Wide256 implements Comparable<Wide256> {
         };
     }
 
+    /** Low 64 bits. */
     public long longValue() {
         return l0;
     }
@@ -87,36 +109,40 @@ public final class Wide256 implements Comparable<Wide256> {
         return 0;
     }
 
+    /** Wrapping addition modulo 2^256. */
     public Wide256 add(Wide256 o) {
         long r0 = l0 + o.l0;
-        long c = Limbs.addCarry(l0, o.l0, r0);
+        long c = Carry.addCarryOut(l0, o.l0, r0);
         long s1 = l1 + o.l1;
         long r1 = s1 + c;
-        c = Limbs.addCarry(l1, o.l1, s1) + Limbs.addCarry(s1, c, r1);
+        c = Carry.addCarryOut(l1, o.l1, s1) + Carry.addCarryOut(s1, c, r1);
         long s2 = l2 + o.l2;
         long r2 = s2 + c;
-        c = Limbs.addCarry(l2, o.l2, s2) + Limbs.addCarry(s2, c, r2);
+        c = Carry.addCarryOut(l2, o.l2, s2) + Carry.addCarryOut(s2, c, r2);
         long r3 = l3 + o.l3 + c;
         return new Wide256(r0, r1, r2, r3);
     }
 
+    /** Wrapping subtraction modulo 2^256. */
     public Wide256 sub(Wide256 o) {
         long r0 = l0 - o.l0;
-        long b = Limbs.subBorrow(l0, o.l0, r0);
+        long b = Carry.subBorrowOut(l0, o.l0, r0);
         long d1 = l1 - o.l1;
         long r1 = d1 - b;
-        b = Limbs.subBorrow(l1, o.l1, d1) + Limbs.subBorrow(d1, b, r1);
+        b = Carry.subBorrowOut(l1, o.l1, d1) + Carry.subBorrowOut(d1, b, r1);
         long d2 = l2 - o.l2;
         long r2 = d2 - b;
-        b = Limbs.subBorrow(l2, o.l2, d2) + Limbs.subBorrow(d2, b, r2);
+        b = Carry.subBorrowOut(l2, o.l2, d2) + Carry.subBorrowOut(d2, b, r2);
         long r3 = l3 - o.l3 - b;
         return new Wide256(r0, r1, r2, r3);
     }
 
+    /** Wrapping negation modulo 2^256. */
     public Wide256 neg() {
         return ZERO.sub(this);
     }
 
+    /** Low 256 bits of the 512-bit product, i.e. {@code (a*b) mod 2^256}. */
     public Wide256 mul(Wide256 o) {
         long lo00 = l0 * o.l0;
         long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
@@ -124,9 +150,9 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo10 = l1 * o.l0;
 
         long t1 = hi00 + lo01;
-        long k1 = Limbs.addCarry(hi00, lo01, t1);
+        long k1 = Carry.addCarryOut(hi00, lo01, t1);
         long c1 = t1 + lo10;
-        k1 += Limbs.addCarry(t1, lo10, c1);
+        k1 += Carry.addCarryOut(t1, lo10, c1);
 
         long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
         long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
@@ -135,15 +161,15 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo20 = l2 * o.l0;
 
         long t2 = hi01 + hi10;
-        long k2 = Limbs.addCarry(hi01, hi10, t2);
+        long k2 = Carry.addCarryOut(hi01, hi10, t2);
         long t2b = t2 + lo02;
-        k2 += Limbs.addCarry(t2, lo02, t2b);
+        k2 += Carry.addCarryOut(t2, lo02, t2b);
         long t2c = t2b + lo11;
-        k2 += Limbs.addCarry(t2b, lo11, t2c);
+        k2 += Carry.addCarryOut(t2b, lo11, t2c);
         long t2d = t2c + lo20;
-        k2 += Limbs.addCarry(t2c, lo20, t2d);
+        k2 += Carry.addCarryOut(t2c, lo20, t2d);
         long c2 = t2d + k1;
-        k2 += Limbs.addCarry(t2d, k1, c2);
+        k2 += Carry.addCarryOut(t2d, k1, c2);
 
         long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
         long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
@@ -154,30 +180,31 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo30 = l3 * o.l0;
 
         long t3 = hi02 + hi11;
-        long k3 = Limbs.addCarry(hi02, hi11, t3);
+        long k3 = Carry.addCarryOut(hi02, hi11, t3);
         long t3b = t3 + hi20;
-        k3 += Limbs.addCarry(t3, hi20, t3b);
+        k3 += Carry.addCarryOut(t3, hi20, t3b);
         long t3c = t3b + lo03;
-        k3 += Limbs.addCarry(t3b, lo03, t3c);
+        k3 += Carry.addCarryOut(t3b, lo03, t3c);
         long t3d = t3c + lo12;
-        k3 += Limbs.addCarry(t3c, lo12, t3d);
+        k3 += Carry.addCarryOut(t3c, lo12, t3d);
         long t3e = t3d + lo21;
-        k3 += Limbs.addCarry(t3d, lo21, t3e);
+        k3 += Carry.addCarryOut(t3d, lo21, t3e);
         long t3f = t3e + lo30;
-        k3 += Limbs.addCarry(t3e, lo30, t3f);
+        k3 += Carry.addCarryOut(t3e, lo30, t3f);
         long c3 = t3f + k2;
 
         return new Wide256(lo00, c1, c2, c3);
     }
 
+    /** High 256 bits of the 512-bit product, i.e. {@code (a*b) >>> 256}. */
     public Wide256 mulHigh(Wide256 o) {
         long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
         long lo01 = l0 * o.l1;
         long lo10 = l1 * o.l0;
         long t1 = hi00 + lo01;
-        long k1 = Limbs.addCarry(hi00, lo01, t1);
+        long k1 = Carry.addCarryOut(hi00, lo01, t1);
         long t1b = t1 + lo10;
-        k1 += Limbs.addCarry(t1, lo10, t1b);
+        k1 += Carry.addCarryOut(t1, lo10, t1b);
 
         long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
         long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
@@ -185,15 +212,15 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo11 = l1 * o.l1;
         long lo20 = l2 * o.l0;
         long t2 = hi01 + hi10;
-        long k2 = Limbs.addCarry(hi01, hi10, t2);
+        long k2 = Carry.addCarryOut(hi01, hi10, t2);
         long t2b = t2 + lo02;
-        k2 += Limbs.addCarry(t2, lo02, t2b);
+        k2 += Carry.addCarryOut(t2, lo02, t2b);
         long t2c = t2b + lo11;
-        k2 += Limbs.addCarry(t2b, lo11, t2c);
+        k2 += Carry.addCarryOut(t2b, lo11, t2c);
         long t2d = t2c + lo20;
-        k2 += Limbs.addCarry(t2c, lo20, t2d);
+        k2 += Carry.addCarryOut(t2c, lo20, t2d);
         long t2e = t2d + k1;
-        k2 += Limbs.addCarry(t2d, k1, t2e);
+        k2 += Carry.addCarryOut(t2d, k1, t2e);
 
         long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
         long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
@@ -203,19 +230,19 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo21 = l2 * o.l1;
         long lo30 = l3 * o.l0;
         long t3 = hi02 + hi11;
-        long k3 = Limbs.addCarry(hi02, hi11, t3);
+        long k3 = Carry.addCarryOut(hi02, hi11, t3);
         long t3b = t3 + hi20;
-        k3 += Limbs.addCarry(t3, hi20, t3b);
+        k3 += Carry.addCarryOut(t3, hi20, t3b);
         long t3c = t3b + lo03;
-        k3 += Limbs.addCarry(t3b, lo03, t3c);
+        k3 += Carry.addCarryOut(t3b, lo03, t3c);
         long t3d = t3c + lo12;
-        k3 += Limbs.addCarry(t3c, lo12, t3d);
+        k3 += Carry.addCarryOut(t3c, lo12, t3d);
         long t3e = t3d + lo21;
-        k3 += Limbs.addCarry(t3d, lo21, t3e);
+        k3 += Carry.addCarryOut(t3d, lo21, t3e);
         long t3f = t3e + lo30;
-        k3 += Limbs.addCarry(t3e, lo30, t3f);
+        k3 += Carry.addCarryOut(t3e, lo30, t3f);
         long t3g = t3f + k2;
-        k3 += Limbs.addCarry(t3f, k2, t3g);
+        k3 += Carry.addCarryOut(t3f, k2, t3g);
 
         long hi03 = Math.unsignedMultiplyHigh(l0, o.l3);
         long hi12 = Math.unsignedMultiplyHigh(l1, o.l2);
@@ -225,19 +252,19 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo22 = l2 * o.l2;
         long lo31 = l3 * o.l1;
         long t4 = hi03 + hi12;
-        long k4 = Limbs.addCarry(hi03, hi12, t4);
+        long k4 = Carry.addCarryOut(hi03, hi12, t4);
         long t4b = t4 + hi21;
-        k4 += Limbs.addCarry(t4, hi21, t4b);
+        k4 += Carry.addCarryOut(t4, hi21, t4b);
         long t4c = t4b + hi30;
-        k4 += Limbs.addCarry(t4b, hi30, t4c);
+        k4 += Carry.addCarryOut(t4b, hi30, t4c);
         long t4d = t4c + lo13;
-        k4 += Limbs.addCarry(t4c, lo13, t4d);
+        k4 += Carry.addCarryOut(t4c, lo13, t4d);
         long t4e = t4d + lo22;
-        k4 += Limbs.addCarry(t4d, lo22, t4e);
+        k4 += Carry.addCarryOut(t4d, lo22, t4e);
         long t4f = t4e + lo31;
-        k4 += Limbs.addCarry(t4e, lo31, t4f);
+        k4 += Carry.addCarryOut(t4e, lo31, t4f);
         long c4 = t4f + k3;
-        k4 += Limbs.addCarry(t4f, k3, c4);
+        k4 += Carry.addCarryOut(t4f, k3, c4);
 
         long hi13 = Math.unsignedMultiplyHigh(l1, o.l3);
         long hi22 = Math.unsignedMultiplyHigh(l2, o.l2);
@@ -245,30 +272,139 @@ public final class Wide256 implements Comparable<Wide256> {
         long lo23 = l2 * o.l3;
         long lo32 = l3 * o.l2;
         long t5 = hi13 + hi22;
-        long k5 = Limbs.addCarry(hi13, hi22, t5);
+        long k5 = Carry.addCarryOut(hi13, hi22, t5);
         long t5b = t5 + hi31;
-        k5 += Limbs.addCarry(t5, hi31, t5b);
+        k5 += Carry.addCarryOut(t5, hi31, t5b);
         long t5c = t5b + lo23;
-        k5 += Limbs.addCarry(t5b, lo23, t5c);
+        k5 += Carry.addCarryOut(t5b, lo23, t5c);
         long t5d = t5c + lo32;
-        k5 += Limbs.addCarry(t5c, lo32, t5d);
+        k5 += Carry.addCarryOut(t5c, lo32, t5d);
         long c5 = t5d + k4;
-        k5 += Limbs.addCarry(t5d, k4, c5);
+        k5 += Carry.addCarryOut(t5d, k4, c5);
 
         long hi23 = Math.unsignedMultiplyHigh(l2, o.l3);
         long hi32 = Math.unsignedMultiplyHigh(l3, o.l2);
         long lo33 = l3 * o.l3;
         long t6 = hi23 + hi32;
-        long k6 = Limbs.addCarry(hi23, hi32, t6);
+        long k6 = Carry.addCarryOut(hi23, hi32, t6);
         long t6b = t6 + lo33;
-        k6 += Limbs.addCarry(t6, lo33, t6b);
+        k6 += Carry.addCarryOut(t6, lo33, t6b);
         long c6 = t6b + k5;
-        k6 += Limbs.addCarry(t6b, k5, c6);
+        k6 += Carry.addCarryOut(t6b, k5, c6);
 
         long hi33 = Math.unsignedMultiplyHigh(l3, o.l3);
         long c7 = hi33 + k6;
 
         return new Wide256(c4, c5, c6, c7);
+    }
+
+    /**
+     * Full 512-bit product of the two unsigned operands.
+     *
+     * @return the product as a {@link Wide512}; limbs {@code 0..3} are the low
+     *         half (equal to {@link #mul}), limbs {@code 4..7} the high half
+     *         (equal to {@link #mulHigh})
+     */
+    public Wide512 mulFull(Wide256 o) {
+        long c0 = l0 * o.l0;
+        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
+        long lo01 = l0 * o.l1;
+        long lo10 = l1 * o.l0;
+        long t1 = hi00 + lo01;
+        long k1 = Carry.addCarryOut(hi00, lo01, t1);
+        long c1 = t1 + lo10;
+        k1 += Carry.addCarryOut(t1, lo10, c1);
+
+        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
+        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
+        long lo02 = l0 * o.l2;
+        long lo11 = l1 * o.l1;
+        long lo20 = l2 * o.l0;
+        long t2 = hi01 + hi10;
+        long k2 = Carry.addCarryOut(hi01, hi10, t2);
+        long t2b = t2 + lo02;
+        k2 += Carry.addCarryOut(t2, lo02, t2b);
+        long t2c = t2b + lo11;
+        k2 += Carry.addCarryOut(t2b, lo11, t2c);
+        long t2d = t2c + lo20;
+        k2 += Carry.addCarryOut(t2c, lo20, t2d);
+        long c2 = t2d + k1;
+        k2 += Carry.addCarryOut(t2d, k1, c2);
+
+        long hi02 = Math.unsignedMultiplyHigh(l0, o.l2);
+        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
+        long hi20 = Math.unsignedMultiplyHigh(l2, o.l0);
+        long lo03 = l0 * o.l3;
+        long lo12 = l1 * o.l2;
+        long lo21 = l2 * o.l1;
+        long lo30 = l3 * o.l0;
+        long t3 = hi02 + hi11;
+        long k3 = Carry.addCarryOut(hi02, hi11, t3);
+        long t3b = t3 + hi20;
+        k3 += Carry.addCarryOut(t3, hi20, t3b);
+        long t3c = t3b + lo03;
+        k3 += Carry.addCarryOut(t3b, lo03, t3c);
+        long t3d = t3c + lo12;
+        k3 += Carry.addCarryOut(t3c, lo12, t3d);
+        long t3e = t3d + lo21;
+        k3 += Carry.addCarryOut(t3d, lo21, t3e);
+        long t3f = t3e + lo30;
+        k3 += Carry.addCarryOut(t3e, lo30, t3f);
+        long c3 = t3f + k2;
+        k3 += Carry.addCarryOut(t3f, k2, c3);
+
+        long hi03 = Math.unsignedMultiplyHigh(l0, o.l3);
+        long hi12 = Math.unsignedMultiplyHigh(l1, o.l2);
+        long hi21 = Math.unsignedMultiplyHigh(l2, o.l1);
+        long hi30 = Math.unsignedMultiplyHigh(l3, o.l0);
+        long lo13 = l1 * o.l3;
+        long lo22 = l2 * o.l2;
+        long lo31 = l3 * o.l1;
+        long t4 = hi03 + hi12;
+        long k4 = Carry.addCarryOut(hi03, hi12, t4);
+        long t4b = t4 + hi21;
+        k4 += Carry.addCarryOut(t4, hi21, t4b);
+        long t4c = t4b + hi30;
+        k4 += Carry.addCarryOut(t4b, hi30, t4c);
+        long t4d = t4c + lo13;
+        k4 += Carry.addCarryOut(t4c, lo13, t4d);
+        long t4e = t4d + lo22;
+        k4 += Carry.addCarryOut(t4d, lo22, t4e);
+        long t4f = t4e + lo31;
+        k4 += Carry.addCarryOut(t4e, lo31, t4f);
+        long c4 = t4f + k3;
+        k4 += Carry.addCarryOut(t4f, k3, c4);
+
+        long hi13 = Math.unsignedMultiplyHigh(l1, o.l3);
+        long hi22 = Math.unsignedMultiplyHigh(l2, o.l2);
+        long hi31 = Math.unsignedMultiplyHigh(l3, o.l1);
+        long lo23 = l2 * o.l3;
+        long lo32 = l3 * o.l2;
+        long t5 = hi13 + hi22;
+        long k5 = Carry.addCarryOut(hi13, hi22, t5);
+        long t5b = t5 + hi31;
+        k5 += Carry.addCarryOut(t5, hi31, t5b);
+        long t5c = t5b + lo23;
+        k5 += Carry.addCarryOut(t5b, lo23, t5c);
+        long t5d = t5c + lo32;
+        k5 += Carry.addCarryOut(t5c, lo32, t5d);
+        long c5 = t5d + k4;
+        k5 += Carry.addCarryOut(t5d, k4, c5);
+
+        long hi23 = Math.unsignedMultiplyHigh(l2, o.l3);
+        long hi32 = Math.unsignedMultiplyHigh(l3, o.l2);
+        long lo33 = l3 * o.l3;
+        long t6 = hi23 + hi32;
+        long k6 = Carry.addCarryOut(hi23, hi32, t6);
+        long t6b = t6 + lo33;
+        k6 += Carry.addCarryOut(t6, lo33, t6b);
+        long c6 = t6b + k5;
+        k6 += Carry.addCarryOut(t6b, k5, c6);
+
+        long hi33 = Math.unsignedMultiplyHigh(l3, o.l3);
+        long c7 = hi33 + k6;
+
+        return Wide512.of(c0, c1, c2, c3, c4, c5, c6, c7);
     }
 
     public Wide256 and(Wide256 o) {
@@ -291,6 +427,11 @@ public final class Wide256 implements Comparable<Wide256> {
         return new Wide256(l0 & ~o.l0, l1 & ~o.l1, l2 & ~o.l2, l3 & ~o.l3);
     }
 
+    /**
+     * Logical left shift by {@code k} bits; bits shifted out are discarded.
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 256)}
+     */
     public Wide256 shl(int k) {
         checkShift(k);
         if (k == 0) {
@@ -326,6 +467,11 @@ public final class Wide256 implements Comparable<Wide256> {
         };
     }
 
+    /**
+     * Logical right shift by {@code k} bits (zero fill).
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 256)}
+     */
     public Wide256 ushr(int k) {
         checkShift(k);
         if (k == 0) {
@@ -361,6 +507,11 @@ public final class Wide256 implements Comparable<Wide256> {
         };
     }
 
+    /**
+     * Arithmetic right shift by {@code k} bits (sign-extending).
+     *
+     * @throws IllegalArgumentException if {@code k} is outside {@code [0, 256)}
+     */
     public Wide256 shr(int k) {
         checkShift(k);
         if (k == 0) {
@@ -423,6 +574,11 @@ public final class Wide256 implements Comparable<Wide256> {
         return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
+    /**
+     * Unsigned comparison; consistent with {@link #equals}.
+     *
+     * @see #compareSigned(Wide256)
+     */
     @Override
     public int compareTo(Wide256 o) {
         return compareUnsigned(o);
@@ -450,11 +606,13 @@ public final class Wide256 implements Comparable<Wide256> {
         return (int) (h ^ (h >>> 32));
     }
 
+    /** Unsigned decimal representation. */
     @Override
     public String toString() {
         return toBigInteger().toString();
     }
 
+    /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */
     public String toHexString() {
         return toBigInteger().toString(16);
     }

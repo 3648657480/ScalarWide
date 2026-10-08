@@ -5,9 +5,9 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.2.0`: enchantment
-round 1 done (register-specialized / hand-unrolled 128/256); the `0.1.0`
-baseline shape is in `CHANGELOG.md` and `docs/BENCH.md`.
+Version: see repo-root `VERSION` (single authority). Current `0.3.0`:
+enchantment round 1 (register-specialized 128/256) + `mulFull` full-product
+primitive + `Wide512`; shape and data in `CHANGELOG.md` and `docs/BENCH.md`.
 
 ## What it is
 

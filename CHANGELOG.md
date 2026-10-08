@@ -2,6 +2,33 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.3.0
+
+### Added
+
+- `Wide128.mulFull(Wide128) -> Wide256` and `Wide256.mulFull(Wide256) ->
+  Wide512`: the full 2N-bit product in a single carry-chain pass.
+- `Wide512`: flat 8-limb width (engine-backed, correctness first) - the
+  `Wide256.mulFull` carrier and a member of the width ladder.
+- `Carry`: single definition point of the atom-layer carry/borrow primitives
+  (`addCarryOut` / `subBorrowOut`); `Limbs` delegates to it.
+- `MulFullTest` (BigInteger differential + view-consistency + `Limbs`
+  cross-oracle) and `Wide512Test` (full differential suite).
+
+### Changed
+
+- Public API now carries its semantics in Javadoc (unsigned `compareTo`,
+  `mul` low / `mulHigh` high / `mulFull` full product, shift range, wrapping).
+- `docs/DESIGN.md`: v2 conclusions landed (dual-atom structure, flat-limb red
+  line, `mulFull`-only multiplication primitive, SoA dual-track API, inline
+  probe before step 1.6, benchmark calibers).
+
+### Performance
+
+- `mulFull` vs `BigInteger.multiply` (CPU-pinned, full-product caliber):
+  Wide128 3.1x faster (6.16 vs 19.25 ns/op); Wide256 at parity (34.94 vs
+  35.59 ns/op). Data in `docs/BENCH.md`.
+
 ## 0.2.0
 
 ### Changed

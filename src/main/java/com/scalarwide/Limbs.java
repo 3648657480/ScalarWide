@@ -10,11 +10,11 @@ final class Limbs {
     }
 
     static long addCarry(long a, long b, long r) {
-        return ((a & b) | ((a | b) & ~r)) >>> 63;
+        return Carry.addCarryOut(a, b, r);
     }
 
     static long subBorrow(long a, long b, long r) {
-        return ((~a & b) | ((~a | b) & r)) >>> 63;
+        return Carry.subBorrowOut(a, b, r);
     }
 
     static void add(long[] a, long[] b, long[] out) {
