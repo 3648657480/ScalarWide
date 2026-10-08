@@ -2,6 +2,24 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.8.0
+
+### Changed
+
+- `Wide384.mulHigh` is now composed from one 256-bit atom product and five
+  128-bit cross products (with exact carry fix-ups). Pinned JMH vs 0.7.0:
+  122.5 -> 74.9 ns/op (1.64x; ~parity with `BigInteger.multiply`, 68.4 ns/op).
+  Three-way differential testing caught three carry bugs during development -
+  the gate works.
+
+### Reverted (measured, no gain)
+
+- The `Wide512.mulBoth` experiment (shared-quarter low+high product API)
+  measured 210.7 ns/op vs 208.3 ns/op for separate `mul` + `mulHigh`; the
+  sharing does not materialize under the C2 inlining budget, so the API,
+  benchmark and test were removed and the negative result recorded in
+  `docs/BENCH.md`.
+
 ## 0.7.0
 
 ### Changed

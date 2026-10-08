@@ -298,6 +298,10 @@ public final class Wide128 implements Comparable<Wide128> {
         return new long[] { l0, l1 };
     }
 
+    Wide256 widen() {
+        return Wide256.of(l0, l1, 0, 0);
+    }
+
     private static void checkShift(int k) {
         if (k < 0 || k >= BITS) {
             throw new IllegalArgumentException("shift amount out of range: " + k);

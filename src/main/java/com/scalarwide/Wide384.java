@@ -165,15 +165,43 @@ public final class Wide384 implements Comparable<Wide384> {
         return Wide128.of(l0, l1);
     }
 
+    private Wide128 mid128() {
+        return Wide128.of(l2, l3);
+    }
+
     private Wide128 high128() {
         return Wide128.of(l4, l5);
     }
 
-    /** High 384 bits of the 768-bit product, i.e. {@code (a*b) >>> 384}. */
+    /**
+     * High 384 bits of the 768-bit product, i.e. {@code (a*b) >>> 384},
+     * composed from one 256-bit atom product and five 128-bit cross products:
+     * {@code (ll >>> 384) + (x1 >>> 128) + (x2 >>> 128) + (hh << 128)}.
+     */
     public Wide384 mulHigh(Wide384 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulHigh(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 ll = lowHalf().mulFull(o.lowHalf());
+        Wide256 p = low128().mulFull(o.high128());
+        Wide256 q = mid128().mulFull(o.high128());
+        Wide256 r = high128().mulFull(o.low128());
+        Wide256 t = high128().mulFull(o.mid128());
+        Wide256 x1 = p.high128().widen().add(q);
+        Wide256 x2 = r.high128().widen().add(t);
+        Wide128 pLow = p.low128();
+        Wide128 rLow = r.low128();
+        Wide128 crossLow = pLow.add(rLow);
+        long carryLow = crossLow.compareUnsigned(pLow) < 0 ? 1 : 0;
+        Wide128 llMid = Wide128.of(ll.limb(4), ll.limb(5));
+        long carryC = llMid.add(crossLow).compareUnsigned(llMid) < 0 ? 1 : 0;
+        Wide256 hh = high128().mulFull(o.high128());
+        Wide256 s = x1.add(x2);
+        long w1 = s.compareUnsigned(x1) < 0 ? 1 : 0;
+        Wide256 s2 = s.add(Wide256.of(carryLow + carryC, 0, 0, 0));
+        long w2 = s2.compareUnsigned(s) < 0 ? 1 : 0;
+        Wide256 s3 = s2.add(Wide256.of(ll.limb(6), ll.limb(7), 0, 0));
+        long w3 = s3.compareUnsigned(s2) < 0 ? 1 : 0;
+        long c = w1 + w2 + w3;
+        return Wide384.of(s3.limb(0), s3.limb(1), s3.limb(2), s3.limb(3), c, 0)
+                .add(Wide384.of(0, 0, hh.limb(0), hh.limb(1), hh.limb(2), hh.limb(3)));
     }
 
     public Wide384 and(Wide384 o) {
