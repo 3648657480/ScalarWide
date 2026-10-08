@@ -114,10 +114,20 @@ public final class Wide384 implements Comparable<Wide384> {
         return 0;
     }
 
+    /** Wrapping addition modulo 2^384. */
     public Wide384 add(Wide384 o) {
-        long[] out = new long[LIMBS];
-        Limbs.add(pack(), o.pack(), out);
-        return unpack(out);
+        long r0 = l0 + o.l0;
+        long c = Carry.addCarryOut(l0, o.l0, r0);
+        long r1 = l1 + o.l1 + c;
+        c = Carry.addCarryOut(l1, o.l1, r1);
+        long r2 = l2 + o.l2 + c;
+        c = Carry.addCarryOut(l2, o.l2, r2);
+        long r3 = l3 + o.l3 + c;
+        c = Carry.addCarryOut(l3, o.l3, r3);
+        long r4 = l4 + o.l4 + c;
+        c = Carry.addCarryOut(l4, o.l4, r4);
+        long r5 = l5 + o.l5 + c;
+        return new Wide384(r0, r1, r2, r3, r4, r5);
     }
 
     public Wide384 sub(Wide384 o) {
@@ -132,11 +142,31 @@ public final class Wide384 implements Comparable<Wide384> {
         return unpack(out);
     }
 
-    /** Low 384 bits of the 768-bit product, i.e. {@code (a*b) mod 2^384}. */
+    /**
+     * Low 384 bits of the 768-bit product, i.e. {@code (a*b) mod 2^384},
+     * composed from one 256-bit atom product and two 128-bit cross products:
+     * {@code aL*bL + (low128(a0*bH) + low128(aH*b0)) * 2^256}.
+     */
     public Wide384 mul(Wide384 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulLow(pack(), o.pack(), out);
-        return unpack(out);
+        Wide512 ll = lowHalf().mulFull(o.lowHalf());
+        Wide128 cross = low128().mulFull(o.high128()).low128()
+                .add(high128().mulFull(o.low128()).low128());
+        long r4 = ll.limb(4) + cross.limb(0);
+        long c = Carry.addCarryOut(ll.limb(4), cross.limb(0), r4);
+        long r5 = ll.limb(5) + cross.limb(1) + c;
+        return Wide384.of(ll.limb(0), ll.limb(1), ll.limb(2), ll.limb(3), r4, r5);
+    }
+
+    private Wide256 lowHalf() {
+        return Wide256.of(l0, l1, l2, l3);
+    }
+
+    private Wide128 low128() {
+        return Wide128.of(l0, l1);
+    }
+
+    private Wide128 high128() {
+        return Wide128.of(l4, l5);
     }
 
     /** High 384 bits of the 768-bit product, i.e. {@code (a*b) >>> 384}. */
@@ -213,11 +243,45 @@ public final class Wide384 implements Comparable<Wide384> {
     }
 
     public int compareUnsigned(Wide384 o) {
-        return Limbs.compareUnsigned(pack(), o.pack());
+        int c = Long.compareUnsigned(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     public int compareSigned(Wide384 o) {
-        return Limbs.compareSigned(pack(), o.pack());
+        int c = Long.compare(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     /**

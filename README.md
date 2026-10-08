@@ -51,7 +51,7 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 |---|---|---|
 | 128 | atom - storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
 | 256 | atom - general purpose (keys, hashing, mixing) | main atom |
-| 384 | 3x128 - relay | engine-backed; composition pending |
+| 384 | 3x128 - relay | composed: add/compare/mul (mul 10x, 2.55x over BigInteger); mulHigh pending |
 | 512 | 2x256 - single-cache-line data domain | composed: add/compare/mul (mul 1.5x over BigInteger); sub/shifts pending |
 | 768 | 3x256 - extra-large coordinates | engine-backed; composition pending |
 | 1024 | 4x256 - double's exponent ceiling | engine-backed; composition pending |

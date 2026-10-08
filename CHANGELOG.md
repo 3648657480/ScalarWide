@@ -2,6 +2,18 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.7.0
+
+### Changed
+
+- `Wide384` addition, comparison and multiplication are now register-specialized;
+  `mul` composes one 256-bit atom product plus two 128-bit cross products
+  (exact for the low 384 bits). Pinned JMH vs 0.6.2 (engine-backed):
+  add 22.8 -> 6.5 ns/op (3.5x), mul 272.5 -> 26.8 ns/op (10.2x; 2.55x faster
+  than `BigInteger.multiply`), compare 1.15 -> 0.81 ns/op; allocation 64 B/op
+  (escape-analysis clean). `mulHigh` is still engine-backed (composition
+  pending); 768/1024 composition is the next step.
+
 ## 0.6.2
 
 ### Fixed

@@ -1,0 +1,8 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.Wide384Bench.add","avgt",1,10,22.807557,4.360365,"ns/op"
+"com.scalarwide.bench.Wide384Bench.bigAdd","avgt",1,10,29.879383,2.778311,"ns/op"
+"com.scalarwide.bench.Wide384Bench.bigCompare","avgt",1,10,1.702280,0.136553,"ns/op"
+"com.scalarwide.bench.Wide384Bench.bigMul","avgt",1,10,90.999017,40.488035,"ns/op"
+"com.scalarwide.bench.Wide384Bench.compare","avgt",1,10,1.148817,0.294826,"ns/op"
+"com.scalarwide.bench.Wide384Bench.mul","avgt",1,10,272.490776,47.068981,"ns/op"
+"com.scalarwide.bench.Wide384Bench.mulHigh","avgt",1,10,203.772061,65.059710,"ns/op"
