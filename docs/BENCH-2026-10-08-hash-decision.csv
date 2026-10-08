@@ -1,0 +1,5 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.Wide128Bench.bigHash","avgt",1,15,2.248029,0.264573,"ns/op"
+"com.scalarwide.bench.Wide128Bench.hash","avgt",1,15,0.892285,0.014942,"ns/op"
+"com.scalarwide.bench.Wide256Bench.bigHash","avgt",1,15,3.549172,0.276895,"ns/op"
+"com.scalarwide.bench.Wide256Bench.hash","avgt",1,15,1.344095,0.058986,"ns/op"
