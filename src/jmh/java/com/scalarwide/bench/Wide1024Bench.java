@@ -128,4 +128,19 @@ public class Wide1024Bench {
     public BigInteger bigUshr() {
         return ra.shiftRight(123);
     }
+
+    @Benchmark
+    public BigInteger bigMulHigh() {
+        return ra.multiply(rb).shiftRight(1024);
+    }
+
+    @Benchmark
+    public Wide1024 shr() {
+        return a.shr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShr() {
+        return ra.shiftRight(123);
+    }
 }

@@ -126,4 +126,19 @@ public class Wide768Bench {
     public BigInteger bigUshr() {
         return ra.shiftRight(123);
     }
+
+    @Benchmark
+    public BigInteger bigMulHigh() {
+        return ra.multiply(rb).shiftRight(768);
+    }
+
+    @Benchmark
+    public Wide768 shr() {
+        return a.shr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShr() {
+        return ra.shiftRight(123);
+    }
 }

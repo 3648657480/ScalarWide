@@ -620,3 +620,25 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 - 768/1024 hash 直算实测 3.61 / 5.13（bigHash 8.31 / 11.28 → 2.30× / 2.20×）；compare 0.47-0.50。
 - 新增 bench：384/512 `sub/and/shl/ushr`，768/1024 `sub/and/compare/hash/shl/ushr`，MutableBench 分解项与 `immutableAccumulate/mutableAccumulate`。
 
+## 2026-10-10 · P6 差距审计：补 bigMulHigh / shr 对照，暴露两处真落后
+
+新增 bench：384/512/768/1024 `bigMulHigh`（`ra.multiply(rb).shiftRight(N)`）、`shr`/`bigShr`。jar：`bench/p6-gap.jar`。
+
+| 基准 | 我们 | BigInteger | 比值 |
+|---|---|---|---|
+| 384.mulHigh | 44.37 | 51.03 | **1.15×** |
+| 512.mulHigh | 65.83 | 70.33 | 1.07×（薄） |
+| **768.mulHigh** | **148.35** | **136.43** | **0.92×（落后 8%）** |
+| **1024.mulHigh** | **414.06** | **221.23** | **0.53×（落后 1.87×）** |
+| 384.shr | 6.74 | 9.74 | 1.44× |
+| **512.shr** | **13.31** | **12.31** | **0.92×（落后 8%）** |
+| 768.shr | 11.66 | 14.99 | 1.29× |
+| 1024.shr | 16.23 | 18.67 | 1.15× |
+
+- 1024.mulHigh 内部即异常：mul 178 + ushr 8.8 ≈ 187 的语义，单算却要 414（mul 的 2.33×）。
+  高半的下限 ≈ 全部 16 原子积 + 低位进位链 ≈ mul + 4 列 ≈ ~220——即"重算全积"结构本身代价高，
+  单卖 mulHigh 最多打平 big；真正出路是 mulBoth / fullInto（一次全积取两半，双半场景大胜）。
+- 768.mulHigh 同为结构问题（0.92×）。
+- 512.shr 落后源于引擎 `Limbs.shr`（512.ushr 直算 4.81 vs shr 引擎 13.31）。
+- 结构剩余：`shr`（384+）仍引擎；`toBigInteger` 引擎（换算，设计如此）。mutable 双类无引擎依赖。
+

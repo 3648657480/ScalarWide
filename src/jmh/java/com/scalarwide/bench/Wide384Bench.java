@@ -114,4 +114,19 @@ public class Wide384Bench {
     public BigInteger bigUshr() {
         return ra.shiftRight(123);
     }
+
+    @Benchmark
+    public BigInteger bigMulHigh() {
+        return ra.multiply(rb).shiftRight(384);
+    }
+
+    @Benchmark
+    public Wide384 shr() {
+        return a.shr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShr() {
+        return ra.shiftRight(123);
+    }
 }

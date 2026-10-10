@@ -139,4 +139,19 @@ public class Wide512Bench {
     public BigInteger bigUshr() {
         return ra.shiftRight(123);
     }
+
+    @Benchmark
+    public BigInteger bigMulHigh() {
+        return ra.multiply(rb).shiftRight(512);
+    }
+
+    @Benchmark
+    public Wide512 shr() {
+        return a.shr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShr() {
+        return ra.shiftRight(123);
+    }
 }
