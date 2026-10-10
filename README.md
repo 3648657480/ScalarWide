@@ -46,7 +46,7 @@
 - **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.1`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
-- API 入口：`Wide128/256/384/512/768/1024`（不可变值类型）、`MutableWide128/256`（零分配 scratch）、
+- API 入口：`Wide128/256/384/512`（不可变值类型，mc 版 ≤512）、`MutableWide128/256`（零分配 scratch）、
   语义见各类 Javadoc 与 `docs/DESIGN.md`。
 - 红线：`MutableWide*` 非线程安全、永不可作 map 键；加 `-Dscalarwide.guard=true` 可开启共享误用
   检测（跨线程调用抛 `IllegalStateException`，best-effort，关闭时零成本）。
@@ -57,6 +57,12 @@
   （`0.11.x` 线内仅性能/修复/纯增量，签名与语义冻结），升级 = 只改一行依赖版本号 + 重构建。
 - 破坏性变更只能进新次版本线并附迁移说明；公开 API 面与消费者回归契约见
   `docs/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
+
+### MC 工具包（`mc` 分支专属，`com.scalarwide.mc`）
+
+- `Wide256FlatMap`：交错槽开放寻址键映射（零分配、免装箱）——1M 键随机查找较
+  `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×（`FlatMapProbe`）。
+- `McWarmup`：初始化预热，`run()` 一次后 256 位首百次调用 5144→134 ns（38×）。
 
 ## 快速使用
 

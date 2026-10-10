@@ -753,3 +753,26 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
   （best-effort：首次调用者成为属主；关闭时是常量折叠的静态分支，零成本）。
 - `GuardTest`（子 JVM 两态）：guard ON → 共享 8 线程竞态**被捕获**；guard OFF → 静默且 per-thread 正确。全绿。
 
+## 2026-10-10 · P9（mc）：针对性冲击第一波——平面键映射 + 预热工具
+
+### `Wide256FlatMap`（交错槽 `[l0 l1 l2 l3 value]`、开放寻址、线性探测、值 ≥0 / -1 为洞）
+
+| 1M far keys | flat | HashMap\<Wide256\> | HashMap\<BigInteger\> |
+|---|---|---|---|
+| insert ns/op | 29.6–35.7 | 36–59 | 39–50 |
+| lookup ns/op | **63.5–66.2** | 80–82.5 | 106–119 |
+
+- lookup：flat 较 Wide256-HashMap 快 **~1.24×**、较 BigInteger 映射快 **~1.7×**；insert 热路径**零分配**（无 Node、无装箱）。
+- 测试：与 `HashMap` 十万随机操作差分、零键/增长/清空/非法值边界；全绿。
+- 遗留：1M 规模查找仍是内存墙主导（65ns）；更小工作集/预取/分片留后续。
+
+### `McWarmup`（初始化预热，run() 一次）
+
+| 基准 | plain first100 / cold2k | warm first100 / cold2k |
+|---|---|---|
+| 256.mul | 5144 / 462 | **134 / 80**（38× / 5.8×）|
+| 128.mul | 295 / 157 | **123 / 75**（2.4× / 2.1×）|
+
+- 冷/热比 41× → 6.5×；世界/管线初始化调用一次即消除首块毛刺。
+- 排查插曲：首测"无效应"为分支切换遗漏导致发错 jar（教训入账：跨分支操作后必须验证 jar 内容/时间戳）。
+

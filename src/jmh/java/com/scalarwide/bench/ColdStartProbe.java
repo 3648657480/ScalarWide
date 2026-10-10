@@ -2,6 +2,7 @@ package com.scalarwide.bench;
 
 import com.scalarwide.Wide128;
 import com.scalarwide.Wide256;
+import com.scalarwide.mc.McWarmup;
 
 import java.math.BigInteger;
 import java.util.Random;
@@ -50,6 +51,9 @@ public final class ColdStartProbe {
             B256B[k] = B256[k].toBigInteger();
         }
         String op = args.length > 0 ? args[0] : "128mul";
+        if (args.length > 1 && args[1].equals("warm")) {
+            McWarmup.run();
+        }
         switch (op) {
             case "128mul" -> probe("128.mul", () -> sink128 = A128[idx()].mul(B128[idx()]));
             case "256mul" -> probe("256.mul", () -> sink256 = A256[idx()].mul(B256[idx()]));

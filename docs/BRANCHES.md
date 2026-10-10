@@ -23,8 +23,15 @@
 - JitPack：`com.github.3648657480:ScalarWide:mc-v0.11.1`；框架钉 `mc-` 标签。
 - 兼容契约（`docs/COMPATIBILITY.md`）对 `mc` 同样有效（≤512 子集）。
 
-## `mc` 现状（mc-v0.11.1）
+## `mc` 现状
 
+### mc-v0.11.1
 - 剪枝：`Wide768`/`Wide1024` 及对应测试/bench 移除；`LayoutReport`/`ConsumerApiTest` 适配 ≤512。
 - 极致项（首批）：384/512 `shr` 直算——384: 6.74→2.17 ns；512: 13.31→4.94 ns（原 0.92× 落后 → 2.5× 领先）。
 - ≤512 全部算子对 BigInteger 领先；`mulHigh`/512 亦无退化；oracle + 消费者契约测试全绿。
+
+### mc-v0.11.2（针对性冲击第一波，MC 专属工具包）
+- `com.scalarwide.mc.Wide256FlatMap`：交错槽开放寻址键映射（零分配、免装箱）——1M 键查找较
+  `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×。
+- `com.scalarwide.mc.McWarmup`：初始化预热——256 位首百次调用 5144→134 ns（38×）。
+- `FlatMapProbe` 新探测（flat/hashmap/big 三模式同 run 对照）。
