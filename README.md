@@ -48,6 +48,13 @@
 - 红线：`MutableWide*` 非线程安全、永不可作 map 键；加 `-Dscalarwide.guard=true` 可开启共享误用
   检测（跨线程调用抛 `IllegalStateException`，best-effort，关闭时零成本）。
 
+### 版本与兼容策略
+
+- **库独立演进、框架零改动吃性能**：版本号分离，消费者只钉依赖坐标；性能升级以补丁级发布
+  （`0.11.x` 线内仅性能/修复/纯增量，签名与语义冻结），升级 = 只改一行依赖版本号 + 重构建。
+- 破坏性变更只能进新次版本线并附迁移说明；公开 API 面与消费者回归契约见
+  `docs/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
+
 ## 快速使用
 
 ```java

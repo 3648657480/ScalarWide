@@ -60,6 +60,17 @@ negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
   `-Dscalarwide.guard=true` enables best-effort cross-thread misuse detection
   (`IllegalStateException`; zero cost when off).
 
+### Versioning & compatibility
+
+- **The library evolves independently; consumers get performance upgrades with
+  zero code changes**: version numbers are decoupled, a consumer only pins the
+  dependency coordinate. Within the `0.11.x` line, releases are performance /
+  bugfix / additive only (signatures and semantics frozen) - upgrading means
+  changing one dependency version and rebuilding.
+- Breaking changes only enter a new minor line with a migration note; the
+  protected public API surface and the consumer regression contract are in
+  `docs/COMPATIBILITY.md` (test: `ConsumerApiTest`).
+
 ## Quick use
 
 ```java
