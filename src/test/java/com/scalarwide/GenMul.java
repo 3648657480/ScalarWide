@@ -39,9 +39,85 @@ public final class GenMul {
         b.append("        return mulFullDeferred8(l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));\n");
         b.append("    }\n\n");
         b.append(atomBody("mulFullDeferred8", "Wide512", 4, true));
+
         b.append('\n');
         b.append(atomBody("mulLow8", "Wide256", 4, false));
+        b.append('\n');
+        b.append(atomIntoBody("mulFullInto8", 4, true));
+        b.append('\n');
+        b.append(atomIntoBody("mulLowInto8", 4, false));
         b.append("    // GEN-ATOM-END\n");
+        return b.toString();
+    }
+
+    private static String atomIntoBody(String name, int limbs, boolean full) {
+        StringBuilder b = new StringBuilder();
+        b.append("    /**\n");
+        b.append("     * ").append(full ? "Full 512-bit product" : "Low 256 bits of the product")
+                .append(" written into {@code out[off..]} (zero-object variant).\n");
+        b.append("     */\n");
+        b.append("    static void ").append(name).append("(long[] out, int off, ");
+        for (int i = 0; i < limbs * 2; i++) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append("long ").append(i < limbs ? "a" : "b").append(i < limbs ? i : i - limbs);
+        }
+        b.append(") {\n");
+        int lastColumn = full ? 2 * limbs - 1 : limbs - 1;
+        for (int i = 0; i < limbs; i++) {
+            for (int j = 0; j < limbs; j++) {
+                if (i + j <= lastColumn) {
+                    b.append("        long p").append(i).append('_').append(j)
+                            .append(" = a").append(i).append(" * b").append(j).append(";\n");
+                }
+                if (i + j + 1 <= lastColumn) {
+                    b.append("        long h").append(i).append('_').append(j)
+                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(", b").append(j).append(");\n");
+                }
+            }
+        }
+        for (int t = 0; t <= lastColumn; t++) {
+            List<String> terms = new ArrayList<>();
+            for (int u = 0; u < limbs; u++) {
+                int v = t - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("p" + u + "_" + v);
+                }
+            }
+            for (int u = 0; u < limbs; u++) {
+                int v = t - 1 - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("h" + u + "_" + v);
+                }
+            }
+            b.append("        long lo").append(t).append(" = ").append(terms.get(0)).append(";\n");
+            b.append("        long hi").append(t).append(" = 0;\n");
+            for (int k = 1; k < terms.size(); k++) {
+                b.append("        {\n");
+                b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
+                b.append("            hi").append(t).append(" += Carry.addCarryOut(lo").append(t)
+                        .append(", ").append(terms.get(k)).append(", s);\n");
+                b.append("            lo").append(t).append(" = s;\n");
+                b.append("        }\n");
+            }
+        }
+        b.append("        long r0 = lo0;\n");
+        b.append("        long carry = 0;\n");
+        for (int t = 1; t <= lastColumn; t++) {
+            b.append("        long s").append(t).append(" = lo").append(t)
+                    .append(" + hi").append(t - 1).append(";\n");
+            b.append("        long c").append(t).append(" = Carry.addCarryOut(lo").append(t)
+                    .append(", hi").append(t - 1).append(", s").append(t).append(");\n");
+            b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
+            b.append("        carry = c").append(t).append(" + Carry.addCarryOut(s").append(t)
+                    .append(", carry, r").append(t).append(");\n");
+        }
+        for (int t = 0; t <= lastColumn; t++) {
+            b.append("        out[off + ").append(t).append("] = r").append(t).append(";\n");
+        }
+        b.append("    }\n");
         return b.toString();
     }
 
