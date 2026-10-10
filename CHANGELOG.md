@@ -2,6 +2,21 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.2
+
+### Changed
+
+- **`shr` (arithmetic right shift) direct-implemented for 384/512/768/1024**
+  (was engine-backed): logical shift plus a conditional sign-fill mask
+  (`MAX_VALUE.shl(N-k)` on the negative path); one allocation on the common
+  non-negative path. 384: 6.74 -> 2.17 ns, 512: 13.31 -> 4.95 ns (was 0.92x
+  behind `BigInteger.shiftRight`, now 2.5x ahead), 768: 11.66 -> 6.08 ns,
+  1024: 16.23 -> 8.25 ns. Pure win ported back from the `mc` branch per
+  `docs/BRANCHES.md`; drop-in (no API change, `ConsumerApiTest` green).
+- **Repository split**: `main` = full library (all widths/tools); `mc` =
+  MC-facing fork pruned to <=512 with zero known BigInteger regressions
+  (first cut: `mc-v0.11.1`). Branch policy and sync rules: `docs/BRANCHES.md`.
+
 ## 0.11.1
 
 ### Changed
