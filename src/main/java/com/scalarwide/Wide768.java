@@ -330,11 +330,79 @@ public final class Wide768 implements Comparable<Wide768> {
         return Wide256.of(l8, l9, l10, l11);
     }
 
-    /** High 768 bits of the 1536-bit product, i.e. {@code (a*b) >>> 768}. */
+    /**
+     * High 768 bits of the 1536-bit product, i.e. {@code (a*b) >>> 768},
+     * composed from 256-bit atom block products written into a single scratch
+     * array (zero intermediate objects; limb-level assembly).
+     */
     public Wide768 mulHigh(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulHigh(pack(), o.pack(), out);
-        return unpack(out);
+        long[] s = new long[72];
+        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 24, l0, l1, l2, l3, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 32, l4, l5, l6, l7, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 40, l8, l9, l10, l11, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 48, l4, l5, l6, l7, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 56, l8, l9, l10, l11, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 64, l8, l9, l10, l11, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+
+        long carry = 0;
+        for (int i = 4; i < 8; i++) {
+            long u = s[i] + s[i + 4];
+            long k = Carry.carryOut(s[i], u);
+            long v = u + s[i + 12];
+            k += Carry.carryOut(u, v);
+            long w = v + carry;
+            k += Carry.carryOut(v, w);
+            carry = k;
+        }
+        for (int i = 8; i < 12; i++) {
+            long u1 = s[i + 4] + s[i + 12];
+            long k = Carry.carryOut(s[i + 4], u1);
+            long u2 = u1 + s[i + 16];
+            k += Carry.carryOut(u1, u2);
+            long u3 = u2 + s[i + 24];
+            k += Carry.carryOut(u2, u3);
+            long u4 = u3 + s[i + 32];
+            k += Carry.carryOut(u3, u4);
+            long w = u4 + carry;
+            k += Carry.carryOut(u4, w);
+            carry = k;
+        }
+
+        long[] r = new long[12];
+        long c = carry;
+        for (int j = 0; j < 4; j++) {
+            long u1 = s[28 + j] + s[36 + j];
+            long k = Carry.carryOut(s[28 + j], u1);
+            long u2 = u1 + s[44 + j];
+            k += Carry.carryOut(u1, u2);
+            long u3 = u2 + s[48 + j];
+            k += Carry.carryOut(u2, u3);
+            long u4 = u3 + s[56 + j];
+            k += Carry.carryOut(u3, u4);
+            long w = u4 + c;
+            k += Carry.carryOut(u4, w);
+            r[j] = w;
+            c = k;
+        }
+        for (int j = 0; j < 4; j++) {
+            long u1 = s[52 + j] + s[60 + j];
+            long k = Carry.carryOut(s[52 + j], u1);
+            long u2 = u1 + s[64 + j];
+            k += Carry.carryOut(u1, u2);
+            long w = u2 + c;
+            k += Carry.carryOut(u2, w);
+            r[4 + j] = w;
+            c = k;
+        }
+        for (int j = 0; j < 4; j++) {
+            long w = s[68 + j] + c;
+            r[8 + j] = w;
+            c = Carry.carryOut(s[68 + j], w);
+        }
+        return Wide768.of(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]);
     }
 
     /**

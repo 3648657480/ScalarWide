@@ -388,11 +388,122 @@ public final class Wide1024 implements Comparable<Wide1024> {
         return Wide256.of(l12, l13, l14, l15);
     }
 
-    /** High 1024 bits of the 2048-bit product, i.e. {@code (a*b) >>> 1024}. */
+    /**
+     * High 1024 bits of the 2048-bit product, i.e. {@code (a*b) >>> 1024},
+     * composed from 256-bit atom block products written into a single scratch
+     * array (zero intermediate objects; limb-level assembly).
+     */
     public Wide1024 mulHigh(Wide1024 o) {
-        long[] out = new long[LIMBS];
-        Limbs.mulHigh(pack(), o.pack(), out);
-        return unpack(out);
+        long[] s = new long[128];
+        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 24, l0, l1, l2, l3, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 32, l4, l5, l6, l7, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 40, l8, l9, l10, l11, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 48, l0, l1, l2, l3, o.limb(12), o.limb(13), o.limb(14), o.limb(15));
+        Wide256.mulFullInto8(s, 56, l4, l5, l6, l7, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 64, l8, l9, l10, l11, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 72, l12, l13, l14, l15, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 80, l4, l5, l6, l7, o.limb(12), o.limb(13), o.limb(14), o.limb(15));
+        Wide256.mulFullInto8(s, 88, l8, l9, l10, l11, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 96, l12, l13, l14, l15, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 104, l8, l9, l10, l11, o.limb(12), o.limb(13), o.limb(14), o.limb(15));
+        Wide256.mulFullInto8(s, 112, l12, l13, l14, l15, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 120, l12, l13, l14, l15, o.limb(12), o.limb(13), o.limb(14), o.limb(15));
+
+        long carry = 0;
+        for (int i = 4; i < 8; i++) {
+            long u = s[i] + s[i + 4];
+            long k = Carry.addCarryOut(s[i], s[i + 4], u);
+            long v = u + s[i + 12];
+            k += Carry.addCarryOut(u, s[i + 12], v);
+            long w = v + carry;
+            k += Carry.addCarryOut(v, carry, w);
+            carry = k;
+        }
+        for (int i = 8; i < 12; i++) {
+            long u1 = s[i + 4] + s[i + 12];
+            long k = Carry.addCarryOut(s[i + 4], s[i + 12], u1);
+            long u2 = u1 + s[i + 16];
+            k += Carry.addCarryOut(u1, s[i + 16], u2);
+            long u3 = u2 + s[i + 24];
+            k += Carry.addCarryOut(u2, s[i + 24], u3);
+            long u4 = u3 + s[i + 32];
+            k += Carry.addCarryOut(u3, s[i + 32], u4);
+            long w = u4 + carry;
+            k += Carry.addCarryOut(u4, carry, w);
+            carry = k;
+        }
+        for (int i = 12; i < 16; i++) {
+            long u1 = s[i + 16] + s[i + 24];
+            long k = Carry.addCarryOut(s[i + 16], s[i + 24], u1);
+            long u2 = u1 + s[i + 32];
+            k += Carry.addCarryOut(u1, s[i + 32], u2);
+            long u3 = u2 + s[i + 36];
+            k += Carry.addCarryOut(u2, s[i + 36], u3);
+            long u4 = u3 + s[i + 44];
+            k += Carry.addCarryOut(u3, s[i + 44], u4);
+            long u5 = u4 + s[i + 52];
+            k += Carry.addCarryOut(u4, s[i + 52], u5);
+            long u6 = u5 + s[i + 60];
+            k += Carry.addCarryOut(u5, s[i + 60], u6);
+            long w = u6 + carry;
+            k += Carry.addCarryOut(u6, carry, w);
+            carry = k;
+        }
+
+        long[] r = new long[16];
+        long c = carry;
+        for (int j = 0; j < 4; j++) {
+            long u1 = s[52 + j] + s[60 + j];
+            long k = Carry.addCarryOut(s[52 + j], s[60 + j], u1);
+            long u2 = u1 + s[68 + j];
+            k += Carry.addCarryOut(u1, s[68 + j], u2);
+            long u3 = u2 + s[76 + j];
+            k += Carry.addCarryOut(u2, s[76 + j], u3);
+            long u4 = u3 + s[80 + j];
+            k += Carry.addCarryOut(u3, s[80 + j], u4);
+            long u5 = u4 + s[88 + j];
+            k += Carry.addCarryOut(u4, s[88 + j], u5);
+            long u6 = u5 + s[96 + j];
+            k += Carry.addCarryOut(u5, s[96 + j], u6);
+            long w = u6 + c;
+            k += Carry.addCarryOut(u6, c, w);
+            r[j] = w;
+            c = k;
+        }
+        for (int j = 0; j < 4; j++) {
+            long u1 = s[84 + j] + s[92 + j];
+            long k = Carry.addCarryOut(s[84 + j], s[92 + j], u1);
+            long u2 = u1 + s[100 + j];
+            k += Carry.addCarryOut(u1, s[100 + j], u2);
+            long u3 = u2 + s[104 + j];
+            k += Carry.addCarryOut(u2, s[104 + j], u3);
+            long u4 = u3 + s[112 + j];
+            k += Carry.addCarryOut(u3, s[112 + j], u4);
+            long w = u4 + c;
+            k += Carry.addCarryOut(u4, c, w);
+            r[4 + j] = w;
+            c = k;
+        }
+        for (int j = 0; j < 4; j++) {
+            long u1 = s[108 + j] + s[116 + j];
+            long k = Carry.addCarryOut(s[108 + j], s[116 + j], u1);
+            long u2 = u1 + s[120 + j];
+            k += Carry.addCarryOut(u1, s[120 + j], u2);
+            long w = u2 + c;
+            k += Carry.addCarryOut(u2, c, w);
+            r[8 + j] = w;
+            c = k;
+        }
+        for (int j = 0; j < 4; j++) {
+            long w = s[124 + j] + c;
+            r[12 + j] = w;
+            c = Carry.addCarryOut(s[124 + j], c, w);
+        }
+        return Wide1024.of(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7],
+                r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15]);
     }
 
     public Wide1024 and(Wide1024 o) {
