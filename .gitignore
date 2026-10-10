@@ -7,3 +7,5 @@ out/
 *.iws
 .vscode/
 run/
+docs/WORKSTATION.md
+tools/ws/
