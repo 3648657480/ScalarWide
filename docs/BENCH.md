@@ -807,8 +807,7 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 | 1024 | 9971 | 418.9 | 0.04× |
 
 - 结论：v1 为 O(bits²) 移位减法，符合"先正确后优化"；**Knuth-D 快速路径为下一轮实测项**（主缺口）。
-- 插曲：首版样本除数大于被除数 → 短路 0 路径出假快数（0.8-10ns），修样本后入账（同"样本退化"教训）。
-- 测试端：`MathOpsTest`（8 用例）、`DivisionBench`（16 项）；`ConsumerApiTest` 增补数学算子钉口。
+- 插曲：首版样本除数大于被除数 → 短路 0 路径出假快数（0.8-10ns），修样本后入账（同"样本退化"教训）。- 测试端：`MathOpsTest`（8 用例）、`DivisionBench`（16 项）；`ConsumerApiTest` 增补数学算子钉口。
 
 ## 2026-10-10 · P11：Knuth-D 快速除法——最后一个落后项翻盘
 
@@ -833,3 +832,21 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 - 测试：`DivisionInternalTest`（fast vs binary vs BigInteger：全六宽度近 6 万随机对 + 估商修正压力 2.4 万）
   与 `MathOpsTest` 全绿；`ConsumerApiTest` drop-in 门禁保持。
 - **落后清单只剩**：1024.mulHigh 0.71×、768.mulHigh 0.92×（架构上限，已记录）。
+
+## 2026-10-10 · P12（mc）：硬接线第一锤——64 位打包键映射（epoch-local 假设）
+
+- `LongLongFlatMap`（`com.scalarwide.mc`）：ctrl 字节 + 原语 key/value 数组；`pack(x, z)` 把局部坐标
+  打包进单个 long；向后移位删除；零对象零装箱。
+- 1M 键 / 10M 混合查找（同 run，四模式 checksum 一致）：
+
+| mode | insert ns/op | lookup ns/op |
+|---|---|---|
+| **LongLongFlatMap** | **15.7–28.6** | **25.3–26.6** |
+| HashMap\<Long\> | 35–63 | 48–51 |
+| Wide256FlatMap | 30–35 | 60–61 |
+| HashMap\<Wide256\> | 33–69 | 78–82 |
+
+- lookup：较 HashMap\<Long\> 快 **1.9×**、较 Wide256FlatMap **2.3×**、较 HashMap\<Wide256\> **3.0×**
+  （对 BigInteger 映射 ~4.3×）。
+- 假设书（硬接线层三件套）：分布证据 = P4 真实键统计（41.6% 高位空）；退化兜底 = 超 64 位键走
+  `Wide256FlatMap`；双重门禁 = `LongLongFlatMapTest`（20 万随机差分 + pack/边界/簇压力）。
