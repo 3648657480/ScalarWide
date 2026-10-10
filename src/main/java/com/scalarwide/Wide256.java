@@ -96,6 +96,71 @@ public final class Wide256 implements Comparable<Wide256> {
         return (l0 | l1 | l2 | l3) == 0;
     }
 
+    /**
+     * Unsigned division: `this / o`, truncated.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide256 div(Wide256 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(q[0], q[1], q[2], q[3]);
+    }
+
+    /**
+     * Unsigned remainder: `this % o`.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide256 rem(Wide256 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(r[0], r[1], r[2], r[3]);
+    }
+
+    /**
+     * Multiplicative power modulo 2^BITS (square-and-multiply).
+     *
+     * @throws IllegalArgumentException if `exp` is negative
+     */
+    public Wide256 pow(int exp) {
+        if (exp < 0) {
+            throw new IllegalArgumentException("negative exponent: " + exp);
+        }
+        Wide256 result = ONE;
+        Wide256 base = this;
+        while (exp > 0) {
+            if ((exp & 1) == 1) {
+                result = result.mul(base);
+            }
+            base = base.mul(base);
+            exp >>= 1;
+        }
+        return result;
+    }
+
+    /** Population count over all BITS bits. */
+    public int bitCount() {
+        return Long.bitCount(l0) + Long.bitCount(l1)
+                + Long.bitCount(l2) + Long.bitCount(l3);
+    }
+
+    /** Unsigned minimum (consistent with {@link #compareUnsigned}). */
+    public Wide256 min(Wide256 o) {
+        return compareUnsigned(o) <= 0 ? this : o;
+    }
+
+    /** Unsigned maximum (consistent with {@link #compareUnsigned}). */
+    public Wide256 max(Wide256 o) {
+        return compareUnsigned(o) >= 0 ? this : o;
+    }
+
+    /** Two's-complement absolute value; MIN_VALUE wraps to itself. */
+    public Wide256 abs() {
+        return l3 < 0 ? neg() : this;
+    }
     public int bitLength() {
         if (l3 != 0) {
             return 192 + (64 - Long.numberOfLeadingZeros(l3));

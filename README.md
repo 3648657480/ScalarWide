@@ -5,17 +5,17 @@
 
 > [English](README.en.md) | 中文
 
-> 纯标量定点大数库（**128 → 1024 位，六档**），零 SIMD、零平台探测。
+> 纯标量定点大数库（mc 版 **128 → 512 位，四档**），零 SIMD、零平台探测。
 > 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
-版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.1`（mulHigh 提升 + 安全护栏）；实现矩阵与全部实测
+版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.4`（除法 Knuth-D 翻盘 + 数学完整性）；实现矩阵与全部实测
 （含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`。
 
 ## 这是什么
 
 - `Wide128` / `Wide256` / `Wide384` / `Wide512` / `Wide768` / `Wide1024`：定宽二补码大整数（little-endian limbs）；
   `MutableWide128/256` 为零分配 scratch 载体。
-- 运算：`add` `sub` `neg` `mul`（低 N 位）`mulHigh`（高 N 位）`and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned` `bitLength`，以及 `fromBigInteger` / `toBigInteger` / `toHexString`。
+- 运算：`add` `sub` `neg` `mul`（低 N 位）`mulHigh`（高 N 位）`div` `rem` `pow` `and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned` `bitLength` `bitCount` `min` `max` `abs`，以及 `fromBigInteger` / `toBigInteger` / `toHexString`。
 - 默认语义：算术按 2^N 回绕；`compareTo` = 无符号序（与 `equals` 一致，适合做 key）；移位量必须在 `[0, N)`，否则抛 `IllegalArgumentException`。
 - 组合层：384/512/768/1024 的乘法由 128/256 原子块积组合而成（512/384 档另有直算 add/比较）；
   设计与边界见 `docs/DESIGN.md` / `docs/INLINE.md`；`Limbs`（包私有）为常驻内部 oracle，参与三路对拍。
@@ -40,10 +40,10 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.1' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.4' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.1`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.4`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512`（不可变值类型，mc 版 ≤512）、`MutableWide128/256`（零分配 scratch）、
@@ -57,6 +57,8 @@
   （`0.11.x` 线内仅性能/修复/纯增量，签名与语义冻结），升级 = 只改一行依赖版本号 + 重构建。
 - 破坏性变更只能进新次版本线并附迁移说明；公开 API 面与消费者回归契约见
   `docs/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
+- 仓库双分支：`main` = 完整库（全宽度/全工具）；`mc` = 改版 MC 精简极致版
+  （宽度 ≤512、零已知退化，标签 `mc-v*`）。策略见 `docs/BRANCHES.md`。
 
 ### MC 工具包（`mc` 分支专属，`com.scalarwide.mc`）
 

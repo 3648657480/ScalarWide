@@ -92,6 +92,74 @@ public final class Wide384 implements Comparable<Wide384> {
         return (l0 | l1 | l2 | l3 | l4 | l5) == 0;
     }
 
+    /**
+     * Unsigned division: `this / o`, truncated.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide384 div(Wide384 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(q[0], q[1], q[2], q[3],
+                q[4], q[5]);
+    }
+
+    /**
+     * Unsigned remainder: `this % o`.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide384 rem(Wide384 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(r[0], r[1], r[2], r[3],
+                r[4], r[5]);
+    }
+
+    /**
+     * Multiplicative power modulo 2^BITS (square-and-multiply).
+     *
+     * @throws IllegalArgumentException if `exp` is negative
+     */
+    public Wide384 pow(int exp) {
+        if (exp < 0) {
+            throw new IllegalArgumentException("negative exponent: " + exp);
+        }
+        Wide384 result = ONE;
+        Wide384 base = this;
+        while (exp > 0) {
+            if ((exp & 1) == 1) {
+                result = result.mul(base);
+            }
+            base = base.mul(base);
+            exp >>= 1;
+        }
+        return result;
+    }
+
+    /** Population count over all BITS bits. */
+    public int bitCount() {
+        return Long.bitCount(l0) + Long.bitCount(l1)
+                + Long.bitCount(l2) + Long.bitCount(l3)
+                + Long.bitCount(l4) + Long.bitCount(l5);
+    }
+
+    /** Unsigned minimum (consistent with {@link #compareUnsigned}). */
+    public Wide384 min(Wide384 o) {
+        return compareUnsigned(o) <= 0 ? this : o;
+    }
+
+    /** Unsigned maximum (consistent with {@link #compareUnsigned}). */
+    public Wide384 max(Wide384 o) {
+        return compareUnsigned(o) >= 0 ? this : o;
+    }
+
+    /** Two's-complement absolute value; MIN_VALUE wraps to itself. */
+    public Wide384 abs() {
+        return l5 < 0 ? neg() : this;
+    }
     public int bitLength() {
         if (l5 != 0) {
             return 320 + (64 - Long.numberOfLeadingZeros(l5));

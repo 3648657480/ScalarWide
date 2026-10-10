@@ -2,6 +2,56 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.4
+
+### Changed
+
+- **Division rewritten as Knuth Algorithm D** (64-bit digits: normalization,
+  128/64 quotient estimate with correction, multiply-subtract with rare
+  add-back). The binary shift-subtract engine stays as the internal oracle
+  (`Limbs.divmodBinary`). Drop-in: no API change.
+
+### Measured (workstation, JDK 21)
+
+- div/rem are now **ahead of BigInteger at every width**: 128: 15.8 vs 41.5 ns
+  (2.63x), 256: 52.8 vs 82.7 (1.57x), 512: 94.2 vs 170.9 (1.81x), 1024: 216.9
+  vs 421.0 (1.94x); the 0.11.3 v1 engine was 9-46x slower than the new one.
+  Remaining known BigInteger regressions: only 1024.mulHigh 0.71x /
+  768.mulHigh 0.92x (`docs/BENCH.md` P11).
+
+## 0.11.3
+
+### Added
+
+- **Math-completeness ops on all six widths** (additive, drop-in):
+  `div`/`rem` (unsigned, `ArithmeticException` on zero divisor), `pow`
+  (mod 2^BITS square-and-multiply), `bitCount`, `min`/`max` (unsigned,
+  consistent with `compareUnsigned`), `abs` (two's-complement; MIN_VALUE wraps
+  to itself). Gated by `MathOpsTest` (BigInteger differential incl. edges) and
+  pinned in the consumer contract (`ConsumerApiTest`).
+
+### Measured (workstation, JDK 21)
+
+- Division v1 (`Limbs.divmod`, binary shift-subtract - correctness first) is
+  **behind BigInteger**: 128: 146.8 vs 41.7 ns (0.28x), 256: 1183 vs 81.5
+  (0.07x), 512: 3286 vs 170.1 (0.05x), 1024: 9971 vs 418.9 (0.04x) ns. A
+  Knuth-D fast path is the planned next measured round (`docs/BENCH.md` P10).
+
+## 0.11.2
+
+### Changed
+
+- **`shr` (arithmetic right shift) direct-implemented for 384/512/768/1024**
+  (was engine-backed): logical shift plus a conditional sign-fill mask
+  (`MAX_VALUE.shl(N-k)` on the negative path); one allocation on the common
+  non-negative path. 384: 6.74 -> 2.17 ns, 512: 13.31 -> 4.95 ns (was 0.92x
+  behind `BigInteger.shiftRight`, now 2.5x ahead), 768: 11.66 -> 6.08 ns,
+  1024: 16.23 -> 8.25 ns. Pure win ported back from the `mc` branch per
+  `docs/BRANCHES.md`; drop-in (no API change, `ConsumerApiTest` green).
+- **Repository split**: `main` = full library (all widths/tools); `mc` =
+  MC-facing fork pruned to <=512 with zero known BigInteger regressions
+  (first cut: `mc-v0.11.1`). Branch policy and sync rules: `docs/BRANCHES.md`.
+
 ## 0.11.1
 
 ### Changed
