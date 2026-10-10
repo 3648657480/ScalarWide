@@ -117,16 +117,21 @@ public final class Wide384 implements Comparable<Wide384> {
     /** Wrapping addition modulo 2^384. */
     public Wide384 add(Wide384 o) {
         long r0 = l0 + o.l0;
-        long c = Carry.addCarryOut(l0, o.l0, r0);
-        long r1 = l1 + o.l1 + c;
-        c = Carry.addCarryOut(l1, o.l1, r1);
-        long r2 = l2 + o.l2 + c;
-        c = Carry.addCarryOut(l2, o.l2, r2);
-        long r3 = l3 + o.l3 + c;
-        c = Carry.addCarryOut(l3, o.l3, r3);
-        long r4 = l4 + o.l4 + c;
-        c = Carry.addCarryOut(l4, o.l4, r4);
-        long r5 = l5 + o.l5 + c;
+        long c = Carry.carryOut(l0, r0);
+        long s1 = l1 + o.l1;
+        long r1 = s1 + c;
+        c = Carry.carryOut(l1, s1) + Carry.carryOut(s1, r1);
+        long s2 = l2 + o.l2;
+        long r2 = s2 + c;
+        c = Carry.carryOut(l2, s2) + Carry.carryOut(s2, r2);
+        long s3 = l3 + o.l3;
+        long r3 = s3 + c;
+        c = Carry.carryOut(l3, s3) + Carry.carryOut(s3, r3);
+        long s4 = l4 + o.l4;
+        long r4 = s4 + c;
+        c = Carry.carryOut(l4, s4) + Carry.carryOut(s4, r4);
+        long s5 = l5 + o.l5;
+        long r5 = s5 + c;
         return new Wide384(r0, r1, r2, r3, r4, r5);
     }
 
@@ -152,7 +157,7 @@ public final class Wide384 implements Comparable<Wide384> {
         Wide128 cross = low128().mulFull(o.high128()).low128()
                 .add(high128().mulFull(o.low128()).low128());
         long r4 = ll.limb(4) + cross.limb(0);
-        long c = Carry.addCarryOut(ll.limb(4), cross.limb(0), r4);
+        long c = Carry.carryOut(ll.limb(4), r4);
         long r5 = ll.limb(5) + cross.limb(1) + c;
         return Wide384.of(ll.limb(0), ll.limb(1), ll.limb(2), ll.limb(3), r4, r5);
     }

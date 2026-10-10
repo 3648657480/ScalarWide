@@ -32,7 +32,7 @@ public final class MutableWide128 {
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long r0 = l0 + o0;
-        long c = Carry.addCarryOut(l0, o0, r0);
+        long c = Carry.carryOut(l0, r0);
         l0 = r0;
         l1 = l1 + o1 + c;
         return this;
@@ -42,7 +42,7 @@ public final class MutableWide128 {
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long r0 = l0 - o0;
-        long b = Carry.subBorrowOut(l0, o0, r0);
+        long b = Carry.borrowOut(l0, r0);
         l0 = r0;
         l1 = l1 - o1 - b;
         return this;

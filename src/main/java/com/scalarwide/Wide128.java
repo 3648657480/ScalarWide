@@ -95,7 +95,7 @@ public final class Wide128 implements Comparable<Wide128> {
     /** Wrapping addition modulo 2^128. */
     public Wide128 add(Wide128 o) {
         long r0 = l0 + o.l0;
-        long c = Carry.addCarryOut(l0, o.l0, r0);
+        long c = Carry.carryOut(l0, r0);
         long r1 = l1 + o.l1 + c;
         return new Wide128(r0, r1);
     }
@@ -103,7 +103,7 @@ public final class Wide128 implements Comparable<Wide128> {
     /** Wrapping subtraction modulo 2^128. */
     public Wide128 sub(Wide128 o) {
         long r0 = l0 - o.l0;
-        long b = Carry.subBorrowOut(l0, o.l0, r0);
+        long b = Carry.borrowOut(l0, r0);
         long r1 = l1 - o.l1 - b;
         return new Wide128(r0, r1);
     }

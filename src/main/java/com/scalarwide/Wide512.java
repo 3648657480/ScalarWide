@@ -142,20 +142,27 @@ public final class Wide512 implements Comparable<Wide512> {
     /** Wrapping addition modulo 2^512. */
     public Wide512 add(Wide512 o) {
         long r0 = l0 + o.l0;
-        long c = Carry.addCarryOut(l0, o.l0, r0);
-        long r1 = l1 + o.l1 + c;
-        c = Carry.addCarryOut(l1, o.l1, r1);
-        long r2 = l2 + o.l2 + c;
-        c = Carry.addCarryOut(l2, o.l2, r2);
-        long r3 = l3 + o.l3 + c;
-        c = Carry.addCarryOut(l3, o.l3, r3);
-        long r4 = l4 + o.l4 + c;
-        c = Carry.addCarryOut(l4, o.l4, r4);
-        long r5 = l5 + o.l5 + c;
-        c = Carry.addCarryOut(l5, o.l5, r5);
-        long r6 = l6 + o.l6 + c;
-        c = Carry.addCarryOut(l6, o.l6, r6);
-        long r7 = l7 + o.l7 + c;
+        long c = Carry.carryOut(l0, r0);
+        long s1 = l1 + o.l1;
+        long r1 = s1 + c;
+        c = Carry.carryOut(l1, s1) + Carry.carryOut(s1, r1);
+        long s2 = l2 + o.l2;
+        long r2 = s2 + c;
+        c = Carry.carryOut(l2, s2) + Carry.carryOut(s2, r2);
+        long s3 = l3 + o.l3;
+        long r3 = s3 + c;
+        c = Carry.carryOut(l3, s3) + Carry.carryOut(s3, r3);
+        long s4 = l4 + o.l4;
+        long r4 = s4 + c;
+        c = Carry.carryOut(l4, s4) + Carry.carryOut(s4, r4);
+        long s5 = l5 + o.l5;
+        long r5 = s5 + c;
+        c = Carry.carryOut(l5, s5) + Carry.carryOut(s5, r5);
+        long s6 = l6 + o.l6;
+        long r6 = s6 + c;
+        c = Carry.carryOut(l6, s6) + Carry.carryOut(s6, r6);
+        long s7 = l7 + o.l7;
+        long r7 = s7 + c;
         return new Wide512(r0, r1, r2, r3, r4, r5, r6, r7);
     }
 
