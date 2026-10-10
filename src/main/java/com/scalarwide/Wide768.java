@@ -412,9 +412,64 @@ public final class Wide768 implements Comparable<Wide768> {
      */
     public Wide768 shl(int k) {
         checkShift(k);
-        long[] out = new long[LIMBS];
-        Limbs.shl(pack(), k, out);
-        return unpack(out);
+        if (k == 0) {
+            return this;
+        }
+        int bs = k & 63;
+        long b0;
+        long b1;
+        long b2;
+        long b3;
+        long b4;
+        long b5;
+        long b6;
+        long b7;
+        long b8;
+        long b9;
+        long b10;
+        long b11;
+        if (bs == 0) {
+            b0 = l0;
+            b1 = l1;
+            b2 = l2;
+            b3 = l3;
+            b4 = l4;
+            b5 = l5;
+            b6 = l6;
+            b7 = l7;
+            b8 = l8;
+            b9 = l9;
+            b10 = l10;
+            b11 = l11;
+        } else {
+            long inv = 64 - bs;
+            b0 = l0 << bs;
+            b1 = (l1 << bs) | (l0 >>> inv);
+            b2 = (l2 << bs) | (l1 >>> inv);
+            b3 = (l3 << bs) | (l2 >>> inv);
+            b4 = (l4 << bs) | (l3 >>> inv);
+            b5 = (l5 << bs) | (l4 >>> inv);
+            b6 = (l6 << bs) | (l5 >>> inv);
+            b7 = (l7 << bs) | (l6 >>> inv);
+            b8 = (l8 << bs) | (l7 >>> inv);
+            b9 = (l9 << bs) | (l8 >>> inv);
+            b10 = (l10 << bs) | (l9 >>> inv);
+            b11 = (l11 << bs) | (l10 >>> inv);
+        }
+        return switch (k >>> 6) {
+            case 0 -> new Wide768(b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11);
+            case 1 -> new Wide768(0, b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10);
+            case 2 -> new Wide768(0, 0, b0, b1, b2, b3, b4, b5, b6, b7, b8, b9);
+            case 3 -> new Wide768(0, 0, 0, b0, b1, b2, b3, b4, b5, b6, b7, b8);
+            case 4 -> new Wide768(0, 0, 0, 0, b0, b1, b2, b3, b4, b5, b6, b7);
+            case 5 -> new Wide768(0, 0, 0, 0, 0, b0, b1, b2, b3, b4, b5, b6);
+            case 6 -> new Wide768(0, 0, 0, 0, 0, 0, b0, b1, b2, b3, b4, b5);
+            case 7 -> new Wide768(0, 0, 0, 0, 0, 0, 0, b0, b1, b2, b3, b4);
+            case 8 -> new Wide768(0, 0, 0, 0, 0, 0, 0, 0, b0, b1, b2, b3);
+            case 9 -> new Wide768(0, 0, 0, 0, 0, 0, 0, 0, 0, b0, b1, b2);
+            case 10 -> new Wide768(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b0, b1);
+            default -> new Wide768(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, b0);
+        };
     }
 
     /**
@@ -424,9 +479,64 @@ public final class Wide768 implements Comparable<Wide768> {
      */
     public Wide768 ushr(int k) {
         checkShift(k);
-        long[] out = new long[LIMBS];
-        Limbs.ushr(pack(), k, out);
-        return unpack(out);
+        if (k == 0) {
+            return this;
+        }
+        int bs = k & 63;
+        long b0;
+        long b1;
+        long b2;
+        long b3;
+        long b4;
+        long b5;
+        long b6;
+        long b7;
+        long b8;
+        long b9;
+        long b10;
+        long b11;
+        if (bs == 0) {
+            b0 = l0;
+            b1 = l1;
+            b2 = l2;
+            b3 = l3;
+            b4 = l4;
+            b5 = l5;
+            b6 = l6;
+            b7 = l7;
+            b8 = l8;
+            b9 = l9;
+            b10 = l10;
+            b11 = l11;
+        } else {
+            long inv = 64 - bs;
+            b0 = (l0 >>> bs) | (l1 << inv);
+            b1 = (l1 >>> bs) | (l2 << inv);
+            b2 = (l2 >>> bs) | (l3 << inv);
+            b3 = (l3 >>> bs) | (l4 << inv);
+            b4 = (l4 >>> bs) | (l5 << inv);
+            b5 = (l5 >>> bs) | (l6 << inv);
+            b6 = (l6 >>> bs) | (l7 << inv);
+            b7 = (l7 >>> bs) | (l8 << inv);
+            b8 = (l8 >>> bs) | (l9 << inv);
+            b9 = (l9 >>> bs) | (l10 << inv);
+            b10 = (l10 >>> bs) | (l11 << inv);
+            b11 = l11 >>> bs;
+        }
+        return switch (k >>> 6) {
+            case 0 -> new Wide768(b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11);
+            case 1 -> new Wide768(b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, 0);
+            case 2 -> new Wide768(b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, 0, 0);
+            case 3 -> new Wide768(b3, b4, b5, b6, b7, b8, b9, b10, b11, 0, 0, 0);
+            case 4 -> new Wide768(b4, b5, b6, b7, b8, b9, b10, b11, 0, 0, 0, 0);
+            case 5 -> new Wide768(b5, b6, b7, b8, b9, b10, b11, 0, 0, 0, 0, 0);
+            case 6 -> new Wide768(b6, b7, b8, b9, b10, b11, 0, 0, 0, 0, 0, 0);
+            case 7 -> new Wide768(b7, b8, b9, b10, b11, 0, 0, 0, 0, 0, 0, 0);
+            case 8 -> new Wide768(b8, b9, b10, b11, 0, 0, 0, 0, 0, 0, 0, 0);
+            case 9 -> new Wide768(b9, b10, b11, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            case 10 -> new Wide768(b10, b11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            default -> new Wide768(b11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        };
     }
 
     /**
@@ -442,11 +552,93 @@ public final class Wide768 implements Comparable<Wide768> {
     }
 
     public int compareUnsigned(Wide768 o) {
-        return Limbs.compareUnsigned(pack(), o.pack());
+        int c = Long.compareUnsigned(l11, o.l11);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l10, o.l10);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l9, o.l9);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l8, o.l8);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l7, o.l7);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l6, o.l6);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     public int compareSigned(Wide768 o) {
-        return Limbs.compareSigned(pack(), o.pack());
+        int c = Long.compare(l11, o.l11);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l10, o.l10);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l9, o.l9);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l8, o.l8);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l7, o.l7);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l6, o.l6);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l5, o.l5);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l4, o.l4);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l3, o.l3);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l2, o.l2);
+        if (c != 0) {
+            return c;
+        }
+        c = Long.compareUnsigned(l1, o.l1);
+        return c != 0 ? c : Long.compareUnsigned(l0, o.l0);
     }
 
     /**

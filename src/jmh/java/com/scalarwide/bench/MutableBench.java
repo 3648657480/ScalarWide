@@ -29,6 +29,7 @@ public class MutableBench {
     public Wide256 c;
     public Wide256 d;
     public MutableWide256 scratch;
+    public Wide256 acc;
 
     @Setup
     public void setup() {
@@ -39,6 +40,7 @@ public class MutableBench {
         c = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
         d = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
         scratch = new MutableWide256();
+        acc = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
     }
 
     @Benchmark
@@ -53,5 +55,66 @@ public class MutableBench {
         scratch.mul(c);
         scratch.add(d);
         return scratch.toWide256();
+    }
+
+    @Benchmark
+    public Wide256 immutableAdd() {
+        return a.add(b);
+    }
+
+    @Benchmark
+    public MutableWide256 mutableAdd() {
+        scratch.set(a);
+        scratch.add(b);
+        return scratch;
+    }
+
+    @Benchmark
+    public Wide256 immutableMul() {
+        return a.mul(c);
+    }
+
+    @Benchmark
+    public MutableWide256 mutableMul() {
+        scratch.set(a);
+        scratch.mul(c);
+        return scratch;
+    }
+
+    @Benchmark
+    public MutableWide256 mutableSet() {
+        scratch.set(a);
+        return scratch;
+    }
+
+    @Benchmark
+    public Wide256 immutableChain8() {
+        return a.add(b).add(c).add(d).add(a).add(b).add(c).add(d).add(a);
+    }
+
+    @Benchmark
+    public MutableWide256 mutableChain8() {
+        scratch.set(a);
+        scratch.add(b);
+        scratch.add(c);
+        scratch.add(d);
+        scratch.add(a);
+        scratch.add(b);
+        scratch.add(c);
+        scratch.add(d);
+        scratch.add(a);
+        return scratch;
+    }
+
+    @Benchmark
+    public Wide256 immutableAccumulate() {
+        acc = acc.add(b);
+        return acc;
+    }
+
+    @Benchmark
+    public MutableWide256 mutableAccumulate() {
+        scratch.add(b);
+        return scratch;
     }
 }

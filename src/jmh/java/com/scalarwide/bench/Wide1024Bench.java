@@ -68,4 +68,64 @@ public class Wide1024Bench {
     public BigInteger bigAdd() {
         return ra.add(rb);
     }
+
+    @Benchmark
+    public Wide1024 sub() {
+        return a.sub(b);
+    }
+
+    @Benchmark
+    public BigInteger bigSub() {
+        return ra.subtract(rb);
+    }
+
+    @Benchmark
+    public Wide1024 and() {
+        return a.and(b);
+    }
+
+    @Benchmark
+    public BigInteger bigAnd() {
+        return ra.and(rb);
+    }
+
+    @Benchmark
+    public int compare() {
+        return a.compareUnsigned(b);
+    }
+
+    @Benchmark
+    public int bigCompare() {
+        return ra.compareTo(rb);
+    }
+
+    @Benchmark
+    public int hash() {
+        return a.hashCode();
+    }
+
+    @Benchmark
+    public int bigHash() {
+        return ra.hashCode();
+    }
+
+    @Benchmark
+    public Wide1024 shl() {
+        return a.shl(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShl() {
+        return ra.shiftLeft(123);
+    }
+
+    @Benchmark
+    public Wide1024 ushr() {
+        return a.ushr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigUshr() {
+        return ra.shiftRight(123);
+    }
 }

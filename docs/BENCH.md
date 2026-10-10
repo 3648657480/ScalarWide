@@ -570,3 +570,53 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
   3. 单样本对 ≠ 分布期望；多样本轮转的期望值留作后续（低优先）。
 - 新增：`src/jmh/java/com/scalarwide/bench/RealKeyStats.java`、`RealKeyBench.java`（含同类均匀对照）。
 
+## 2026-10-10 · P5 批次：机械尾巴清扫（compare、384/512 sub/位运算、全宽度位移）+ mutable 定位
+
+工作站在线，JMH `-wi 5 -i 10 -f 1 -w 1s -r 1s`；jar：`bench/p5-before.jar`、`p5-after.jar`、`p5-two.jar`、`p5-mut.jar`、`p5-mut8.jar`、`p5-acc.jar`、`p5-shift.jar`、`p5-shift2.jar`。
+
+### compare（768/1024）—— EA 已消化，非性能项
+
+- 原为 `Limbs.compareUnsigned(pack(), o.pack())`（纸面 2 分配）。实测引擎 0.55/0.50 → 直算 0.47/0.50——**JIT 逃逸分析已把 pack 数组标量替换**，无差。
+- 直算保留（去 EA 依赖、代码对称），记录为"无性能收益"。
+
+### 768.add 异常——调查后判 JIT 布局运气，不追
+
+- 12 limb add/sub ≈ 9.4ns，16 limb（1024）反而 8.1-8.4ns；按 +0.49ns/limb 趋势 768 应在 ~6.3。
+- 两段式源码序（先全求和、再串进位）重排 → 9.33（无效应）；回退。
+- 全宽度单 limb 代价 0.51–0.78ns 大幅波动而代码同构 → 判为按类 JIT 调度/布局差异；留档。
+
+### 384/512 sub/neg/位运算直算
+
+| 基准 | 引擎 | 直算 | 提速 | vs BigInteger |
+|---|---|---|---|---|
+| 384.sub | 12.34 | **4.22** | 2.92× | 2.88×（原 0.97×，落后） |
+| 512.sub | 12.72 | **5.48** | 2.32× | 2.56× |
+| 384.and | 13.00 | **2.63** | 4.95× | 4.08×（原 0.83×，落后） |
+| 512.and | 15.45 | **3.40** | 4.54× | 3.57×（原 0.78×，落后） |
+
+- neg 改 `ZERO.sub(this)`；or/xor/not/andNot 同步直算；768/1024 compare 直算。
+
+### 位移直算（384/512/768/1024 的 shl/ushr）—— 位内 unroll + 构造补零
+
+| 基准 | 引擎 | 直算 | 提速 | vs big |
+|---|---|---|---|---|
+| 384.shl / ushr | 6.75 / 6.83 | **2.17 / 2.16** | 3.12× / 3.16× | 5.37× / 4.51× |
+| 512.shl / ushr | 8.31 / 10.98 | **4.47 / 4.81** | 1.86× / 2.29× | 2.85× / 2.54× |
+| 768.shl / ushr | 12.36 / 11.62 | **6.30 / 6.02** | 1.96× / 1.93× | 2.62× / 2.50× |
+| 1024.shl / ushr | 15.01 / 16.28 | **7.99 / 8.79** | 1.88× / 1.85× | 2.51× / 2.12× |
+
+- 结构：`bs = k&63` 一次全 limb unroll（bs==0 直通），`ls = k>>>6` 用构造参数前补零/后补零实现（零 switch 爆炸、每方法 ~50 行）。
+- `shr`（算术右移）仍引擎，未 bench，待需求触发。
+
+### mutable vs immutable 定位（同类对拍）
+
+- 单算子 mutable 更快：add ≈1.8 vs 2.3；mul ≈4.8 vs 6.6（免分配）。
+- **单方法链 immutable 反赢**（8 连加 12.26 vs 13.67）——EA 把链内中间量标量替换，mutable 的 set/字段往返是纯开销；
+- **跨调用累加器（EA 失效）mutable 大胜：1.69 vs 3.00（1.77×）**。
+- 用法指引：短链/纯表达式用 immutable；跨方法、长生命周期累加器用 mutable。
+
+### 其他
+
+- 768/1024 hash 直算实测 3.61 / 5.13（bigHash 8.31 / 11.28 → 2.30× / 2.20×）；compare 0.47-0.50。
+- 新增 bench：384/512 `sub/and/shl/ushr`，768/1024 `sub/and/compare/hash/shl/ushr`，MutableBench 分解项与 `immutableAccumulate/mutableAccumulate`。
+

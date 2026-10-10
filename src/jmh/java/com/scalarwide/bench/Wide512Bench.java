@@ -99,4 +99,44 @@ public class Wide512Bench {
     public int bigCompare() {
         return ra.compareTo(rb);
     }
+
+    @Benchmark
+    public Wide512 sub() {
+        return a.sub(b);
+    }
+
+    @Benchmark
+    public BigInteger bigSub() {
+        return ra.subtract(rb);
+    }
+
+    @Benchmark
+    public Wide512 and() {
+        return a.and(b);
+    }
+
+    @Benchmark
+    public BigInteger bigAnd() {
+        return ra.and(rb);
+    }
+
+    @Benchmark
+    public Wide512 shl() {
+        return a.shl(123);
+    }
+
+    @Benchmark
+    public BigInteger bigShl() {
+        return ra.shiftLeft(123);
+    }
+
+    @Benchmark
+    public Wide512 ushr() {
+        return a.ushr(123);
+    }
+
+    @Benchmark
+    public BigInteger bigUshr() {
+        return ra.shiftRight(123);
+    }
 }
