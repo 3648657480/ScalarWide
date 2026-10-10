@@ -206,25 +206,25 @@ public final class Wide768 implements Comparable<Wide768> {
         long carry = 0;
         for (int i = 4; i < 8; i++) {
             long u = s[i] + s[i + 4];
-            long k = Carry.addCarryOut(s[i], s[i + 4], u);
+            long k = Carry.carryOut(s[i], u);
             long v = u + s[i + 12];
-            k += Carry.addCarryOut(u, s[i + 12], v);
+            k += Carry.carryOut(u, v);
             long w = v + carry;
-            k += Carry.addCarryOut(v, carry, w);
+            k += Carry.carryOut(v, w);
             s[i] = w;
             carry = k;
         }
         for (int i = 8; i < 12; i++) {
             long u1 = s[i + 4] + s[i + 12];
-            long k = Carry.addCarryOut(s[i + 4], s[i + 12], u1);
+            long k = Carry.carryOut(s[i + 4], u1);
             long u2 = u1 + s[i + 16];
-            k += Carry.addCarryOut(u1, s[i + 16], u2);
+            k += Carry.carryOut(u1, u2);
             long u3 = u2 + s[i + 20];
-            k += Carry.addCarryOut(u2, s[i + 20], u3);
+            k += Carry.carryOut(u2, u3);
             long u4 = u3 + s[i + 24];
-            k += Carry.addCarryOut(u3, s[i + 24], u4);
+            k += Carry.carryOut(u3, u4);
             long w = u4 + carry;
-            k += Carry.addCarryOut(u4, carry, w);
+            k += Carry.carryOut(u4, w);
             s[i] = w;
             carry = k;
         }

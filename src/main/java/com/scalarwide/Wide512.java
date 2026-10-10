@@ -187,69 +187,58 @@ public final class Wide512 implements Comparable<Wide512> {
     /**
      * High 512 bits of the 1024-bit product, i.e. {@code (a*b) >>> 512}.
      *
-     * <p>Four quarter products plus a single open-coded limb pass
-     * ({@code hh + (midSum >>> 256) + c1*2^256 + c2}), so the whole inlining
-     * tree fits the C2 budget and the quarter calls get flattened.
+     * <p>Four quarter products written into a single scratch array (zero
+     * intermediate objects), with compare-based carry fix-ups at limb level.
      */
     public Wide512 mulHigh(Wide512 o) {
-        Wide512 lo = lowHalf().mulFull(o.lowHalf());
-        Wide512 m1 = lowHalf().mulFull(o.highHalf());
-        Wide512 m2 = highHalf().mulFull(o.lowHalf());
-        Wide512 hh = highHalf().mulFull(o.highHalf());
+        long[] s = new long[32];
+        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
+        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 24, l4, l5, l6, l7, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
 
-        long s0 = m1.l0 + m2.l0;
-        long c = Carry.addCarryOut(m1.l0, m2.l0, s0);
-        long s1 = m1.l1 + m2.l1 + c;
-        c = Carry.addCarryOut(m1.l1, m2.l1, s1);
-        long s2 = m1.l2 + m2.l2 + c;
-        c = Carry.addCarryOut(m1.l2, m2.l2, s2);
-        long s3 = m1.l3 + m2.l3 + c;
-        c = Carry.addCarryOut(m1.l3, m2.l3, s3);
-        long s4 = m1.l4 + m2.l4 + c;
-        c = Carry.addCarryOut(m1.l4, m2.l4, s4);
-        long s5 = m1.l5 + m2.l5 + c;
-        c = Carry.addCarryOut(m1.l5, m2.l5, s5);
-        long s6 = m1.l6 + m2.l6 + c;
-        c = Carry.addCarryOut(m1.l6, m2.l6, s6);
-        long s7 = m1.l7 + m2.l7 + c;
-        long c1 = Carry.addCarryOut(m1.l7, m2.l7, s7);
+        long carry = 0;
+        for (int i = 0; i < 8; i++) {
+            long u = s[8 + i] + s[16 + i];
+            long k = Carry.carryOut(s[8 + i], u);
+            long w = u + carry;
+            k += Carry.carryOut(u, w);
+            s[16 + i] = w;
+            carry = k;
+        }
+        long c1 = carry;
 
-        long t = lo.l4 + s0;
-        long cc = Carry.addCarryOut(lo.l4, s0, t);
-        long t2 = lo.l5 + s1 + cc;
-        cc = Carry.addCarryOut(lo.l5, s1, t2);
-        long t3 = lo.l6 + s2 + cc;
-        cc = Carry.addCarryOut(lo.l6, s2, t3);
-        long t4 = lo.l7 + s3 + cc;
-        long c2 = Carry.addCarryOut(lo.l7, s3, t4);
+        carry = 0;
+        for (int i = 0; i < 4; i++) {
+            long u = s[4 + i] + s[16 + i];
+            long k = Carry.carryOut(s[4 + i], u);
+            long w = u + carry;
+            k += Carry.carryOut(u, w);
+            carry = k;
+        }
+        long c2 = carry;
 
-        long v = hh.l0 + s4;
-        long d = Carry.addCarryOut(hh.l0, s4, v);
-        long r0 = v + c2;
-        d += Carry.addCarryOut(v, c2, r0);
-        long v1 = hh.l1 + s5;
-        long d1 = Carry.addCarryOut(hh.l1, s5, v1);
-        long r1 = v1 + d;
-        d1 += Carry.addCarryOut(v1, d, r1);
-        long v2 = hh.l2 + s6;
-        long d2 = Carry.addCarryOut(hh.l2, s6, v2);
-        long r2 = v2 + d1;
-        d2 += Carry.addCarryOut(v2, d1, r2);
-        long v3 = hh.l3 + s7;
-        long d3 = Carry.addCarryOut(hh.l3, s7, v3);
-        long r3 = v3 + d2;
-        d3 += Carry.addCarryOut(v3, d2, r3);
-
-        long u = hh.l4 + d3;
-        long e = Carry.addCarryOut(hh.l4, d3, u);
-        long r4 = u + c1;
-        e += Carry.addCarryOut(u, c1, r4);
-        long r5 = hh.l5 + e;
-        long e2 = Carry.addCarryOut(hh.l5, e, r5);
-        long r6 = hh.l6 + e2;
-        long e3 = Carry.addCarryOut(hh.l6, e2, r6);
-        long r7 = hh.l7 + e3;
-        return new Wide512(r0, r1, r2, r3, r4, r5, r6, r7);
+        carry = c2;
+        for (int i = 0; i < 4; i++) {
+            long u = s[24 + i] + s[20 + i];
+            long k = Carry.carryOut(s[24 + i], u);
+            long w = u + carry;
+            k += Carry.carryOut(u, w);
+            s[i] = w;
+            carry = k;
+        }
+        long u4 = s[28] + c1;
+        long k4 = Carry.carryOut(s[28], u4);
+        long x4 = u4 + carry;
+        k4 += Carry.carryOut(u4, x4);
+        s[4] = x4;
+        carry = k4;
+        for (int i = 5; i < 8; i++) {
+            long w = s[24 + i] + carry;
+            carry = Carry.carryOut(s[24 + i], w);
+            s[i] = w;
+        }
+        return Wide512.of(s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]);
     }
 
     Wide256 lowHalf() {
