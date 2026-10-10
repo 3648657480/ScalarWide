@@ -170,23 +170,109 @@ public final class Wide768 implements Comparable<Wide768> {
 
     /** Wrapping addition modulo 2^768. */
     public Wide768 add(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.add(pack(), o.pack(), out);
-        return unpack(out);
+        long r0 = l0 + o.l0;
+        long c = Carry.carryOut(l0, r0);
+        long s1 = l1 + o.l1;
+        long r1 = s1 + c;
+        c = Carry.carryOut(l1, s1) + Carry.carryOut(s1, r1);
+        long s2 = l2 + o.l2;
+        long r2 = s2 + c;
+        c = Carry.carryOut(l2, s2) + Carry.carryOut(s2, r2);
+        long s3 = l3 + o.l3;
+        long r3 = s3 + c;
+        c = Carry.carryOut(l3, s3) + Carry.carryOut(s3, r3);
+        long s4 = l4 + o.l4;
+        long r4 = s4 + c;
+        c = Carry.carryOut(l4, s4) + Carry.carryOut(s4, r4);
+        long s5 = l5 + o.l5;
+        long r5 = s5 + c;
+        c = Carry.carryOut(l5, s5) + Carry.carryOut(s5, r5);
+        long s6 = l6 + o.l6;
+        long r6 = s6 + c;
+        c = Carry.carryOut(l6, s6) + Carry.carryOut(s6, r6);
+        long s7 = l7 + o.l7;
+        long r7 = s7 + c;
+        c = Carry.carryOut(l7, s7) + Carry.carryOut(s7, r7);
+        long s8 = l8 + o.l8;
+        long r8 = s8 + c;
+        c = Carry.carryOut(l8, s8) + Carry.carryOut(s8, r8);
+        long s9 = l9 + o.l9;
+        long r9 = s9 + c;
+        c = Carry.carryOut(l9, s9) + Carry.carryOut(s9, r9);
+        long s10 = l10 + o.l10;
+        long r10 = s10 + c;
+        c = Carry.carryOut(l10, s10) + Carry.carryOut(s10, r10);
+        long s11 = l11 + o.l11;
+        long r11 = s11 + c;
+        return new Wide768(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
     }
 
     /** Wrapping subtraction modulo 2^768. */
     public Wide768 sub(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.sub(pack(), o.pack(), out);
-        return unpack(out);
+        long r0 = l0 - o.l0;
+        long b = Carry.borrowOut(l0, r0);
+        long d1 = l1 - o.l1;
+        long r1 = d1 - b;
+        b = Carry.borrowOut(l1, d1) + Carry.borrowOut(d1, r1);
+        long d2 = l2 - o.l2;
+        long r2 = d2 - b;
+        b = Carry.borrowOut(l2, d2) + Carry.borrowOut(d2, r2);
+        long d3 = l3 - o.l3;
+        long r3 = d3 - b;
+        b = Carry.borrowOut(l3, d3) + Carry.borrowOut(d3, r3);
+        long d4 = l4 - o.l4;
+        long r4 = d4 - b;
+        b = Carry.borrowOut(l4, d4) + Carry.borrowOut(d4, r4);
+        long d5 = l5 - o.l5;
+        long r5 = d5 - b;
+        b = Carry.borrowOut(l5, d5) + Carry.borrowOut(d5, r5);
+        long d6 = l6 - o.l6;
+        long r6 = d6 - b;
+        b = Carry.borrowOut(l6, d6) + Carry.borrowOut(d6, r6);
+        long d7 = l7 - o.l7;
+        long r7 = d7 - b;
+        b = Carry.borrowOut(l7, d7) + Carry.borrowOut(d7, r7);
+        long d8 = l8 - o.l8;
+        long r8 = d8 - b;
+        b = Carry.borrowOut(l8, d8) + Carry.borrowOut(d8, r8);
+        long d9 = l9 - o.l9;
+        long r9 = d9 - b;
+        b = Carry.borrowOut(l9, d9) + Carry.borrowOut(d9, r9);
+        long d10 = l10 - o.l10;
+        long r10 = d10 - b;
+        b = Carry.borrowOut(l10, d10) + Carry.borrowOut(d10, r10);
+        long d11 = l11 - o.l11;
+        long r11 = d11 - b;
+        return new Wide768(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
     }
 
     /** Wrapping negation modulo 2^768. */
     public Wide768 neg() {
-        long[] out = new long[LIMBS];
-        Limbs.neg(pack(), out);
-        return unpack(out);
+        return ZERO.sub(this);
+    }
+
+    public Wide768 and(Wide768 o) {
+        return new Wide768(l0 & o.l0, l1 & o.l1, l2 & o.l2, l3 & o.l3, l4 & o.l4, l5 & o.l5,
+                l6 & o.l6, l7 & o.l7, l8 & o.l8, l9 & o.l9, l10 & o.l10, l11 & o.l11);
+    }
+
+    public Wide768 or(Wide768 o) {
+        return new Wide768(l0 | o.l0, l1 | o.l1, l2 | o.l2, l3 | o.l3, l4 | o.l4, l5 | o.l5,
+                l6 | o.l6, l7 | o.l7, l8 | o.l8, l9 | o.l9, l10 | o.l10, l11 | o.l11);
+    }
+
+    public Wide768 xor(Wide768 o) {
+        return new Wide768(l0 ^ o.l0, l1 ^ o.l1, l2 ^ o.l2, l3 ^ o.l3, l4 ^ o.l4, l5 ^ o.l5,
+                l6 ^ o.l6, l7 ^ o.l7, l8 ^ o.l8, l9 ^ o.l9, l10 ^ o.l10, l11 ^ o.l11);
+    }
+
+    public Wide768 not() {
+        return new Wide768(~l0, ~l1, ~l2, ~l3, ~l4, ~l5, ~l6, ~l7, ~l8, ~l9, ~l10, ~l11);
+    }
+
+    public Wide768 andNot(Wide768 o) {
+        return new Wide768(l0 & ~o.l0, l1 & ~o.l1, l2 & ~o.l2, l3 & ~o.l3, l4 & ~o.l4, l5 & ~o.l5,
+                l6 & ~o.l6, l7 & ~o.l7, l8 & ~o.l8, l9 & ~o.l9, l10 & ~o.l10, l11 & ~o.l11);
     }
 
     /**
@@ -248,36 +334,6 @@ public final class Wide768 implements Comparable<Wide768> {
     public Wide768 mulHigh(Wide768 o) {
         long[] out = new long[LIMBS];
         Limbs.mulHigh(pack(), o.pack(), out);
-        return unpack(out);
-    }
-
-    public Wide768 and(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.and(pack(), o.pack(), out);
-        return unpack(out);
-    }
-
-    public Wide768 or(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.or(pack(), o.pack(), out);
-        return unpack(out);
-    }
-
-    public Wide768 xor(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.xor(pack(), o.pack(), out);
-        return unpack(out);
-    }
-
-    public Wide768 not() {
-        long[] out = new long[LIMBS];
-        Limbs.not(pack(), out);
-        return unpack(out);
-    }
-
-    public Wide768 andNot(Wide768 o) {
-        long[] out = new long[LIMBS];
-        Limbs.andNot(pack(), o.pack(), out);
         return unpack(out);
     }
 
