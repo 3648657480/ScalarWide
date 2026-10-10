@@ -336,9 +336,14 @@ public final class Wide384 implements Comparable<Wide384> {
      */
     public Wide384 shr(int k) {
         checkShift(k);
-        long[] out = new long[LIMBS];
-        Limbs.shr(pack(), k, out);
-        return unpack(out);
+        if (k == 0) {
+            return this;
+        }
+        Wide384 u = ushr(k);
+        if (l5 >> 63 == 0) {
+            return u;
+        }
+        return u.or(MAX_VALUE.shl(384 - k));
     }
 
     public int compareUnsigned(Wide384 o) {

@@ -45,15 +45,15 @@ class ConsumerApiTest {
         Wide128 a128 = Wide128.of(123456789L);
         assertEquals(123456789L * 123456789L, a128.mul(a128).longValue());
 
-        Wide768 x = Wide768.ONE.shl(700);
-        assertEquals(701, x.bitLength());
-        assertEquals(x, x.ushr(700).shl(700));
-        assertEquals(Wide768.ZERO, x.add(x.neg()));
+        Wide384 x = Wide384.ONE.shl(380);
+        assertEquals(381, x.bitLength());
+        assertEquals(x, x.ushr(380).shl(380));
+        assertEquals(Wide384.ZERO, x.add(x.neg()));
 
-        Wide1024 y = Wide1024.ONE.shl(1000);
-        assertEquals(1001, y.bitLength());
+        Wide512 y = Wide512.ONE.shl(500);
+        assertEquals(501, y.bitLength());
         assertEquals(y, y.shr(0));
-        assertTrue(y.compareSigned(Wide1024.ofSigned(-5)) > 0);
+        assertTrue(y.compareSigned(Wide512.ofSigned(-5)) > 0);
     }
 
     @Test

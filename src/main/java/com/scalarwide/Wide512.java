@@ -415,9 +415,14 @@ public final class Wide512 implements Comparable<Wide512> {
      */
     public Wide512 shr(int k) {
         checkShift(k);
-        long[] out = new long[LIMBS];
-        Limbs.shr(pack(), k, out);
-        return unpack(out);
+        if (k == 0) {
+            return this;
+        }
+        Wide512 u = ushr(k);
+        if (l7 >> 63 == 0) {
+            return u;
+        }
+        return u.or(MAX_VALUE.shl(512 - k));
     }
 
     public int compareUnsigned(Wide512 o) {
