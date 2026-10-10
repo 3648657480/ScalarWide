@@ -66,6 +66,13 @@ tasks.register('layout', JavaExec) {
     mainClass = 'com.scalarwide.LayoutReport'
 }
 
+tasks.register('genMul', JavaExec) {
+    group = 'verification'
+    description = 'Generates fully unrolled mul/mulHigh bodies into build/gen/'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.scalarwide.GenMul'
+}
+
 tasks.register('jmhJar', Jar) {
     group = 'benchmark'
     description = 'Build a self-contained JMH runner jar.'
