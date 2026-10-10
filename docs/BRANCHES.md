@@ -35,3 +35,10 @@
   `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×。
 - `com.scalarwide.mc.McWarmup`：初始化预热——256 位首百次调用 5144→134 ns（38×）。
 - `FlatMapProbe` 新探测（flat/hashmap/big 三模式同 run 对照）。
+
+### mc-v0.11.4（同步 main 0.11.3/0.11.4 + FlatMap v2）
+- **merge main**：数学算子（div/rem/pow/bitCount/min/max/abs）与 Knuth-D 除法进入 ≤512 面
+  （div 全宽反超 big 1.6–2.6×）；`VERSION` 对齐 0.11.4。
+- `Wide256FlatMap.remove`：**回退移位删除**（无墓碑、探测簇保持紧凑）——20 万随机操作差分
+  与簇/边界用例全绿。
+- 主仓 `DivisionInternalTest` 的 Limbs 级用例在 mc 保留（引擎通用，不受宽度剪枝影响）。

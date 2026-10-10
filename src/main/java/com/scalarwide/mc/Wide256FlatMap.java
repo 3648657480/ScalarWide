@@ -81,6 +81,58 @@ public final class Wide256FlatMap {
         return getOrDefault(key, EMPTY) != EMPTY;
     }
 
+    /**
+     * Removes the mapping for {@code key} if present, using backward-shift
+     * deletion (no tombstones; probe clusters stay compact).
+     *
+     * @return {@code true} if the key was present
+     */
+    public boolean remove(Wide256 key) {
+        long k0 = key.limb(0);
+        long k1 = key.limb(1);
+        long k2 = key.limb(2);
+        long k3 = key.limb(3);
+        long[] s = slots;
+        int i = hash(k0, k1, k2, k3) & mask;
+        while (true) {
+            int o = i * 5;
+            if (s[o + 4] == EMPTY) {
+                return false;
+            }
+            if (s[o] == k0 && s[o + 1] == k1 && s[o + 2] == k2 && s[o + 3] == k3) {
+                break;
+            }
+            i = (i + 1) & mask;
+        }
+        int hole = i;
+        int j = (i + 1) & mask;
+        while (true) {
+            int jo = j * 5;
+            if (s[jo + 4] == EMPTY) {
+                break;
+            }
+            int ideal = hash(s[jo], s[jo + 1], s[jo + 2], s[jo + 3]) & mask;
+            if (((j - ideal) & mask) >= ((j - hole) & mask)) {
+                int ho = hole * 5;
+                s[ho] = s[jo];
+                s[ho + 1] = s[jo + 1];
+                s[ho + 2] = s[jo + 2];
+                s[ho + 3] = s[jo + 3];
+                s[ho + 4] = s[jo + 4];
+                hole = j;
+            }
+            j = (j + 1) & mask;
+        }
+        int ho = hole * 5;
+        s[ho] = 0;
+        s[ho + 1] = 0;
+        s[ho + 2] = 0;
+        s[ho + 3] = 0;
+        s[ho + 4] = EMPTY;
+        size--;
+        return true;
+    }
+
     private void putRaw(long k0, long k1, long k2, long k3, int value) {
         long[] s = slots;
         int i = hash(k0, k1, k2, k3) & mask;
