@@ -237,132 +237,132 @@ public final class Wide256 implements Comparable<Wide256> {
         long hi1 = 0;
         {
             long s = lo1 + p1_0;
-            hi1 += Carry.addCarryOut(lo1, p1_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         {
             long s = lo1 + h0_0;
-            hi1 += Carry.addCarryOut(lo1, h0_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         long lo2 = p0_2;
         long hi2 = 0;
         {
             long s = lo2 + p1_1;
-            hi2 += Carry.addCarryOut(lo2, p1_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + p2_0;
-            hi2 += Carry.addCarryOut(lo2, p2_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h0_1;
-            hi2 += Carry.addCarryOut(lo2, h0_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h1_0;
-            hi2 += Carry.addCarryOut(lo2, h1_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         long lo3 = p0_3;
         long hi3 = 0;
         {
             long s = lo3 + p1_2;
-            hi3 += Carry.addCarryOut(lo3, p1_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p2_1;
-            hi3 += Carry.addCarryOut(lo3, p2_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p3_0;
-            hi3 += Carry.addCarryOut(lo3, p3_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h0_2;
-            hi3 += Carry.addCarryOut(lo3, h0_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h1_1;
-            hi3 += Carry.addCarryOut(lo3, h1_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h2_0;
-            hi3 += Carry.addCarryOut(lo3, h2_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         long lo4 = p1_3;
         long hi4 = 0;
         {
             long s = lo4 + p2_2;
-            hi4 += Carry.addCarryOut(lo4, p2_2, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + p3_1;
-            hi4 += Carry.addCarryOut(lo4, p3_1, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h0_3;
-            hi4 += Carry.addCarryOut(lo4, h0_3, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h1_2;
-            hi4 += Carry.addCarryOut(lo4, h1_2, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h2_1;
-            hi4 += Carry.addCarryOut(lo4, h2_1, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h3_0;
-            hi4 += Carry.addCarryOut(lo4, h3_0, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         long lo5 = p2_3;
         long hi5 = 0;
         {
             long s = lo5 + p3_2;
-            hi5 += Carry.addCarryOut(lo5, p3_2, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h1_3;
-            hi5 += Carry.addCarryOut(lo5, h1_3, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h2_2;
-            hi5 += Carry.addCarryOut(lo5, h2_2, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h3_1;
-            hi5 += Carry.addCarryOut(lo5, h3_1, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         long lo6 = p3_3;
         long hi6 = 0;
         {
             long s = lo6 + h2_3;
-            hi6 += Carry.addCarryOut(lo6, h2_3, s);
+            hi6 += (Long.compareUnsigned(s, lo6) < 0 ? 1 : 0);
             lo6 = s;
         }
         {
             long s = lo6 + h3_2;
-            hi6 += Carry.addCarryOut(lo6, h3_2, s);
+            hi6 += (Long.compareUnsigned(s, lo6) < 0 ? 1 : 0);
             lo6 = s;
         }
         long lo7 = h3_3;
@@ -370,33 +370,33 @@ public final class Wide256 implements Comparable<Wide256> {
         long r0 = lo0;
         long carry = 0;
         long s1 = lo1 + hi0;
-        long c1 = Carry.addCarryOut(lo1, hi0, s1);
+        long c1 = (Long.compareUnsigned(s1, lo1) < 0 ? 1 : 0);
         long r1 = s1 + carry;
-        carry = c1 + Carry.addCarryOut(s1, carry, r1);
+        carry = c1 + (Long.compareUnsigned(r1, s1) < 0 ? 1 : 0);
         long s2 = lo2 + hi1;
-        long c2 = Carry.addCarryOut(lo2, hi1, s2);
+        long c2 = (Long.compareUnsigned(s2, lo2) < 0 ? 1 : 0);
         long r2 = s2 + carry;
-        carry = c2 + Carry.addCarryOut(s2, carry, r2);
+        carry = c2 + (Long.compareUnsigned(r2, s2) < 0 ? 1 : 0);
         long s3 = lo3 + hi2;
-        long c3 = Carry.addCarryOut(lo3, hi2, s3);
+        long c3 = (Long.compareUnsigned(s3, lo3) < 0 ? 1 : 0);
         long r3 = s3 + carry;
-        carry = c3 + Carry.addCarryOut(s3, carry, r3);
+        carry = c3 + (Long.compareUnsigned(r3, s3) < 0 ? 1 : 0);
         long s4 = lo4 + hi3;
-        long c4 = Carry.addCarryOut(lo4, hi3, s4);
+        long c4 = (Long.compareUnsigned(s4, lo4) < 0 ? 1 : 0);
         long r4 = s4 + carry;
-        carry = c4 + Carry.addCarryOut(s4, carry, r4);
+        carry = c4 + (Long.compareUnsigned(r4, s4) < 0 ? 1 : 0);
         long s5 = lo5 + hi4;
-        long c5 = Carry.addCarryOut(lo5, hi4, s5);
+        long c5 = (Long.compareUnsigned(s5, lo5) < 0 ? 1 : 0);
         long r5 = s5 + carry;
-        carry = c5 + Carry.addCarryOut(s5, carry, r5);
+        carry = c5 + (Long.compareUnsigned(r5, s5) < 0 ? 1 : 0);
         long s6 = lo6 + hi5;
-        long c6 = Carry.addCarryOut(lo6, hi5, s6);
+        long c6 = (Long.compareUnsigned(s6, lo6) < 0 ? 1 : 0);
         long r6 = s6 + carry;
-        carry = c6 + Carry.addCarryOut(s6, carry, r6);
+        carry = c6 + (Long.compareUnsigned(r6, s6) < 0 ? 1 : 0);
         long s7 = lo7 + hi6;
-        long c7 = Carry.addCarryOut(lo7, hi6, s7);
+        long c7 = (Long.compareUnsigned(s7, lo7) < 0 ? 1 : 0);
         long r7 = s7 + carry;
-        carry = c7 + Carry.addCarryOut(s7, carry, r7);
+        carry = c7 + (Long.compareUnsigned(r7, s7) < 0 ? 1 : 0);
         return Wide512.of(r0, r1, r2, r3, r4, r5, r6, r7);
     }
 
@@ -426,82 +426,82 @@ public final class Wide256 implements Comparable<Wide256> {
         long hi1 = 0;
         {
             long s = lo1 + p1_0;
-            hi1 += Carry.addCarryOut(lo1, p1_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         {
             long s = lo1 + h0_0;
-            hi1 += Carry.addCarryOut(lo1, h0_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         long lo2 = p0_2;
         long hi2 = 0;
         {
             long s = lo2 + p1_1;
-            hi2 += Carry.addCarryOut(lo2, p1_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + p2_0;
-            hi2 += Carry.addCarryOut(lo2, p2_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h0_1;
-            hi2 += Carry.addCarryOut(lo2, h0_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h1_0;
-            hi2 += Carry.addCarryOut(lo2, h1_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         long lo3 = p0_3;
         long hi3 = 0;
         {
             long s = lo3 + p1_2;
-            hi3 += Carry.addCarryOut(lo3, p1_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p2_1;
-            hi3 += Carry.addCarryOut(lo3, p2_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p3_0;
-            hi3 += Carry.addCarryOut(lo3, p3_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h0_2;
-            hi3 += Carry.addCarryOut(lo3, h0_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h1_1;
-            hi3 += Carry.addCarryOut(lo3, h1_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h2_0;
-            hi3 += Carry.addCarryOut(lo3, h2_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         long r0 = lo0;
         long carry = 0;
         long s1 = lo1 + hi0;
-        long c1 = Carry.addCarryOut(lo1, hi0, s1);
+        long c1 = (Long.compareUnsigned(s1, lo1) < 0 ? 1 : 0);
         long r1 = s1 + carry;
-        carry = c1 + Carry.addCarryOut(s1, carry, r1);
+        carry = c1 + (Long.compareUnsigned(r1, s1) < 0 ? 1 : 0);
         long s2 = lo2 + hi1;
-        long c2 = Carry.addCarryOut(lo2, hi1, s2);
+        long c2 = (Long.compareUnsigned(s2, lo2) < 0 ? 1 : 0);
         long r2 = s2 + carry;
-        carry = c2 + Carry.addCarryOut(s2, carry, r2);
+        carry = c2 + (Long.compareUnsigned(r2, s2) < 0 ? 1 : 0);
         long s3 = lo3 + hi2;
-        long c3 = Carry.addCarryOut(lo3, hi2, s3);
+        long c3 = (Long.compareUnsigned(s3, lo3) < 0 ? 1 : 0);
         long r3 = s3 + carry;
-        carry = c3 + Carry.addCarryOut(s3, carry, r3);
+        carry = c3 + (Long.compareUnsigned(r3, s3) < 0 ? 1 : 0);
         return Wide256.of(r0, r1, r2, r3);
     }
 
@@ -547,132 +547,132 @@ public final class Wide256 implements Comparable<Wide256> {
         long hi1 = 0;
         {
             long s = lo1 + p1_0;
-            hi1 += Carry.addCarryOut(lo1, p1_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         {
             long s = lo1 + h0_0;
-            hi1 += Carry.addCarryOut(lo1, h0_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         long lo2 = p0_2;
         long hi2 = 0;
         {
             long s = lo2 + p1_1;
-            hi2 += Carry.addCarryOut(lo2, p1_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + p2_0;
-            hi2 += Carry.addCarryOut(lo2, p2_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h0_1;
-            hi2 += Carry.addCarryOut(lo2, h0_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h1_0;
-            hi2 += Carry.addCarryOut(lo2, h1_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         long lo3 = p0_3;
         long hi3 = 0;
         {
             long s = lo3 + p1_2;
-            hi3 += Carry.addCarryOut(lo3, p1_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p2_1;
-            hi3 += Carry.addCarryOut(lo3, p2_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p3_0;
-            hi3 += Carry.addCarryOut(lo3, p3_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h0_2;
-            hi3 += Carry.addCarryOut(lo3, h0_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h1_1;
-            hi3 += Carry.addCarryOut(lo3, h1_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h2_0;
-            hi3 += Carry.addCarryOut(lo3, h2_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         long lo4 = p1_3;
         long hi4 = 0;
         {
             long s = lo4 + p2_2;
-            hi4 += Carry.addCarryOut(lo4, p2_2, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + p3_1;
-            hi4 += Carry.addCarryOut(lo4, p3_1, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h0_3;
-            hi4 += Carry.addCarryOut(lo4, h0_3, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h1_2;
-            hi4 += Carry.addCarryOut(lo4, h1_2, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h2_1;
-            hi4 += Carry.addCarryOut(lo4, h2_1, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         {
             long s = lo4 + h3_0;
-            hi4 += Carry.addCarryOut(lo4, h3_0, s);
+            hi4 += (Long.compareUnsigned(s, lo4) < 0 ? 1 : 0);
             lo4 = s;
         }
         long lo5 = p2_3;
         long hi5 = 0;
         {
             long s = lo5 + p3_2;
-            hi5 += Carry.addCarryOut(lo5, p3_2, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h1_3;
-            hi5 += Carry.addCarryOut(lo5, h1_3, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h2_2;
-            hi5 += Carry.addCarryOut(lo5, h2_2, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         {
             long s = lo5 + h3_1;
-            hi5 += Carry.addCarryOut(lo5, h3_1, s);
+            hi5 += (Long.compareUnsigned(s, lo5) < 0 ? 1 : 0);
             lo5 = s;
         }
         long lo6 = p3_3;
         long hi6 = 0;
         {
             long s = lo6 + h2_3;
-            hi6 += Carry.addCarryOut(lo6, h2_3, s);
+            hi6 += (Long.compareUnsigned(s, lo6) < 0 ? 1 : 0);
             lo6 = s;
         }
         {
             long s = lo6 + h3_2;
-            hi6 += Carry.addCarryOut(lo6, h3_2, s);
+            hi6 += (Long.compareUnsigned(s, lo6) < 0 ? 1 : 0);
             lo6 = s;
         }
         long lo7 = h3_3;
@@ -680,33 +680,33 @@ public final class Wide256 implements Comparable<Wide256> {
         long r0 = lo0;
         long carry = 0;
         long s1 = lo1 + hi0;
-        long c1 = Carry.addCarryOut(lo1, hi0, s1);
+        long c1 = (Long.compareUnsigned(s1, lo1) < 0 ? 1 : 0);
         long r1 = s1 + carry;
-        carry = c1 + Carry.addCarryOut(s1, carry, r1);
+        carry = c1 + (Long.compareUnsigned(r1, s1) < 0 ? 1 : 0);
         long s2 = lo2 + hi1;
-        long c2 = Carry.addCarryOut(lo2, hi1, s2);
+        long c2 = (Long.compareUnsigned(s2, lo2) < 0 ? 1 : 0);
         long r2 = s2 + carry;
-        carry = c2 + Carry.addCarryOut(s2, carry, r2);
+        carry = c2 + (Long.compareUnsigned(r2, s2) < 0 ? 1 : 0);
         long s3 = lo3 + hi2;
-        long c3 = Carry.addCarryOut(lo3, hi2, s3);
+        long c3 = (Long.compareUnsigned(s3, lo3) < 0 ? 1 : 0);
         long r3 = s3 + carry;
-        carry = c3 + Carry.addCarryOut(s3, carry, r3);
+        carry = c3 + (Long.compareUnsigned(r3, s3) < 0 ? 1 : 0);
         long s4 = lo4 + hi3;
-        long c4 = Carry.addCarryOut(lo4, hi3, s4);
+        long c4 = (Long.compareUnsigned(s4, lo4) < 0 ? 1 : 0);
         long r4 = s4 + carry;
-        carry = c4 + Carry.addCarryOut(s4, carry, r4);
+        carry = c4 + (Long.compareUnsigned(r4, s4) < 0 ? 1 : 0);
         long s5 = lo5 + hi4;
-        long c5 = Carry.addCarryOut(lo5, hi4, s5);
+        long c5 = (Long.compareUnsigned(s5, lo5) < 0 ? 1 : 0);
         long r5 = s5 + carry;
-        carry = c5 + Carry.addCarryOut(s5, carry, r5);
+        carry = c5 + (Long.compareUnsigned(r5, s5) < 0 ? 1 : 0);
         long s6 = lo6 + hi5;
-        long c6 = Carry.addCarryOut(lo6, hi5, s6);
+        long c6 = (Long.compareUnsigned(s6, lo6) < 0 ? 1 : 0);
         long r6 = s6 + carry;
-        carry = c6 + Carry.addCarryOut(s6, carry, r6);
+        carry = c6 + (Long.compareUnsigned(r6, s6) < 0 ? 1 : 0);
         long s7 = lo7 + hi6;
-        long c7 = Carry.addCarryOut(lo7, hi6, s7);
+        long c7 = (Long.compareUnsigned(s7, lo7) < 0 ? 1 : 0);
         long r7 = s7 + carry;
-        carry = c7 + Carry.addCarryOut(s7, carry, r7);
+        carry = c7 + (Long.compareUnsigned(r7, s7) < 0 ? 1 : 0);
         out[off + 0] = r0;
         out[off + 1] = r1;
         out[off + 2] = r2;
@@ -743,82 +743,82 @@ public final class Wide256 implements Comparable<Wide256> {
         long hi1 = 0;
         {
             long s = lo1 + p1_0;
-            hi1 += Carry.addCarryOut(lo1, p1_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         {
             long s = lo1 + h0_0;
-            hi1 += Carry.addCarryOut(lo1, h0_0, s);
+            hi1 += (Long.compareUnsigned(s, lo1) < 0 ? 1 : 0);
             lo1 = s;
         }
         long lo2 = p0_2;
         long hi2 = 0;
         {
             long s = lo2 + p1_1;
-            hi2 += Carry.addCarryOut(lo2, p1_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + p2_0;
-            hi2 += Carry.addCarryOut(lo2, p2_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h0_1;
-            hi2 += Carry.addCarryOut(lo2, h0_1, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         {
             long s = lo2 + h1_0;
-            hi2 += Carry.addCarryOut(lo2, h1_0, s);
+            hi2 += (Long.compareUnsigned(s, lo2) < 0 ? 1 : 0);
             lo2 = s;
         }
         long lo3 = p0_3;
         long hi3 = 0;
         {
             long s = lo3 + p1_2;
-            hi3 += Carry.addCarryOut(lo3, p1_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p2_1;
-            hi3 += Carry.addCarryOut(lo3, p2_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + p3_0;
-            hi3 += Carry.addCarryOut(lo3, p3_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h0_2;
-            hi3 += Carry.addCarryOut(lo3, h0_2, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h1_1;
-            hi3 += Carry.addCarryOut(lo3, h1_1, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         {
             long s = lo3 + h2_0;
-            hi3 += Carry.addCarryOut(lo3, h2_0, s);
+            hi3 += (Long.compareUnsigned(s, lo3) < 0 ? 1 : 0);
             lo3 = s;
         }
         long r0 = lo0;
         long carry = 0;
         long s1 = lo1 + hi0;
-        long c1 = Carry.addCarryOut(lo1, hi0, s1);
+        long c1 = (Long.compareUnsigned(s1, lo1) < 0 ? 1 : 0);
         long r1 = s1 + carry;
-        carry = c1 + Carry.addCarryOut(s1, carry, r1);
+        carry = c1 + (Long.compareUnsigned(r1, s1) < 0 ? 1 : 0);
         long s2 = lo2 + hi1;
-        long c2 = Carry.addCarryOut(lo2, hi1, s2);
+        long c2 = (Long.compareUnsigned(s2, lo2) < 0 ? 1 : 0);
         long r2 = s2 + carry;
-        carry = c2 + Carry.addCarryOut(s2, carry, r2);
+        carry = c2 + (Long.compareUnsigned(r2, s2) < 0 ? 1 : 0);
         long s3 = lo3 + hi2;
-        long c3 = Carry.addCarryOut(lo3, hi2, s3);
+        long c3 = (Long.compareUnsigned(s3, lo3) < 0 ? 1 : 0);
         long r3 = s3 + carry;
-        carry = c3 + Carry.addCarryOut(s3, carry, r3);
+        carry = c3 + (Long.compareUnsigned(r3, s3) < 0 ? 1 : 0);
         out[off + 0] = r0;
         out[off + 1] = r1;
         out[off + 2] = r2;

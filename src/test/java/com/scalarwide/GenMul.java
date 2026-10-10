@@ -15,6 +15,15 @@ public final class GenMul {
 
     private static final int[] WIDTHS = {512, 768, 1024};
 
+    private static final boolean COMPARE_CARRIES = true;
+
+    private static String carryExpr(String a, String b, String r) {
+        if (COMPARE_CARRIES) {
+            return "(Long.compareUnsigned(" + r + ", " + a + ") < 0 ? 1 : 0)";
+        }
+        return "Carry.addCarryOut(" + a + ", " + b + ", " + r + ")";
+    }
+
     private GenMul() {
     }
 
@@ -97,8 +106,8 @@ public final class GenMul {
             for (int k = 1; k < terms.size(); k++) {
                 b.append("        {\n");
                 b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
-                b.append("            hi").append(t).append(" += Carry.addCarryOut(lo").append(t)
-                        .append(", ").append(terms.get(k)).append(", s);\n");
+            b.append("            hi").append(t).append(" += ")
+                    .append(carryExpr("lo" + t, terms.get(k), "s")).append(";\n");
                 b.append("            lo").append(t).append(" = s;\n");
                 b.append("        }\n");
             }
@@ -108,11 +117,11 @@ public final class GenMul {
         for (int t = 1; t <= lastColumn; t++) {
             b.append("        long s").append(t).append(" = lo").append(t)
                     .append(" + hi").append(t - 1).append(";\n");
-            b.append("        long c").append(t).append(" = Carry.addCarryOut(lo").append(t)
-                    .append(", hi").append(t - 1).append(", s").append(t).append(");\n");
+            b.append("        long c").append(t).append(" = ")
+                    .append(carryExpr("lo" + t, "hi" + (t - 1), "s" + t)).append(";\n");
             b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
-            b.append("        carry = c").append(t).append(" + Carry.addCarryOut(s").append(t)
-                    .append(", carry, r").append(t).append(");\n");
+            b.append("        carry = c").append(t).append(" + ")
+                    .append(carryExpr("s" + t, "carry", "r" + t)).append(";\n");
         }
         for (int t = 0; t <= lastColumn; t++) {
             b.append("        out[off + ").append(t).append("] = r").append(t).append(";\n");
@@ -168,8 +177,8 @@ public final class GenMul {
             for (int k = 1; k < terms.size(); k++) {
                 b.append("        {\n");
                 b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
-                b.append("            hi").append(t).append(" += Carry.addCarryOut(lo").append(t)
-                        .append(", ").append(terms.get(k)).append(", s);\n");
+            b.append("            hi").append(t).append(" += ")
+                    .append(carryExpr("lo" + t, terms.get(k), "s")).append(";\n");
                 b.append("            lo").append(t).append(" = s;\n");
                 b.append("        }\n");
             }
@@ -179,11 +188,11 @@ public final class GenMul {
         for (int t = 1; t <= lastColumn; t++) {
             b.append("        long s").append(t).append(" = lo").append(t)
                     .append(" + hi").append(t - 1).append(";\n");
-            b.append("        long c").append(t).append(" = Carry.addCarryOut(lo").append(t)
-                    .append(", hi").append(t - 1).append(", s").append(t).append(");\n");
+            b.append("        long c").append(t).append(" = ")
+                    .append(carryExpr("lo" + t, "hi" + (t - 1), "s" + t)).append(";\n");
             b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
-            b.append("        carry = c").append(t).append(" + Carry.addCarryOut(s").append(t)
-                    .append(", carry, r").append(t).append(");\n");
+            b.append("        carry = c").append(t).append(" + ")
+                    .append(carryExpr("s" + t, "carry", "r" + t)).append(";\n");
         }
         b.append("        return ").append(returnType).append(".of(");
         for (int t = 0; t <= lastColumn; t++) {
@@ -253,14 +262,14 @@ public final class GenMul {
                 } else {
                     c.append("            {\n");
                     c.append("                long r = s + ").append(term).append(";\n");
-                    c.append("                k += Carry.addCarryOut(s, ").append(term).append(", r);\n");
+                    c.append("                k += ").append(carryExpr("s", term, "r")).append(";\n");
                     c.append("                s = r;\n");
                     c.append("            }\n");
                 }
             }
             c.append("            {\n");
             c.append("                long r = s + carry;\n");
-            c.append("                k += Carry.addCarryOut(s, carry, r);\n");
+                c.append("                k += ").append(carryExpr("s", "carry", "r")).append(";\n");
             c.append("                c").append(t).append(" = r;\n");
             c.append("                carry = k;\n");
             c.append("            }\n");
