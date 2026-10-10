@@ -189,6 +189,219 @@ public final class Wide256 implements Comparable<Wide256> {
         return Wide512.of(acc.c0, acc.c1, acc.c2, acc.c3, acc.c4, acc.c5, acc.c6, acc.c7);
     }
 
+    /**
+     * Full 512-bit product with per-column 128-bit accumulators and a
+     * deferred carry sweep (CSR-style variant; oracle-checked).
+     */
+    public Wide512 mulFullDeferred(Wide256 o) {
+        long a0 = l0;
+        long a1 = l1;
+        long a2 = l2;
+        long a3 = l3;
+        long b0 = o.limb(0);
+        long b1 = o.limb(1);
+        long b2 = o.limb(2);
+        long b3 = o.limb(3);
+        long p0_0 = a0 * b0;
+        long p0_1 = a0 * b1;
+        long p0_2 = a0 * b2;
+        long p0_3 = a0 * b3;
+        long p1_0 = a1 * b0;
+        long p1_1 = a1 * b1;
+        long p1_2 = a1 * b2;
+        long p1_3 = a1 * b3;
+        long p2_0 = a2 * b0;
+        long p2_1 = a2 * b1;
+        long p2_2 = a2 * b2;
+        long p2_3 = a2 * b3;
+        long p3_0 = a3 * b0;
+        long p3_1 = a3 * b1;
+        long p3_2 = a3 * b2;
+        long p3_3 = a3 * b3;
+        long h0_0 = Math.unsignedMultiplyHigh(a0, b0);
+        long h0_1 = Math.unsignedMultiplyHigh(a0, b1);
+        long h0_2 = Math.unsignedMultiplyHigh(a0, b2);
+        long h0_3 = Math.unsignedMultiplyHigh(a0, b3);
+        long h1_0 = Math.unsignedMultiplyHigh(a1, b0);
+        long h1_1 = Math.unsignedMultiplyHigh(a1, b1);
+        long h1_2 = Math.unsignedMultiplyHigh(a1, b2);
+        long h1_3 = Math.unsignedMultiplyHigh(a1, b3);
+        long h2_0 = Math.unsignedMultiplyHigh(a2, b0);
+        long h2_1 = Math.unsignedMultiplyHigh(a2, b1);
+        long h2_2 = Math.unsignedMultiplyHigh(a2, b2);
+        long h2_3 = Math.unsignedMultiplyHigh(a2, b3);
+        long h3_0 = Math.unsignedMultiplyHigh(a3, b0);
+        long h3_1 = Math.unsignedMultiplyHigh(a3, b1);
+        long h3_2 = Math.unsignedMultiplyHigh(a3, b2);
+        long h3_3 = Math.unsignedMultiplyHigh(a3, b3);
+        long lo0 = p0_0;
+        long hi0 = 0;
+        long lo1 = p0_1;
+        long hi1 = 0;
+        {
+            long s = lo1 + p1_0;
+            hi1 += Carry.addCarryOut(lo1, p1_0, s);
+            lo1 = s;
+        }
+        {
+            long s = lo1 + h0_0;
+            hi1 += Carry.addCarryOut(lo1, h0_0, s);
+            lo1 = s;
+        }
+        long lo2 = p0_2;
+        long hi2 = 0;
+        {
+            long s = lo2 + p1_1;
+            hi2 += Carry.addCarryOut(lo2, p1_1, s);
+            lo2 = s;
+        }
+        {
+            long s = lo2 + p2_0;
+            hi2 += Carry.addCarryOut(lo2, p2_0, s);
+            lo2 = s;
+        }
+        {
+            long s = lo2 + h0_1;
+            hi2 += Carry.addCarryOut(lo2, h0_1, s);
+            lo2 = s;
+        }
+        {
+            long s = lo2 + h1_0;
+            hi2 += Carry.addCarryOut(lo2, h1_0, s);
+            lo2 = s;
+        }
+        long lo3 = p0_3;
+        long hi3 = 0;
+        {
+            long s = lo3 + p1_2;
+            hi3 += Carry.addCarryOut(lo3, p1_2, s);
+            lo3 = s;
+        }
+        {
+            long s = lo3 + p2_1;
+            hi3 += Carry.addCarryOut(lo3, p2_1, s);
+            lo3 = s;
+        }
+        {
+            long s = lo3 + p3_0;
+            hi3 += Carry.addCarryOut(lo3, p3_0, s);
+            lo3 = s;
+        }
+        {
+            long s = lo3 + h0_2;
+            hi3 += Carry.addCarryOut(lo3, h0_2, s);
+            lo3 = s;
+        }
+        {
+            long s = lo3 + h1_1;
+            hi3 += Carry.addCarryOut(lo3, h1_1, s);
+            lo3 = s;
+        }
+        {
+            long s = lo3 + h2_0;
+            hi3 += Carry.addCarryOut(lo3, h2_0, s);
+            lo3 = s;
+        }
+        long lo4 = p1_3;
+        long hi4 = 0;
+        {
+            long s = lo4 + p2_2;
+            hi4 += Carry.addCarryOut(lo4, p2_2, s);
+            lo4 = s;
+        }
+        {
+            long s = lo4 + p3_1;
+            hi4 += Carry.addCarryOut(lo4, p3_1, s);
+            lo4 = s;
+        }
+        {
+            long s = lo4 + h0_3;
+            hi4 += Carry.addCarryOut(lo4, h0_3, s);
+            lo4 = s;
+        }
+        {
+            long s = lo4 + h1_2;
+            hi4 += Carry.addCarryOut(lo4, h1_2, s);
+            lo4 = s;
+        }
+        {
+            long s = lo4 + h2_1;
+            hi4 += Carry.addCarryOut(lo4, h2_1, s);
+            lo4 = s;
+        }
+        {
+            long s = lo4 + h3_0;
+            hi4 += Carry.addCarryOut(lo4, h3_0, s);
+            lo4 = s;
+        }
+        long lo5 = p2_3;
+        long hi5 = 0;
+        {
+            long s = lo5 + p3_2;
+            hi5 += Carry.addCarryOut(lo5, p3_2, s);
+            lo5 = s;
+        }
+        {
+            long s = lo5 + h1_3;
+            hi5 += Carry.addCarryOut(lo5, h1_3, s);
+            lo5 = s;
+        }
+        {
+            long s = lo5 + h2_2;
+            hi5 += Carry.addCarryOut(lo5, h2_2, s);
+            lo5 = s;
+        }
+        {
+            long s = lo5 + h3_1;
+            hi5 += Carry.addCarryOut(lo5, h3_1, s);
+            lo5 = s;
+        }
+        long lo6 = p3_3;
+        long hi6 = 0;
+        {
+            long s = lo6 + h2_3;
+            hi6 += Carry.addCarryOut(lo6, h2_3, s);
+            lo6 = s;
+        }
+        {
+            long s = lo6 + h3_2;
+            hi6 += Carry.addCarryOut(lo6, h3_2, s);
+            lo6 = s;
+        }
+        long lo7 = h3_3;
+        long hi7 = 0;
+        long r0 = lo0;
+        long carry = 0;
+        long s1 = lo1 + hi0;
+        long c1 = Carry.addCarryOut(lo1, hi0, s1);
+        long r1 = s1 + carry;
+        carry = c1 + Carry.addCarryOut(s1, carry, r1);
+        long s2 = lo2 + hi1;
+        long c2 = Carry.addCarryOut(lo2, hi1, s2);
+        long r2 = s2 + carry;
+        carry = c2 + Carry.addCarryOut(s2, carry, r2);
+        long s3 = lo3 + hi2;
+        long c3 = Carry.addCarryOut(lo3, hi2, s3);
+        long r3 = s3 + carry;
+        carry = c3 + Carry.addCarryOut(s3, carry, r3);
+        long s4 = lo4 + hi3;
+        long c4 = Carry.addCarryOut(lo4, hi3, s4);
+        long r4 = s4 + carry;
+        carry = c4 + Carry.addCarryOut(s4, carry, r4);
+        long s5 = lo5 + hi4;
+        long c5 = Carry.addCarryOut(lo5, hi4, s5);
+        long r5 = s5 + carry;
+        carry = c5 + Carry.addCarryOut(s5, carry, r5);
+        long s6 = lo6 + hi5;
+        long c6 = Carry.addCarryOut(lo6, hi5, s6);
+        long r6 = s6 + carry;
+        carry = c6 + Carry.addCarryOut(s6, carry, r6);
+        long s7 = lo7 + hi6;
+        long c7 = Carry.addCarryOut(lo7, hi6, s7);
+        long r7 = s7 + carry;
+        carry = c7 + Carry.addCarryOut(s7, carry, r7);
+        return Wide512.of(r0, r1, r2, r3, r4, r5, r6, r7);
+    }
     private static final class MulAcc {
         long carry;
         long c0;

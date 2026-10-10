@@ -56,6 +56,11 @@ public class Wide512Bench {
     }
 
     @Benchmark
+    public Wide512 mulFullDeferred() {
+        return aLow.mulFullDeferred(bLow);
+    }
+
+    @Benchmark
     public Wide512 mulFullTwo() {
         return aLow.mulFull(bLow).add(aHigh.mulFull(bHigh));
     }

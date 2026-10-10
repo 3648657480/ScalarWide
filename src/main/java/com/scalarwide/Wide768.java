@@ -196,9 +196,9 @@ public final class Wide768 implements Comparable<Wide768> {
      * {@code q20} low blocks only).
      */
     public Wide768 mul(Wide768 o) {
-        Wide512 q00 = block0().mulFull(o.block0());
-        Wide512 q01 = block0().mulFull(o.block1());
-        Wide512 q10 = block1().mulFull(o.block0());
+        Wide512 q00 = block0().mulFullDeferred(o.block0());
+        Wide512 q01 = block0().mulFullDeferred(o.block1());
+        Wide512 q10 = block1().mulFullDeferred(o.block0());
         Wide256 q02l = block0().mul(o.block2());
         Wide256 q11l = block1().mul(o.block1());
         Wide256 q20l = block2().mul(o.block0());

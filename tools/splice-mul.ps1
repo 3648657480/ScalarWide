@@ -25,3 +25,18 @@ foreach ($target in $targets) {
     [System.IO.File]::WriteAllText($file, $new, (New-Object System.Text.UTF8Encoding($false)))
     Write-Output ("spliced Wide$w.$($name): old $($m.Length) chars -> new $($genText.Length) chars")
 }
+
+# Atom: inject/replace Wide256.mulFullDeferred
+$file = Join-Path $src 'Wide256.java'
+$genFile = Join-Path $gen 'Wide256.mulFullDeferred.method.java'
+if (-not (Test-Path $genFile)) { throw "missing generated file: $genFile" }
+$genText = [System.IO.File]::ReadAllText($genFile)
+$raw = [System.IO.File]::ReadAllText($file)
+$rx = [regex]::new('(?s)    /\*\*(?:[^*]|\*(?!/))*\*/\r?\n    public Wide512 mulFullDeferred\(Wide256 o\) \{.*?\n    \}\r?\n')
+$new = if ($rx.IsMatch($raw)) {
+    $rx.Replace($raw, $genText, 1)
+} else {
+    $raw.Replace('    private static final class MulAcc {', $genText + '    private static final class MulAcc {')
+}
+[System.IO.File]::WriteAllText($file, $new, (New-Object System.Text.UTF8Encoding($false)))
+Write-Output 'spliced Wide256.mulFullDeferred'

@@ -27,6 +27,76 @@ public final class GenMul {
             Files.writeString(dir.resolve("Wide" + w + ".mulHigh.gen.java"), generateMulHigh(w, limbs));
             System.out.println("generated Wide" + w + " (" + limbs + " limbs)");
         }
+        Files.writeString(dir.resolve("Wide256.mulFullDeferred.method.java"), generateAtomDeferred());
+        System.out.println("generated Wide256.mulFullDeferred");
+    }
+
+    private static String generateAtomDeferred() {
+        int limbs = 4;
+        StringBuilder b = new StringBuilder();
+        b.append("    /**\n");
+        b.append("     * Full 512-bit product with per-column 128-bit accumulators and a\n");
+        b.append("     * deferred carry sweep (CSR-style variant; oracle-checked).\n");
+        b.append("     */\n");
+        b.append("    public Wide512 mulFullDeferred(Wide256 o) {\n");
+        for (int i = 0; i < limbs; i++) {
+            b.append("        long a").append(i).append(" = l").append(i).append(";\n");
+        }
+        for (int i = 0; i < limbs; i++) {
+            b.append("        long b").append(i).append(" = o.limb(").append(i).append(");\n");
+        }
+        for (int i = 0; i < limbs; i++) {
+            for (int j = 0; j < limbs; j++) {
+                b.append("        long p").append(i).append('_').append(j)
+                        .append(" = a").append(i).append(" * b").append(j).append(";\n");
+            }
+        }
+        for (int i = 0; i < limbs; i++) {
+            for (int j = 0; j < limbs; j++) {
+                b.append("        long h").append(i).append('_').append(j)
+                        .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                        .append(", b").append(j).append(");\n");
+            }
+        }
+        for (int t = 0; t <= 2 * limbs - 1; t++) {
+            List<String> terms = new ArrayList<>();
+            for (int u = 0; u < limbs; u++) {
+                int v = t - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("p" + u + "_" + v);
+                }
+            }
+            for (int u = 0; u < limbs; u++) {
+                int v = t - 1 - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("h" + u + "_" + v);
+                }
+            }
+            b.append("        long lo").append(t).append(" = ").append(terms.get(0)).append(";\n");
+            b.append("        long hi").append(t).append(" = 0;\n");
+            for (int k = 1; k < terms.size(); k++) {
+                b.append("        {\n");
+                b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
+                b.append("            hi").append(t).append(" += Carry.addCarryOut(lo").append(t)
+                        .append(", ").append(terms.get(k)).append(", s);\n");
+                b.append("            lo").append(t).append(" = s;\n");
+                b.append("        }\n");
+            }
+        }
+        b.append("        long r0 = lo0;\n");
+        b.append("        long carry = 0;\n");
+        for (int t = 1; t <= 2 * limbs - 1; t++) {
+            b.append("        long s").append(t).append(" = lo").append(t)
+                    .append(" + hi").append(t - 1).append(";\n");
+            b.append("        long c").append(t).append(" = Carry.addCarryOut(lo").append(t)
+                    .append(", hi").append(t - 1).append(", s").append(t).append(");\n");
+            b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
+            b.append("        carry = c").append(t).append(" + Carry.addCarryOut(s").append(t)
+                    .append(", carry, r").append(t).append(");\n");
+        }
+        b.append("        return Wide512.of(r0, r1, r2, r3, r4, r5, r6, r7);\n");
+        b.append("    }\n");
+        return b.toString();
     }
 
     private static String generateMul(int width, int limbs) {

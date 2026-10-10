@@ -226,12 +226,12 @@ public final class Wide1024 implements Comparable<Wide1024> {
      * composed from 256-bit atom block products (six full, four low-block-only).
      */
     public Wide1024 mul(Wide1024 o) {
-        Wide512 q00 = block0().mulFull(o.block0());
-        Wide512 q01 = block0().mulFull(o.block1());
-        Wide512 q10 = block1().mulFull(o.block0());
-        Wide512 q02 = block0().mulFull(o.block2());
-        Wide512 q11 = block1().mulFull(o.block1());
-        Wide512 q20 = block2().mulFull(o.block0());
+        Wide512 q00 = block0().mulFullDeferred(o.block0());
+        Wide512 q01 = block0().mulFullDeferred(o.block1());
+        Wide512 q10 = block1().mulFullDeferred(o.block0());
+        Wide512 q02 = block0().mulFullDeferred(o.block2());
+        Wide512 q11 = block1().mulFullDeferred(o.block1());
+        Wide512 q20 = block2().mulFullDeferred(o.block0());
         Wide256 q03l = block0().mul(o.block3());
         Wide256 q12l = block1().mul(o.block2());
         Wide256 q21l = block2().mul(o.block1());
