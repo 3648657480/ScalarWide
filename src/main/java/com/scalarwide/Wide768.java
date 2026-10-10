@@ -128,6 +128,79 @@ public final class Wide768 implements Comparable<Wide768> {
         return (l0 | l1 | l2 | l3 | l4 | l5 | l6 | l7 | l8 | l9 | l10 | l11) == 0;
     }
 
+    /**
+     * Unsigned division: `this / o`, truncated.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide768 div(Wide768 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(q[0], q[1], q[2], q[3],
+                q[4], q[5], q[6], q[7],
+                q[8], q[9], q[10], q[11]);
+    }
+
+    /**
+     * Unsigned remainder: `this % o`.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide768 rem(Wide768 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(r[0], r[1], r[2], r[3],
+                r[4], r[5], r[6], r[7],
+                r[8], r[9], r[10], r[11]);
+    }
+
+    /**
+     * Multiplicative power modulo 2^BITS (square-and-multiply).
+     *
+     * @throws IllegalArgumentException if `exp` is negative
+     */
+    public Wide768 pow(int exp) {
+        if (exp < 0) {
+            throw new IllegalArgumentException("negative exponent: " + exp);
+        }
+        Wide768 result = ONE;
+        Wide768 base = this;
+        while (exp > 0) {
+            if ((exp & 1) == 1) {
+                result = result.mul(base);
+            }
+            base = base.mul(base);
+            exp >>= 1;
+        }
+        return result;
+    }
+
+    /** Population count over all BITS bits. */
+    public int bitCount() {
+        return Long.bitCount(l0) + Long.bitCount(l1)
+                + Long.bitCount(l2) + Long.bitCount(l3)
+                + Long.bitCount(l4) + Long.bitCount(l5)
+                + Long.bitCount(l6) + Long.bitCount(l7)
+                + Long.bitCount(l8) + Long.bitCount(l9)
+                + Long.bitCount(l10) + Long.bitCount(l11);
+    }
+
+    /** Unsigned minimum (consistent with {@link #compareUnsigned}). */
+    public Wide768 min(Wide768 o) {
+        return compareUnsigned(o) <= 0 ? this : o;
+    }
+
+    /** Unsigned maximum (consistent with {@link #compareUnsigned}). */
+    public Wide768 max(Wide768 o) {
+        return compareUnsigned(o) >= 0 ? this : o;
+    }
+
+    /** Two's-complement absolute value; MIN_VALUE wraps to itself. */
+    public Wide768 abs() {
+        return l11 < 0 ? neg() : this;
+    }
     public int bitLength() {
         if (l11 != 0) {
             return 704 + (64 - Long.numberOfLeadingZeros(l11));

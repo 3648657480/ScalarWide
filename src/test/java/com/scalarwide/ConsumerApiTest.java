@@ -63,6 +63,17 @@ class ConsumerApiTest {
     }
 
     @Test
+    void mathOpsPattern() {
+        assertEquals(Wide256.of(14), Wide256.of(100).div(Wide256.of(7)));
+        assertEquals(Wide256.of(2), Wide256.of(100).rem(Wide256.of(7)));
+        assertEquals(Wide256.of(81), Wide256.of(3).pow(4));
+        assertEquals(3, Wide256.of(0b1011).bitCount());
+        assertEquals(Wide256.of(2), Wide256.of(3).min(Wide256.of(2)));
+        assertEquals(Wide256.of(3), Wide256.of(3).max(Wide256.of(2)));
+        assertEquals(Wide256.of(5), Wide256.ofSigned(-5).abs());
+    }
+
+    @Test
     void mutableCarrierPattern() {
         MutableWide256 acc = new MutableWide256();
         acc.set(Wide256.of(3)).add(Wide256.of(4)).mul(Wide256.of(5));

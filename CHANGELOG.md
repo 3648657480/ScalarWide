@@ -2,6 +2,24 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.3
+
+### Added
+
+- **Math-completeness ops on all six widths** (additive, drop-in):
+  `div`/`rem` (unsigned, `ArithmeticException` on zero divisor), `pow`
+  (mod 2^BITS square-and-multiply), `bitCount`, `min`/`max` (unsigned,
+  consistent with `compareUnsigned`), `abs` (two's-complement; MIN_VALUE wraps
+  to itself). Gated by `MathOpsTest` (BigInteger differential incl. edges) and
+  pinned in the consumer contract (`ConsumerApiTest`).
+
+### Measured (workstation, JDK 21)
+
+- Division v1 (`Limbs.divmod`, binary shift-subtract - correctness first) is
+  **behind BigInteger**: 128: 146.8 vs 41.7 ns (0.28x), 256: 1183 vs 81.5
+  (0.07x), 512: 3286 vs 170.1 (0.05x), 1024: 9971 vs 418.9 (0.04x) ns. A
+  Knuth-D fast path is the planned next measured round (`docs/BENCH.md` P10).
+
 ## 0.11.2
 
 ### Changed

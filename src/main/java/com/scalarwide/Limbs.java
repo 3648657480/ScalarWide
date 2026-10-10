@@ -175,6 +175,38 @@ final class Limbs {
         return acc;
     }
 
+    /**
+     * Unsigned division with remainder (binary shift-subtract; correctness
+     * first - a Knuth-D fast path is a future measured round). {@code u} and
+     * {@code v} must have the packed width; {@code q} and {@code r} receive
+     * quotient and remainder.
+     *
+     * @throws ArithmeticException if {@code v} is zero
+     */
+    static void divmod(long[] u, long[] v, long[] q, long[] r) {
+        int top = v.length;
+        while (top > 0 && v[top - 1] == 0) {
+            top--;
+        }
+        if (top == 0) {
+            throw new ArithmeticException("division by zero");
+        }
+        java.util.Arrays.fill(q, 0L);
+        if (compareUnsigned(u, v) < 0) {
+            System.arraycopy(u, 0, r, 0, r.length);
+            return;
+        }
+        java.util.Arrays.fill(r, 0L);
+        for (int i = bitLength(u) - 1; i >= 0; i--) {
+            shl(r, 1, r);
+            r[0] |= (u[i >>> 6] >>> (i & 63)) & 1L;
+            if (compareUnsigned(r, v) >= 0) {
+                sub(r, v, r);
+                q[i >>> 6] |= 1L << (i & 63);
+            }
+        }
+    }
+
     private static void addAt(long[] acc, int idx, long v) {
         long s = acc[idx] + v;
         long c = addCarry(acc[idx], v, s);

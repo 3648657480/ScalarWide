@@ -768,3 +768,21 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
   本项为 mc 先行、按 `docs/BRANCHES.md` 策略**回流 main** 的补丁级纯收益（ConsumerApiTest 绿 = drop-in）。
 - main 剩余已知退化：**1024.mulHigh 0.71×、768.mulHigh 0.92×**（架构上限，已记录）；其余全数领先。
 
+## 2026-10-10 · P10：数学完整性（div/rem/pow/bitCount/min/max/abs）+ 除法 v1 速度账
+
+- 新增公开运算（全六宽度，BigInteger 差分全绿）：`div`/`rem`（无符号，除零抛 `ArithmeticException`）、
+  `pow`（模 2^BITS 平方乘）、`bitCount`、`min`/`max`（无符号口径）、`abs`（二补码，MIN_VALUE 回绕自身）。
+- 实现：除法 v1 = `Limbs.divmod` 二进制移位减法（**正确性优先**）。
+- 速度账（工作站着核，除数取半宽保证非短路；**落后 big 已如实记录**）：
+
+| div ns/op | 我们 v1 | BigInteger | 比 |
+|---|---|---|---|
+| 128 | 146.8 | 41.7 | 0.28× |
+| 256 | 1183 | 81.5 | 0.07× |
+| 512 | 3286 | 170.1 | 0.05× |
+| 1024 | 9971 | 418.9 | 0.04× |
+
+- 结论：v1 为 O(bits²) 移位减法，符合"先正确后优化"；**Knuth-D 快速路径为下一轮实测项**（主缺口）。
+- 插曲：首版样本除数大于被除数 → 短路 0 路径出假快数（0.8-10ns），修样本后入账（同"样本退化"教训）。
+- 测试端：`MathOpsTest`（8 用例）、`DivisionBench`（16 项）；`ConsumerApiTest` 增补数学算子钉口。
+

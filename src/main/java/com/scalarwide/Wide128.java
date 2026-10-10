@@ -82,6 +82,70 @@ public final class Wide128 implements Comparable<Wide128> {
         return (l0 | l1) == 0;
     }
 
+    /**
+     * Unsigned division: `this / o`, truncated.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide128 div(Wide128 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(q[0], q[1]);
+    }
+
+    /**
+     * Unsigned remainder: `this % o`.
+     *
+     * @throws ArithmeticException if `o` is zero
+     */
+    public Wide128 rem(Wide128 o) {
+        long[] q = new long[LIMBS];
+        long[] r = new long[LIMBS];
+        Limbs.divmod(pack(), o.pack(), q, r);
+        return of(r[0], r[1]);
+    }
+
+    /**
+     * Multiplicative power modulo 2^BITS (square-and-multiply).
+     *
+     * @throws IllegalArgumentException if `exp` is negative
+     */
+    public Wide128 pow(int exp) {
+        if (exp < 0) {
+            throw new IllegalArgumentException("negative exponent: " + exp);
+        }
+        Wide128 result = ONE;
+        Wide128 base = this;
+        while (exp > 0) {
+            if ((exp & 1) == 1) {
+                result = result.mul(base);
+            }
+            base = base.mul(base);
+            exp >>= 1;
+        }
+        return result;
+    }
+
+    /** Population count over all BITS bits. */
+    public int bitCount() {
+        return Long.bitCount(l0) + Long.bitCount(l1);
+    }
+
+    /** Unsigned minimum (consistent with {@link #compareUnsigned}). */
+    public Wide128 min(Wide128 o) {
+        return compareUnsigned(o) <= 0 ? this : o;
+    }
+
+    /** Unsigned maximum (consistent with {@link #compareUnsigned}). */
+    public Wide128 max(Wide128 o) {
+        return compareUnsigned(o) >= 0 ? this : o;
+    }
+
+    /** Two's-complement absolute value; MIN_VALUE wraps to itself. */
+    public Wide128 abs() {
+        return l1 < 0 ? neg() : this;
+    }
     public int bitLength() {
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
