@@ -27,38 +27,53 @@ public final class GenMul {
             Files.writeString(dir.resolve("Wide" + w + ".mulHigh.gen.java"), generateMulHigh(w, limbs));
             System.out.println("generated Wide" + w + " (" + limbs + " limbs)");
         }
-        Files.writeString(dir.resolve("Wide256.mulFullDeferred.method.java"), generateAtomDeferred());
-        System.out.println("generated Wide256.mulFullDeferred");
+        Files.writeString(dir.resolve("Wide256.mulFullDeferred.method.java"), generateAtomBlock());
+        System.out.println("generated Wide256 atom block");
     }
 
-    private static String generateAtomDeferred() {
-        int limbs = 4;
+    private static String generateAtomBlock() {
+        StringBuilder b = new StringBuilder();
+        b.append("    // GEN-ATOM-BEGIN\n");
+        b.append("    /** Full 512-bit product via the raw-limb entry (zero block temporaries). */\n");
+        b.append("    public Wide512 mulFullDeferred(Wide256 o) {\n");
+        b.append("        return mulFullDeferred8(l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));\n");
+        b.append("    }\n\n");
+        b.append(atomBody("mulFullDeferred8", "Wide512", 4, true));
+        b.append('\n');
+        b.append(atomBody("mulLow8", "Wide256", 4, false));
+        b.append("    // GEN-ATOM-END\n");
+        return b.toString();
+    }
+
+    private static String atomBody(String name, String returnType, int limbs, boolean full) {
         StringBuilder b = new StringBuilder();
         b.append("    /**\n");
-        b.append("     * Full 512-bit product with per-column 128-bit accumulators and a\n");
-        b.append("     * deferred carry sweep (CSR-style variant; oracle-checked).\n");
+        b.append("     * ").append(full ? "Full 512-bit product" : "Low 256 bits of the product")
+                .append(" from raw limbs (per-column 128-bit accumulators, deferred carries).\n");
         b.append("     */\n");
-        b.append("    public Wide512 mulFullDeferred(Wide256 o) {\n");
-        for (int i = 0; i < limbs; i++) {
-            b.append("        long a").append(i).append(" = l").append(i).append(";\n");
+        b.append("    static ").append(returnType).append(' ').append(name).append('(');
+        for (int i = 0; i < limbs * 2; i++) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append("long ").append(i < limbs ? "a" : "b").append(i < limbs ? i : i - limbs);
         }
-        for (int i = 0; i < limbs; i++) {
-            b.append("        long b").append(i).append(" = o.limb(").append(i).append(");\n");
-        }
+        b.append(") {\n");
+        int lastColumn = full ? 2 * limbs - 1 : limbs - 1;
         for (int i = 0; i < limbs; i++) {
             for (int j = 0; j < limbs; j++) {
-                b.append("        long p").append(i).append('_').append(j)
-                        .append(" = a").append(i).append(" * b").append(j).append(";\n");
+                if (i + j <= lastColumn) {
+                    b.append("        long p").append(i).append('_').append(j)
+                            .append(" = a").append(i).append(" * b").append(j).append(";\n");
+                }
+                if (i + j + 1 <= lastColumn) {
+                    b.append("        long h").append(i).append('_').append(j)
+                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(", b").append(j).append(");\n");
+                }
             }
         }
-        for (int i = 0; i < limbs; i++) {
-            for (int j = 0; j < limbs; j++) {
-                b.append("        long h").append(i).append('_').append(j)
-                        .append(" = Math.unsignedMultiplyHigh(a").append(i)
-                        .append(", b").append(j).append(");\n");
-            }
-        }
-        for (int t = 0; t <= 2 * limbs - 1; t++) {
+        for (int t = 0; t <= lastColumn; t++) {
             List<String> terms = new ArrayList<>();
             for (int u = 0; u < limbs; u++) {
                 int v = t - u;
@@ -85,7 +100,7 @@ public final class GenMul {
         }
         b.append("        long r0 = lo0;\n");
         b.append("        long carry = 0;\n");
-        for (int t = 1; t <= 2 * limbs - 1; t++) {
+        for (int t = 1; t <= lastColumn; t++) {
             b.append("        long s").append(t).append(" = lo").append(t)
                     .append(" + hi").append(t - 1).append(";\n");
             b.append("        long c").append(t).append(" = Carry.addCarryOut(lo").append(t)
@@ -94,7 +109,14 @@ public final class GenMul {
             b.append("        carry = c").append(t).append(" + Carry.addCarryOut(s").append(t)
                     .append(", carry, r").append(t).append(");\n");
         }
-        b.append("        return Wide512.of(r0, r1, r2, r3, r4, r5, r6, r7);\n");
+        b.append("        return ").append(returnType).append(".of(");
+        for (int t = 0; t <= lastColumn; t++) {
+            if (t > 0) {
+                b.append(", ");
+            }
+            b.append('r').append(t);
+        }
+        b.append(");\n");
         b.append("    }\n");
         return b.toString();
     }

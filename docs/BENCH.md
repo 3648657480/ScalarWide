@@ -363,6 +363,28 @@ cmd /c start "swM" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "build\libs\
 - 遗留：deferred 为什么在宽度级收益远超原子级 2.3%（疑似旧原子在调用位的隐藏开销）——
   列入疑点清单，后续可查。
 
+### 热点图战役（JFR + JMH stack profiler，2026-10-09）
+
+- 工具链：**JFR 零安装**（`-XX:StartFlightRecording` + `jfr print --events
+  jdk.ExecutionSample/ObjectAllocationSample`）；async-profiler v4.5 **无 Windows 原生版**
+  （`jfr-converter.jar` 可转火焰图 HTML，备用）。
+- 首图（512.mulHigh，513 样本）：**77% 在 4 个季积调用**（~24ns/个，与原子单测吻合）、
+  23% 在进位装配（~29ns）。
+- 768.mul 图：季积 56%、`blockN()`/`Wide256.of` 帧 **39%**（12 次/op 的对象分配）、
+  分配采样 Wide256 计 1281 例。
+- **热点图驱动的三次变体（全部被测量否决）**：
+
+| 变体 | 768.mul | 1024.mul | 判定 |
+|---|---|---|---|
+| 原形态（block + deferred） | 123.0 | 269.2 | 基准 |
+| 全积改 raw-long 静态入口 | 123.0 | 302.7 | 1024 亏 |
+| 低积也回退 `.mul()` | 132.0 | 302.8 | 768 亏 |
+
+- **结论**：JFR 归因里的"39%"≠ 可移除的开销——去掉 block 临时对象改变了内联动力学，
+  对冲掉了分配收益；**内联经济学再次战胜朴素去分配**。最优形态 = block 调用 + deferred 原子。
+- 定案（工作站，JDK21）：**768.mul 120.2（首次微超 BigInteger 125.5）**、1024.mul 290.7、
+  512.mul 42.1、512.mulHigh 119.4。内部原语 `mulFullDeferred8` / `mulLow8` 保留（对拍完备）。
+
 ## 2026-10-09 · Round H：512/768/1024 "单巨方法全开码"——实测否决（负结果）
 
 - 思路：把组合层的"调用 256 原子乘积"改为**整个乘法在单方法内就地展开**（生成器
