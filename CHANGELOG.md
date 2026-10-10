@@ -2,6 +2,43 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.0
+
+### Changed
+
+- **Compare-based carries**: every two-operand carry site (atom products,
+  column assembly, class assembly, `Limbs`) now uses `Long.compareUnsigned`
+  instead of the branched formula; three-operand (carry-in) sites keep the
+  formula. Wide `mul` up to 2.3x faster (768: 160 -> 69 ns), 512 `mulHigh`
+  118 -> 66 ns.
+- **Direct implementations** replaced the generic engine for 768/1024
+  add/sub/bitwise, 384/512 sub/bitwise, 384-1024 `shl`/`ushr`, 768/1024
+  `compareUnsigned`/`compareSigned`, and 768/1024 `mulHigh` (zero-object
+  scratch + block products). Selected results: 1024.add 28.8 -> 8.1 ns,
+  768.add 22.6 -> 9.4 ns, 768.mulHigh 388 -> 148 ns, 1024.mulHigh 671 ->
+  415 ns.
+
+### Added
+
+- Iron-man probes (in-repo, `src/jmh`): `ColdStartProbe` (cold vs warm under
+  default/C1/-Xint), `PipelineProbe` (1M-key HashMap end to end), `ThreadProbe`
+  (shared-mutable race, per-thread pattern, parallel scaling), `BatchProbe`
+  (object vs flat-SoA vs BigInteger layouts), `RealKeyStats`/`RealKeyBench`
+  (far-key workload distribution), plus `bigMulHigh`/`shr` comparators.
+- `docs/BENCH.md` rounds K (compare carries), P0-P6 (direct-implementation
+  sweep, gap audit) and the iron-man results, including negative results.
+
+### Measured (workstation Ryzen 7950X, JDK 21)
+
+- vs BigInteger: 51 of 54 benchmarked comparisons ahead; largest lead
+  1024.and 11.3x; three still behind and tracked: 1024.mulHigh 0.53x,
+  768.mulHigh 0.92x, 512.shr 0.92x.
+- Zero-allocation promise verified with `-prof gc`: immutable ops allocate
+  exactly one result object per op; `MutableWide*` allocate nothing even with
+  `-XX:-DoEscapeAnalysis`.
+- 1M-key HashMap lookup 1.30-1.35x ahead of BigInteger maps; GC pauses halved
+  (5 pauses / 36 ms vs 9 / 69 ms) at 1M keys.
+
 ## 0.10.1
 
 ### Changed
