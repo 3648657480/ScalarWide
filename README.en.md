@@ -7,8 +7,8 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.11.3` (math
-completeness: div/rem/pow etc.); implementation matrix and all measurements
+Version: see repo-root `VERSION` (single authority). Current `0.11.4` (Knuth-D division + math
+completeness); implementation matrix and all measurements
 (including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
 
 ## What it is
@@ -47,11 +47,11 @@ completeness: div/rem/pow etc.); implementation matrix and all measurements
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.3' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.4' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:0.11.3` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:0.11.4` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),

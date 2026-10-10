@@ -2,6 +2,23 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.4
+
+### Changed
+
+- **Division rewritten as Knuth Algorithm D** (64-bit digits: normalization,
+  128/64 quotient estimate with correction, multiply-subtract with rare
+  add-back). The binary shift-subtract engine stays as the internal oracle
+  (`Limbs.divmodBinary`). Drop-in: no API change.
+
+### Measured (workstation, JDK 21)
+
+- div/rem are now **ahead of BigInteger at every width**: 128: 15.8 vs 41.5 ns
+  (2.63x), 256: 52.8 vs 82.7 (1.57x), 512: 94.2 vs 170.9 (1.81x), 1024: 216.9
+  vs 421.0 (1.94x); the 0.11.3 v1 engine was 9-46x slower than the new one.
+  Remaining known BigInteger regressions: only 1024.mulHigh 0.71x /
+  768.mulHigh 0.92x (`docs/BENCH.md` P11).
+
 ## 0.11.3
 
 ### Added
