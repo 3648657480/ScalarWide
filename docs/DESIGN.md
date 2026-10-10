@@ -36,6 +36,24 @@
 | 基准口径 | mul 低半 ≠ BigInteger.multiply 全积；BigInteger 缓存 hashCode；一切比值必须标口径 |
 | BigInteger | 不加入库内（test-only oracle） |
 
+### 2026-10-10 · 三轮（0.11.x 实作）
+
+| 决策 | 内容 |
+|---|---|
+| 进位引擎 | 两操作数进位点全部改 `Long.compareUnsigned`（cmp+setl）；三操作数（进位入）站点保留公式；两段式链按宽度实测取舍 |
+| 直算化 | 384/512 `sub`/位运算、384-1024 移位、768/1024 `add`/`sub`/位运算/compare、768/1024 `mulHigh` 全部脱离引擎 |
+| mulHigh 幂正 | Round G 死刑属当时结构上限；P2 直算成立，P7 实参直读字段再 -25%；`mulFullInto8`（1509B）不可内联 = 架构地板 |
+| 护栏 | `-Dscalarwide.guard=true`：`MutableWide*` 属主检查，跨线程抛 `IllegalStateException`；best-effort、关闭零成本（静态 final 折叠，实测无差） |
+
+### 红线清单（不可越线）
+
+| 红线 | 说明 | 标注 / 检测 |
+|---|---|---|
+| `MutableWide*` 跨线程 | 非线程安全：单线程专属（属主模型），无内部同步 | 类 Javadoc + README 红线段；`-Dscalarwide.guard=true` 抛 `IllegalStateException`（best-effort） |
+| `MutableWide*` 作 map 键 | 可变 → hash/equals 失稳，插入即坏 | 类 Javadoc "Never use as a map key" + README；无运行检测 |
+| 算法套娃 | 表示恒为扁平 limb（l0..lN）；禁止对象层嵌套 | 二轮表"套娃红线"；设计评审 |
+| 移位越界 | 移位量必须 ∈ [0,N) | `checkShift` 构造期抛 `IllegalArgumentException` |
+
 ## 3. 架构
 
 - `Carry`：原子层进位/借位原语（唯一定义点）。
