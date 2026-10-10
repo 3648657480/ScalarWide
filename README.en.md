@@ -7,9 +7,9 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.11.0` (performance
-packaging); implementation matrix and all measurements (including negative
-results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
+Version: see repo-root `VERSION` (single authority). Current `0.11.1` (mulHigh
+tuning + guardrails); implementation matrix and all measurements (including
+negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
 
 ## What it is
 
@@ -46,16 +46,19 @@ results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.0' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.1' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:0.11.0` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:0.11.1` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
   `MutableWide128/256` (allocation-free scratch); semantics in the Javadoc and
   `docs/DESIGN.md`.
+- Red lines: `MutableWide*` are not thread-safe and never valid as map keys;
+  `-Dscalarwide.guard=true` enables best-effort cross-thread misuse detection
+  (`IllegalStateException`; zero cost when off).
 
 ## Quick use
 

@@ -5,7 +5,7 @@
 > 纯标量定点大数库（**128 → 1024 位，六档**），零 SIMD、零平台探测。
 > 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
-版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.0`（性能里程碑）；实现矩阵与全部实测
+版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.1`（mulHigh 提升 + 安全护栏）；实现矩阵与全部实测
 （含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`。
 
 ## 这是什么
@@ -37,14 +37,16 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.0' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.1' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.0`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.1`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512/768/1024`（不可变值类型）、`MutableWide128/256`（零分配 scratch）、
   语义见各类 Javadoc 与 `docs/DESIGN.md`。
+- 红线：`MutableWide*` 非线程安全、永不可作 map 键；加 `-Dscalarwide.guard=true` 可开启共享误用
+  检测（跨线程调用抛 `IllegalStateException`，best-effort，关闭时零成本）。
 
 ## 快速使用
 

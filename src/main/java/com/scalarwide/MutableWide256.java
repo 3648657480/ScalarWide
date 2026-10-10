@@ -4,6 +4,8 @@ package com.scalarwide;
  * Reusable mutable 256-bit accumulator for transient arithmetic: every
  * operation writes into this instance and allocates nothing. Not thread-safe.
  * Never use as a map key - keys must be immutable (see {@link Wide256}).
+ * Opt-in misuse detection: with {@code -Dscalarwide.guard=true}, using an
+ * instance from two threads throws {@link IllegalStateException} (best-effort).
  */
 public final class MutableWide256 {
 
@@ -12,7 +14,25 @@ public final class MutableWide256 {
     private long l2;
     private long l3;
 
+    private static final boolean GUARD = Boolean.getBoolean("scalarwide.guard");
+    private transient volatile Thread guardOwner;
+
+    private void guard() {
+        if (!GUARD) {
+            return;
+        }
+        Thread t = Thread.currentThread();
+        Thread owner = guardOwner;
+        if (owner == null) {
+            guardOwner = t;
+        } else if (owner != t) {
+            throw new IllegalStateException("MutableWide256 shared across threads (red line): thread "
+                    + t.getName() + " vs owner " + owner.getName());
+        }
+    }
+
     public MutableWide256 setZero() {
+        guard();
         l0 = 0;
         l1 = 0;
         l2 = 0;
@@ -21,6 +41,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 set(Wide256 v) {
+        guard();
         l0 = v.limb(0);
         l1 = v.limb(1);
         l2 = v.limb(2);
@@ -29,6 +50,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 set(long l0, long l1, long l2, long l3) {
+        guard();
         this.l0 = l0;
         this.l1 = l1;
         this.l2 = l2;
@@ -37,6 +59,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 add(Wide256 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long o2 = o.limb(2);
@@ -58,6 +81,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 sub(Wide256 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long o2 = o.limb(2);
@@ -79,6 +103,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 mul(Wide256 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long o2 = o.limb(2);
@@ -134,6 +159,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 and(Wide256 o) {
+        guard();
         l0 &= o.limb(0);
         l1 &= o.limb(1);
         l2 &= o.limb(2);
@@ -142,6 +168,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 or(Wide256 o) {
+        guard();
         l0 |= o.limb(0);
         l1 |= o.limb(1);
         l2 |= o.limb(2);
@@ -150,6 +177,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 xor(Wide256 o) {
+        guard();
         l0 ^= o.limb(0);
         l1 ^= o.limb(1);
         l2 ^= o.limb(2);
@@ -158,6 +186,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 not() {
+        guard();
         l0 = ~l0;
         l1 = ~l1;
         l2 = ~l2;
@@ -166,6 +195,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 shl(int k) {
+        guard();
         if (k < 0 || k >= 256) {
             throw new IllegalArgumentException("shift amount out of range: " + k);
         }
@@ -232,6 +262,7 @@ public final class MutableWide256 {
     }
 
     public MutableWide256 ushr(int k) {
+        guard();
         if (k < 0 || k >= 256) {
             throw new IllegalArgumentException("shift amount out of range: " + k);
         }

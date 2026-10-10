@@ -282,12 +282,12 @@ public final class Wide768 implements Comparable<Wide768> {
      */
     public Wide768 mul(Wide768 o) {
         long[] s = new long[36];
-        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
-        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
-        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
-        Wide256.mulLowInto8(s, 24, l0, l1, l2, l3, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
-        Wide256.mulLowInto8(s, 28, l4, l5, l6, l7, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
-        Wide256.mulLowInto8(s, 32, l8, l9, l10, l11, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
+        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.l0, o.l1, o.l2, o.l3);
+        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.l4, o.l5, o.l6, o.l7);
+        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.l0, o.l1, o.l2, o.l3);
+        Wide256.mulLowInto8(s, 24, l0, l1, l2, l3, o.l8, o.l9, o.l10, o.l11);
+        Wide256.mulLowInto8(s, 28, l4, l5, l6, l7, o.l4, o.l5, o.l6, o.l7);
+        Wide256.mulLowInto8(s, 32, l8, l9, l10, l11, o.l0, o.l1, o.l2, o.l3);
 
         long carry = 0;
         for (int i = 4; i < 8; i++) {
@@ -337,15 +337,15 @@ public final class Wide768 implements Comparable<Wide768> {
      */
     public Wide768 mulHigh(Wide768 o) {
         long[] s = new long[72];
-        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
-        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
-        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
-        Wide256.mulFullInto8(s, 24, l0, l1, l2, l3, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
-        Wide256.mulFullInto8(s, 32, l4, l5, l6, l7, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
-        Wide256.mulFullInto8(s, 40, l8, l9, l10, l11, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
-        Wide256.mulFullInto8(s, 48, l4, l5, l6, l7, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
-        Wide256.mulFullInto8(s, 56, l8, l9, l10, l11, o.limb(4), o.limb(5), o.limb(6), o.limb(7));
-        Wide256.mulFullInto8(s, 64, l8, l9, l10, l11, o.limb(8), o.limb(9), o.limb(10), o.limb(11));
+        Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.l0, o.l1, o.l2, o.l3);
+        Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.l4, o.l5, o.l6, o.l7);
+        Wide256.mulFullInto8(s, 16, l4, l5, l6, l7, o.l0, o.l1, o.l2, o.l3);
+        Wide256.mulFullInto8(s, 24, l0, l1, l2, l3, o.l8, o.l9, o.l10, o.l11);
+        Wide256.mulFullInto8(s, 32, l4, l5, l6, l7, o.l4, o.l5, o.l6, o.l7);
+        Wide256.mulFullInto8(s, 40, l8, l9, l10, l11, o.l0, o.l1, o.l2, o.l3);
+        Wide256.mulFullInto8(s, 48, l4, l5, l6, l7, o.l8, o.l9, o.l10, o.l11);
+        Wide256.mulFullInto8(s, 56, l8, l9, l10, l11, o.l4, o.l5, o.l6, o.l7);
+        Wide256.mulFullInto8(s, 64, l8, l9, l10, l11, o.l8, o.l9, o.l10, o.l11);
 
         long carry = 0;
         for (int i = 4; i < 8; i++) {

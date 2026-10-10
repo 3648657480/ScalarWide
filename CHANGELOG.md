@@ -2,6 +2,27 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.1
+
+### Changed
+
+- **`mulHigh` tuning (768/1024)**: block-product arguments switched from
+  `limb(i)` switch calls to direct field reads at the 16 call sites. 1024
+  `mulHigh` 415.6 -> 311.9 ns (-25%), 1024 `mul` 178.3 -> 146.8 ns (-18%);
+  768 unchanged (already at the atom floor). Root cause recorded in
+  `docs/BENCH.md` P7: the 1509-byte `mulFullInto8` never inlines; per-call
+  argument extraction dominated. Remaining gap to `BigInteger.multiply+shift`
+  is architectural (16 non-inlinable atom calls vs a monolithic schoolbook).
+
+### Added
+
+- **Opt-in guardrails** (red-line detection): `-Dscalarwide.guard=true` makes
+  `MutableWide128/256` detect cross-thread use and throw
+  `IllegalStateException` (best-effort, thread-owner check; zero cost when the
+  flag is off - the check is a constant-folded static final). Verified by
+  `GuardTest` in child JVMs (guard on: shared use throws; guard off: silent,
+  per-thread pattern stays correct).
+
 ## 0.11.0
 
 ### Changed

@@ -725,3 +725,31 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 - 顺序访问下对象布局不吃亏（硬件预取掩盖指针链）；**随机访问下对象化落后扁平 SoA 1.8×**；累加型批量落后 **5×**（每键一次分配）。
 - 对 BigInteger 全线仍领先 **2.3–6×**。结论：批量场景若求极致，SoA/扁平工作集另有 1.8–5× 空间；对象 API 对 big 的底线优势不受影响。
 
+## 2026-10-10 · P7：mulHigh 剖析与优化 + 安全护栏（0.11.1）
+
+### mulHigh 剖析（`DiagBench`，诊断后移除）
+
+- 内联日志（`-XX:+PrintInlining`）：`mulFullInto8`（1509 B）在 768/1024 的 mulHigh/mul 里**全部内联失败**
+  （"callee too large" → "hot method too big"）；`Wide1024.limb()`（207 B）a.limb 参数处最终可内联。
+- 分解测量（1024）：atomsOnly 331.4 / atomsLowChains 362.4 / real 413.8——**原子调用占 ~80%**；
+  `atom1`=41.1、`atom4`=74.5（边际 ~11）、`atomsOnly768`=174.2。结论：每原子"调用 + 参数提取 + 写 scratch"
+  合计 ~15-20ns，链与组装只占 ~80ns。**每次 `o.limb(i)`（16-case 内联 switch）作实参是主要浪费。**
+
+### 优化：块积实参改直读字段（o.limb(i) → o.li）
+
+| 基准 | 改前 | 改后 | 变化 |
+|---|---|---|---|
+| Wide1024.mul | 178.3 | **146.8** | -18% |
+| Wide1024.mulHigh | 415.6 | **311.9** | -25%（0.53× → **0.71×** vs big）|
+| Wide768.mul / mulHigh | 69.0 / 147.5 | 69.0 / 148.7 | 持平（768 已到原子地板）|
+| oracle | — | 全绿 | — |
+
+- 残余差距判定为**架构性**：16 次不可内联原子调用 vs BigInteger 单循环 schoolbook（221ns 全积）。
+  单卖 mulHigh 的理论地板 ≈ 260-280（0.79-0.85×）；彻底反超需单片化 limb 级实现（生成器路线，未做）。
+
+### 安全护栏（红线检测）
+
+- `-Dscalarwide.guard=true` → `MutableWide128/256` 增线程属主检查，跨线程使用抛 `IllegalStateException`
+  （best-effort：首次调用者成为属主；关闭时是常量折叠的静态分支，零成本）。
+- `GuardTest`（子 JVM 两态）：guard ON → 共享 8 线程竞态**被捕获**；guard OFF → 静默且 per-thread 正确。全绿。
+

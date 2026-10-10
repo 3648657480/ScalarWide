@@ -4,31 +4,54 @@ package com.scalarwide;
  * Reusable mutable 128-bit accumulator for transient arithmetic: every
  * operation writes into this instance and allocates nothing. Not thread-safe.
  * Never use as a map key - keys must be immutable (see {@link Wide128}).
+ * Opt-in misuse detection: with {@code -Dscalarwide.guard=true}, using an
+ * instance from two threads throws {@link IllegalStateException} (best-effort).
  */
 public final class MutableWide128 {
 
     private long l0;
     private long l1;
 
+    private static final boolean GUARD = Boolean.getBoolean("scalarwide.guard");
+    private transient volatile Thread guardOwner;
+
+    private void guard() {
+        if (!GUARD) {
+            return;
+        }
+        Thread t = Thread.currentThread();
+        Thread owner = guardOwner;
+        if (owner == null) {
+            guardOwner = t;
+        } else if (owner != t) {
+            throw new IllegalStateException("MutableWide128 shared across threads (red line): thread "
+                    + t.getName() + " vs owner " + owner.getName());
+        }
+    }
+
     public MutableWide128 setZero() {
+        guard();
         l0 = 0;
         l1 = 0;
         return this;
     }
 
     public MutableWide128 set(Wide128 v) {
+        guard();
         l0 = v.limb(0);
         l1 = v.limb(1);
         return this;
     }
 
     public MutableWide128 set(long l0, long l1) {
+        guard();
         this.l0 = l0;
         this.l1 = l1;
         return this;
     }
 
     public MutableWide128 add(Wide128 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long r0 = l0 + o0;
@@ -39,6 +62,7 @@ public final class MutableWide128 {
     }
 
     public MutableWide128 sub(Wide128 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long r0 = l0 - o0;
@@ -49,6 +73,7 @@ public final class MutableWide128 {
     }
 
     public MutableWide128 mul(Wide128 o) {
+        guard();
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long lo = l0 * o0;
@@ -59,30 +84,35 @@ public final class MutableWide128 {
     }
 
     public MutableWide128 and(Wide128 o) {
+        guard();
         l0 &= o.limb(0);
         l1 &= o.limb(1);
         return this;
     }
 
     public MutableWide128 or(Wide128 o) {
+        guard();
         l0 |= o.limb(0);
         l1 |= o.limb(1);
         return this;
     }
 
     public MutableWide128 xor(Wide128 o) {
+        guard();
         l0 ^= o.limb(0);
         l1 ^= o.limb(1);
         return this;
     }
 
     public MutableWide128 not() {
+        guard();
         l0 = ~l0;
         l1 = ~l1;
         return this;
     }
 
     public MutableWide128 shl(int k) {
+        guard();
         if (k < 0 || k >= 128) {
             throw new IllegalArgumentException("shift amount out of range: " + k);
         }
@@ -102,6 +132,7 @@ public final class MutableWide128 {
     }
 
     public MutableWide128 ushr(int k) {
+        guard();
         if (k < 0 || k >= 128) {
             throw new IllegalArgumentException("shift amount out of range: " + k);
         }
