@@ -32,7 +32,7 @@ public class LimbWidthProbe {
     @Benchmark
     public long longProduct() {
         long lo = x * y;
-        long hi = Math.unsignedMultiplyHigh(x, y);
+        long hi = Math.multiplyHigh(x, y) + ((x >> 63) & y) + ((y >> 63) & x);
         return lo ^ hi;
     }
 

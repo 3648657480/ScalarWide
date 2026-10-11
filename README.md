@@ -28,11 +28,12 @@
 .\gradlew.bat jmh --args="com.scalarwide.bench.Wide128Bench -wi 3 -i 5 -f 1"
 .\gradlew.bat jmhJar
 ```
-- 构建需 **JDK 21+**（字节码 release 21；本机默认 java 过旧时，在用户级
-  `~/.gradle/gradle.properties` 里固定 `org.gradle.java.home=<JDK 路径>`）；Gradle 9.5（wrapper 走腾讯镜像）。
+- 构建需 **JDK 21+**（基础字节码 release 17；`META-INF/versions/21` 覆层以 `--release 21` 编译；本机默认 java 过旧时，
+  在用户级 `~/.gradle/gradle.properties` 里固定 `org.gradle.java.home=<JDK 路径>`）；Gradle 9.5（wrapper 走腾讯镜像）。
 - 测试 = BigInteger 差分对拍：全极端值两两组合 + 固定种子（12345）随机 5000 对 × 每个运算，另含移位边界与构造器边界。
-- 运行时要求 **Java 21+**（class major 65）。全库唯一 Java 18+ API 是 `Math.unsignedMultiplyHigh`
-  （原子乘法，77 处）；如需兼容 Java 17，可用 `Math.multiplyHigh` + 符号修正替换（每条多 ~3-4 指令，代价未实测）。
+- 运行时要求 **Java 17+**（MC 1.17–1.20.4 的 Java 17 也能用）：基版对 `MulHi.high` 用
+  `Math.multiplyHigh` + 符号修正（mul 家族慢 9–48%，已实测）；**Java 21+ 自动加载多版本覆层**里的
+  `Math.unsignedMultiplyHigh` intrinsic，全速无差（回归 ≤1.1%，实测）。测试矩阵：17/21/25 全绿。
 
 ## 作为依赖使用（库的用法）
 

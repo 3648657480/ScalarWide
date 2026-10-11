@@ -167,7 +167,7 @@ final class Limbs {
             long ai = a[i];
             for (int j = 0; j < m; j++) {
                 long lo = ai * b[j];
-                long hi = Math.unsignedMultiplyHigh(ai, b[j]);
+                long hi = MulHi.high(ai, b[j]);
                 addAt(acc, i + j, lo);
                 addAt(acc, i + j + 1, hi);
             }
@@ -241,7 +241,7 @@ final class Limbs {
             }
             long borrow = 0;
             for (int i = 0; i < n; i++) {
-                long phi = Math.unsignedMultiplyHigh(qhat, vn[i]);
+                long phi = MulHi.high(qhat, vn[i]);
                 long plo = qhat * vn[i];
                 long plo2 = plo + borrow;
                 long phi2 = phi + (Long.compareUnsigned(plo2, plo) < 0 ? 1 : 0);
@@ -284,7 +284,7 @@ final class Limbs {
     private static long correctQhat(long qhat, long rhat, long[] vn, long[] un, int j, int n) {
         while (true) {
             long lo = qhat * vn[n - 2];
-            long hi = Math.unsignedMultiplyHigh(qhat, vn[n - 2]);
+            long hi = MulHi.high(qhat, vn[n - 2]);
             if (Long.compareUnsigned(hi, rhat) > 0
                     || (hi == rhat && Long.compareUnsigned(lo, un[j + n - 2]) > 0)) {
                 qhat--;

@@ -180,13 +180,13 @@ public final class Wide128 implements Comparable<Wide128> {
     /** Low 128 bits of the 256-bit product, i.e. {@code (a*b) mod 2^128}. */
     public Wide128 mul(Wide128 o) {
         long lo = l0 * o.l0;
-        long mid = Math.unsignedMultiplyHigh(l0, o.l0) + l0 * o.l1 + l1 * o.l0;
+        long mid = MulHi.high(l0, o.l0) + l0 * o.l1 + l1 * o.l0;
         return new Wide128(lo, mid);
     }
 
     /** High 128 bits of the 256-bit product, i.e. {@code (a*b) >>> 128}. */
     public Wide128 mulHigh(Wide128 o) {
-        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
+        long hi00 = MulHi.high(l0, o.l0);
         long lo01 = l0 * o.l1;
         long lo10 = l1 * o.l0;
         long t = hi00 + lo01;
@@ -194,10 +194,10 @@ public final class Wide128 implements Comparable<Wide128> {
         long limb1 = t + lo10;
         k += Carry.addCarryOut(t, lo10, limb1);
 
-        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
-        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
+        long hi01 = MulHi.high(l0, o.l1);
+        long hi10 = MulHi.high(l1, o.l0);
         long lo11 = l1 * o.l1;
-        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
+        long hi11 = MulHi.high(l1, o.l1);
         long t2 = hi01 + hi10;
         long k2 = Carry.addCarryOut(hi01, hi10, t2);
         long limb2 = t2 + lo11;
@@ -217,7 +217,7 @@ public final class Wide128 implements Comparable<Wide128> {
      */
     public Wide256 mulFull(Wide128 o) {
         long limb0 = l0 * o.l0;
-        long hi00 = Math.unsignedMultiplyHigh(l0, o.l0);
+        long hi00 = MulHi.high(l0, o.l0);
         long lo01 = l0 * o.l1;
         long lo10 = l1 * o.l0;
         long t = hi00 + lo01;
@@ -225,10 +225,10 @@ public final class Wide128 implements Comparable<Wide128> {
         long limb1 = t + lo10;
         k += Carry.addCarryOut(t, lo10, limb1);
 
-        long hi01 = Math.unsignedMultiplyHigh(l0, o.l1);
-        long hi10 = Math.unsignedMultiplyHigh(l1, o.l0);
+        long hi01 = MulHi.high(l0, o.l1);
+        long hi10 = MulHi.high(l1, o.l0);
         long lo11 = l1 * o.l1;
-        long hi11 = Math.unsignedMultiplyHigh(l1, o.l1);
+        long hi11 = MulHi.high(l1, o.l1);
         long t2 = hi01 + hi10;
         long k2 = Carry.addCarryOut(hi01, hi10, t2);
         long limb2 = t2 + lo11;

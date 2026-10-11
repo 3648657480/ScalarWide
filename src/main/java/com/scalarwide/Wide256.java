@@ -265,37 +265,37 @@ public final class Wide256 implements Comparable<Wide256> {
      */
     static Wide512 mulFullDeferred8(long a0, long a1, long a2, long a3, long b0, long b1, long b2, long b3) {
         long p0_0 = a0 * b0;
-        long h0_0 = Math.unsignedMultiplyHigh(a0, b0);
+        long h0_0 = MulHi.high(a0, b0);
         long p0_1 = a0 * b1;
-        long h0_1 = Math.unsignedMultiplyHigh(a0, b1);
+        long h0_1 = MulHi.high(a0, b1);
         long p0_2 = a0 * b2;
-        long h0_2 = Math.unsignedMultiplyHigh(a0, b2);
+        long h0_2 = MulHi.high(a0, b2);
         long p0_3 = a0 * b3;
-        long h0_3 = Math.unsignedMultiplyHigh(a0, b3);
+        long h0_3 = MulHi.high(a0, b3);
         long p1_0 = a1 * b0;
-        long h1_0 = Math.unsignedMultiplyHigh(a1, b0);
+        long h1_0 = MulHi.high(a1, b0);
         long p1_1 = a1 * b1;
-        long h1_1 = Math.unsignedMultiplyHigh(a1, b1);
+        long h1_1 = MulHi.high(a1, b1);
         long p1_2 = a1 * b2;
-        long h1_2 = Math.unsignedMultiplyHigh(a1, b2);
+        long h1_2 = MulHi.high(a1, b2);
         long p1_3 = a1 * b3;
-        long h1_3 = Math.unsignedMultiplyHigh(a1, b3);
+        long h1_3 = MulHi.high(a1, b3);
         long p2_0 = a2 * b0;
-        long h2_0 = Math.unsignedMultiplyHigh(a2, b0);
+        long h2_0 = MulHi.high(a2, b0);
         long p2_1 = a2 * b1;
-        long h2_1 = Math.unsignedMultiplyHigh(a2, b1);
+        long h2_1 = MulHi.high(a2, b1);
         long p2_2 = a2 * b2;
-        long h2_2 = Math.unsignedMultiplyHigh(a2, b2);
+        long h2_2 = MulHi.high(a2, b2);
         long p2_3 = a2 * b3;
-        long h2_3 = Math.unsignedMultiplyHigh(a2, b3);
+        long h2_3 = MulHi.high(a2, b3);
         long p3_0 = a3 * b0;
-        long h3_0 = Math.unsignedMultiplyHigh(a3, b0);
+        long h3_0 = MulHi.high(a3, b0);
         long p3_1 = a3 * b1;
-        long h3_1 = Math.unsignedMultiplyHigh(a3, b1);
+        long h3_1 = MulHi.high(a3, b1);
         long p3_2 = a3 * b2;
-        long h3_2 = Math.unsignedMultiplyHigh(a3, b2);
+        long h3_2 = MulHi.high(a3, b2);
         long p3_3 = a3 * b3;
-        long h3_3 = Math.unsignedMultiplyHigh(a3, b3);
+        long h3_3 = MulHi.high(a3, b3);
         long lo0 = p0_0;
         long hi0 = 0;
         long lo1 = p0_1;
@@ -470,19 +470,19 @@ public final class Wide256 implements Comparable<Wide256> {
      */
     static Wide256 mulLow8(long a0, long a1, long a2, long a3, long b0, long b1, long b2, long b3) {
         long p0_0 = a0 * b0;
-        long h0_0 = Math.unsignedMultiplyHigh(a0, b0);
+        long h0_0 = MulHi.high(a0, b0);
         long p0_1 = a0 * b1;
-        long h0_1 = Math.unsignedMultiplyHigh(a0, b1);
+        long h0_1 = MulHi.high(a0, b1);
         long p0_2 = a0 * b2;
-        long h0_2 = Math.unsignedMultiplyHigh(a0, b2);
+        long h0_2 = MulHi.high(a0, b2);
         long p0_3 = a0 * b3;
         long p1_0 = a1 * b0;
-        long h1_0 = Math.unsignedMultiplyHigh(a1, b0);
+        long h1_0 = MulHi.high(a1, b0);
         long p1_1 = a1 * b1;
-        long h1_1 = Math.unsignedMultiplyHigh(a1, b1);
+        long h1_1 = MulHi.high(a1, b1);
         long p1_2 = a1 * b2;
         long p2_0 = a2 * b0;
-        long h2_0 = Math.unsignedMultiplyHigh(a2, b0);
+        long h2_0 = MulHi.high(a2, b0);
         long p2_1 = a2 * b1;
         long p3_0 = a3 * b0;
         long lo0 = p0_0;
@@ -575,37 +575,37 @@ public final class Wide256 implements Comparable<Wide256> {
      */
     static void mulFullInto8(long[] out, int off, long a0, long a1, long a2, long a3, long b0, long b1, long b2, long b3) {
         long p0_0 = a0 * b0;
-        long h0_0 = Math.unsignedMultiplyHigh(a0, b0);
+        long h0_0 = MulHi.high(a0, b0);
         long p0_1 = a0 * b1;
-        long h0_1 = Math.unsignedMultiplyHigh(a0, b1);
+        long h0_1 = MulHi.high(a0, b1);
         long p0_2 = a0 * b2;
-        long h0_2 = Math.unsignedMultiplyHigh(a0, b2);
+        long h0_2 = MulHi.high(a0, b2);
         long p0_3 = a0 * b3;
-        long h0_3 = Math.unsignedMultiplyHigh(a0, b3);
+        long h0_3 = MulHi.high(a0, b3);
         long p1_0 = a1 * b0;
-        long h1_0 = Math.unsignedMultiplyHigh(a1, b0);
+        long h1_0 = MulHi.high(a1, b0);
         long p1_1 = a1 * b1;
-        long h1_1 = Math.unsignedMultiplyHigh(a1, b1);
+        long h1_1 = MulHi.high(a1, b1);
         long p1_2 = a1 * b2;
-        long h1_2 = Math.unsignedMultiplyHigh(a1, b2);
+        long h1_2 = MulHi.high(a1, b2);
         long p1_3 = a1 * b3;
-        long h1_3 = Math.unsignedMultiplyHigh(a1, b3);
+        long h1_3 = MulHi.high(a1, b3);
         long p2_0 = a2 * b0;
-        long h2_0 = Math.unsignedMultiplyHigh(a2, b0);
+        long h2_0 = MulHi.high(a2, b0);
         long p2_1 = a2 * b1;
-        long h2_1 = Math.unsignedMultiplyHigh(a2, b1);
+        long h2_1 = MulHi.high(a2, b1);
         long p2_2 = a2 * b2;
-        long h2_2 = Math.unsignedMultiplyHigh(a2, b2);
+        long h2_2 = MulHi.high(a2, b2);
         long p2_3 = a2 * b3;
-        long h2_3 = Math.unsignedMultiplyHigh(a2, b3);
+        long h2_3 = MulHi.high(a2, b3);
         long p3_0 = a3 * b0;
-        long h3_0 = Math.unsignedMultiplyHigh(a3, b0);
+        long h3_0 = MulHi.high(a3, b0);
         long p3_1 = a3 * b1;
-        long h3_1 = Math.unsignedMultiplyHigh(a3, b1);
+        long h3_1 = MulHi.high(a3, b1);
         long p3_2 = a3 * b2;
-        long h3_2 = Math.unsignedMultiplyHigh(a3, b2);
+        long h3_2 = MulHi.high(a3, b2);
         long p3_3 = a3 * b3;
-        long h3_3 = Math.unsignedMultiplyHigh(a3, b3);
+        long h3_3 = MulHi.high(a3, b3);
         long lo0 = p0_0;
         long hi0 = 0;
         long lo1 = p0_1;
@@ -787,19 +787,19 @@ public final class Wide256 implements Comparable<Wide256> {
      */
     static void mulLowInto8(long[] out, int off, long a0, long a1, long a2, long a3, long b0, long b1, long b2, long b3) {
         long p0_0 = a0 * b0;
-        long h0_0 = Math.unsignedMultiplyHigh(a0, b0);
+        long h0_0 = MulHi.high(a0, b0);
         long p0_1 = a0 * b1;
-        long h0_1 = Math.unsignedMultiplyHigh(a0, b1);
+        long h0_1 = MulHi.high(a0, b1);
         long p0_2 = a0 * b2;
-        long h0_2 = Math.unsignedMultiplyHigh(a0, b2);
+        long h0_2 = MulHi.high(a0, b2);
         long p0_3 = a0 * b3;
         long p1_0 = a1 * b0;
-        long h1_0 = Math.unsignedMultiplyHigh(a1, b0);
+        long h1_0 = MulHi.high(a1, b0);
         long p1_1 = a1 * b1;
-        long h1_1 = Math.unsignedMultiplyHigh(a1, b1);
+        long h1_1 = MulHi.high(a1, b1);
         long p1_2 = a1 * b2;
         long p2_0 = a2 * b0;
-        long h2_0 = Math.unsignedMultiplyHigh(a2, b0);
+        long h2_0 = MulHi.high(a2, b0);
         long p2_1 = a2 * b1;
         long p3_0 = a3 * b0;
         long lo0 = p0_0;
@@ -908,7 +908,7 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col1(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l0, o.l0);
+        long a = MulHi.high(l0, o.l0);
         long b = l0 * o.l1;
         long t = a + b;
         long k = Carry.carryOut(a, t);
@@ -920,8 +920,8 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col2(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l0, o.l1);
-        long b = Math.unsignedMultiplyHigh(l1, o.l0);
+        long a = MulHi.high(l0, o.l1);
+        long b = MulHi.high(l1, o.l0);
         long t = a + b;
         long k = Carry.carryOut(a, t);
         long c = l0 * o.l2;
@@ -940,11 +940,11 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col3(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l0, o.l2);
-        long b = Math.unsignedMultiplyHigh(l1, o.l1);
+        long a = MulHi.high(l0, o.l2);
+        long b = MulHi.high(l1, o.l1);
         long t = a + b;
         long k = Carry.carryOut(a, t);
-        long c = Math.unsignedMultiplyHigh(l2, o.l0);
+        long c = MulHi.high(l2, o.l0);
         long t2 = t + c;
         k += Carry.carryOut(t, t2);
         long d = l0 * o.l3;
@@ -966,14 +966,14 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col4(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l0, o.l3);
-        long b = Math.unsignedMultiplyHigh(l1, o.l2);
+        long a = MulHi.high(l0, o.l3);
+        long b = MulHi.high(l1, o.l2);
         long t = a + b;
         long k = Carry.carryOut(a, t);
-        long c = Math.unsignedMultiplyHigh(l2, o.l1);
+        long c = MulHi.high(l2, o.l1);
         long t2 = t + c;
         k += Carry.carryOut(t, t2);
-        long d = Math.unsignedMultiplyHigh(l3, o.l0);
+        long d = MulHi.high(l3, o.l0);
         long t3 = t2 + d;
         k += Carry.carryOut(t2, t3);
         long e = l1 * o.l3;
@@ -992,11 +992,11 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col5(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l1, o.l3);
-        long b = Math.unsignedMultiplyHigh(l2, o.l2);
+        long a = MulHi.high(l1, o.l3);
+        long b = MulHi.high(l2, o.l2);
         long t = a + b;
         long k = Carry.carryOut(a, t);
-        long c = Math.unsignedMultiplyHigh(l3, o.l1);
+        long c = MulHi.high(l3, o.l1);
         long t2 = t + c;
         k += Carry.carryOut(t, t2);
         long d = l2 * o.l3;
@@ -1012,8 +1012,8 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col6(MulAcc acc, Wide256 o) {
-        long a = Math.unsignedMultiplyHigh(l2, o.l3);
-        long b = Math.unsignedMultiplyHigh(l3, o.l2);
+        long a = MulHi.high(l2, o.l3);
+        long b = MulHi.high(l3, o.l2);
         long t = a + b;
         long k = Carry.carryOut(a, t);
         long c = l3 * o.l3;
@@ -1026,7 +1026,7 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     private void col7(MulAcc acc, Wide256 o) {
-        acc.c7 = Math.unsignedMultiplyHigh(l3, o.l3) + acc.carry;
+        acc.c7 = MulHi.high(l3, o.l3) + acc.carry;
     }
 
     public Wide256 and(Wide256 o) {

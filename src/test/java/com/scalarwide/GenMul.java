@@ -82,7 +82,7 @@ public final class GenMul {
                 }
                 if (i + j + 1 <= lastColumn) {
                     b.append("        long h").append(i).append('_').append(j)
-                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(" = MulHi.high(a").append(i)
                             .append(", b").append(j).append(");\n");
                 }
             }
@@ -153,7 +153,7 @@ public final class GenMul {
                 }
                 if (i + j + 1 <= lastColumn) {
                     b.append("        long h").append(i).append('_').append(j)
-                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(" = MulHi.high(a").append(i)
                             .append(", b").append(j).append(");\n");
                 }
             }
@@ -290,7 +290,7 @@ public final class GenMul {
             int v = t - 1 - u;
             if (v >= 0 && v < limbs) {
                 products.add("        long h" + u + "_" + v
-                        + " = Math.unsignedMultiplyHigh(a" + u + ", b" + v + ");\n");
+                        + " = MulHi.high(a" + u + ", b" + v + ");\n");
             }
         }
     }

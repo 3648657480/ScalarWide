@@ -77,7 +77,7 @@ public final class MutableWide128 {
         long o0 = o.limb(0);
         long o1 = o.limb(1);
         long lo = l0 * o0;
-        long mid = Math.unsignedMultiplyHigh(l0, o0) + l0 * o1 + l1 * o0;
+        long mid = MulHi.high(l0, o0) + l0 * o1 + l1 * o0;
         l0 = lo;
         l1 = mid;
         return this;

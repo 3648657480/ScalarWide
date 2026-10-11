@@ -2,6 +2,28 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.6
+
+### Added
+
+- **Java 17+ support (mc line)**: the base build now targets `--release 17`
+  (class major 61), covering Minecraft 1.17-1.20.4 runtimes. The only JDK 18+
+  API (`Math.unsignedMultiplyHigh`, 79 call sites in main sources) is isolated
+  in `MulHi.high`; the base implementation is `Math.multiplyHigh` plus the
+  unsigned correction.
+- **Multi-release overlay**: `META-INF/versions/21/com/scalarwide/MulHi.class`
+  restores the `Math.unsignedMultiplyHigh` intrinsic on JDK 21+; the JVM picks
+  it automatically. Measured on the workstation (JDK 21, JDK21 runner): the
+  mul family is back to baseline within 1.1%; the shim-only path (JDK 17)
+  costs 9-48% on mul-family ops.
+- Bench provenance header (`Provenance`): every run can print
+  host / cpu (CPUID-derived `PROCESSOR_IDENTIFIER`) / threads / jdk / commit.
+
+### Verified
+
+- Full test suite green on JDK 17 / 21 / 25; jmh jar smoke-tested on JDK 17
+  (base path) and benched on JDK 21 (overlay path).
+
 ## 0.11.4
 
 ### Changed

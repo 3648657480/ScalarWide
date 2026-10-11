@@ -52,3 +52,9 @@
   较 `HashMap<Wide256>` 3.0×（对 BigInteger 映射 ~4.3×）；insert 15.7–28.6。
 - 假设书：键 = epoch 窗口内局部坐标（x/z 各 ≤32 位有符号）；超界键回退 `Wide256FlatMap`；
   差分/边界/簇测试全绿（`LongLongFlatMapTest`）。
+
+### mc-v0.11.6（Java 17+：服务全 MC 版本的兼容层）
+- 基版 `--release 17`（major 61）；唯一 18+ API 收敛为 `MulHi.high`（17 版 = `multiplyHigh` + 修正）。
+- **多版本覆层**：`META-INF/versions/21/.../MulHi.class` 在 21+ 自动恢复 intrinsic。
+- 实测（工作站 JDK21）：覆层路径回归 ≤1.1%（噪声级）；纯 shim 路径（17）mul 家族慢 9–48%。
+- 测试矩阵 17/21/25 全绿；基准出处头（`Provenance`）落地。

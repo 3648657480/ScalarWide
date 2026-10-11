@@ -15,17 +15,27 @@ java {
     withSourcesJar()
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.release = 21
-}
-
 sourceSets {
     jmh {
         java.srcDirs = ['src/jmh/java']
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
+    java21 {
+        java.srcDir 'src/main/java21'
+        compileClasspath += sourceSets.main.output
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    if (name != 'compileJava21Java') {
+        options.release = 17
+    }
+}
+
+tasks.named('compileJava21Java') {
+    options.release = 21
 }
 
 configurations {
@@ -77,15 +87,20 @@ tasks.register('jmhJar', Jar) {
     group = 'benchmark'
     description = 'Build a self-contained JMH runner jar.'
     dependsOn tasks.named('jmhClasses')
+    dependsOn tasks.named('java21Classes')
     archiveClassifier = 'jmh'
     from sourceSets.jmh.output
     from sourceSets.main.output
     from({
         configurations.jmhRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     })
+    into('META-INF/versions/21') {
+        from sourceSets.java21.output
+    }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes 'Main-Class': 'org.openjdk.jmh.Main'
+        attributes 'Multi-Release': 'true'
     }
 }
 
@@ -99,10 +114,21 @@ publishing {
 }
 
 jar {
+    dependsOn tasks.named('java21Classes')
+    into('META-INF/versions/21') {
+        from sourceSets.java21.output
+    }
     manifest {
         attributes(
                 'Implementation-Title': 'ScalarWide',
-                'Implementation-Version': version
+                'Implementation-Version': version,
+                'Multi-Release': 'true'
         )
+    }
+}
+
+tasks.named('sourcesJar') {
+    into('META-INF/versions/21') {
+        from sourceSets.java21.allSource
     }
 }
