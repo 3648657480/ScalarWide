@@ -120,6 +120,24 @@ public class Sparse512Bench {
     }
 
     @Benchmark
+    public Wide512 remSparse() {
+        int i = next();
+        return sparseA[i].rem(sparseB[i]);
+    }
+
+    @Benchmark
+    public Wide512 remDense() {
+        int i = next();
+        return denseA[i].rem(denseB[i]);
+    }
+
+    @Benchmark
+    public Wide512 remMixed() {
+        int i = next();
+        return mixA[i].rem(mixB[i]);
+    }
+
+    @Benchmark
     public BigInteger bigMulSparse() {
         int i = next();
         return bigSparseA[i].multiply(bigSparseB[i]);

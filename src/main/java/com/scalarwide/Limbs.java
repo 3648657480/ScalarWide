@@ -193,10 +193,14 @@ final class Limbs {
         }
         java.util.Arrays.fill(q, 0L);
         if (compareUnsigned(u, v) < 0) {
-            System.arraycopy(u, 0, r, 0, r.length);
+            if (r != null) {
+                System.arraycopy(u, 0, r, 0, r.length);
+            }
             return;
         }
-        java.util.Arrays.fill(r, 0L);
+        if (r != null) {
+            java.util.Arrays.fill(r, 0L);
+        }
         int uz = u.length;
         while (uz > 0 && u[uz - 1] == 0) {
             uz--;
@@ -267,13 +271,15 @@ final class Limbs {
             }
             q[j] = qhat;
         }
-        if (s == 0) {
-            System.arraycopy(un, 0, r, 0, n);
-        } else {
-            for (int i = 0; i < n - 1; i++) {
-                r[i] = (un[i] >>> s) | (un[i + 1] << (64 - s));
+        if (r != null) {
+            if (s == 0) {
+                System.arraycopy(un, 0, r, 0, n);
+            } else {
+                for (int i = 0; i < n - 1; i++) {
+                    r[i] = (un[i] >>> s) | (un[i + 1] << (64 - s));
+                }
+                r[n - 1] = un[n - 1] >>> s;
             }
-            r[n - 1] = un[n - 1] >>> s;
         }
     }
 
@@ -346,7 +352,9 @@ final class Limbs {
                 rem = chunk - ql * d;
                 q[i] = (qh << 32) | ql;
             }
-            r[0] = rem;
+            if (r != null) {
+                r[0] = rem;
+            }
             return;
         }
         int s = Long.numberOfLeadingZeros(d);
@@ -357,7 +365,9 @@ final class Limbs {
                 rem = u[i] - qd * d;
                 q[i] = qd;
             }
-            r[0] = rem;
+            if (r != null) {
+                r[0] = rem;
+            }
             return;
         }
         long dn = d << s;
@@ -375,7 +385,9 @@ final class Limbs {
                 q[i] = qd;
             }
         }
-        r[0] = rem >>> s;
+        if (r != null) {
+            r[0] = rem >>> s;
+        }
     }
 
     /**
