@@ -466,11 +466,40 @@ public final class Wide1024 implements Comparable<Wide1024> {
     }
 
     /**
-     * High 1024 bits of the 2048-bit product, i.e. {@code (a*b) >>> 1024},
-     * composed from 256-bit atom block products written into a single scratch
-     * array (zero intermediate objects; limb-level assembly).
+     * High 1024 bits of the 2048-bit product, i.e. {@code (a*b) >>> 1024}
+     * (monolithic 64-bit-limb schoolbook). The earlier block-composed
+     * implementation is kept as {@link #mulHighComposed} for differential
+     * testing.
      */
     public Wide1024 mulHigh(Wide1024 o) {
+        long[] acc = new long[32];
+        for (int i = 0; i < 16; i++) {
+            long ai = limb(i);
+            long carry = 0;
+            for (int j = 0; j < 16; j++) {
+                long bj = o.limb(j);
+                long lo = ai * bj;
+                long hi = Math.unsignedMultiplyHigh(ai, bj);
+                long t = acc[i + j] + carry;
+                long c1 = Long.compareUnsigned(t, acc[i + j]) < 0 ? 1 : 0;
+                long x = t + lo;
+                long c2 = Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+                acc[i + j] = x;
+                carry = hi + c1 + c2;
+            }
+            acc[i + 16] = carry;
+        }
+        return Wide1024.of(acc[16], acc[17], acc[18], acc[19], acc[20], acc[21],
+                acc[22], acc[23], acc[24], acc[25], acc[26], acc[27],
+                acc[28], acc[29], acc[30], acc[31]);
+    }
+
+    /**
+     * High 1024 bits of the 2048-bit product, composed from 256-bit atom block
+     * products written into a single scratch array (kept as the differential
+     * oracle for {@link #mulHigh}).
+     */
+    Wide1024 mulHighComposed(Wide1024 o) {
         long[] s = new long[128];
         Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.l0, o.l1, o.l2, o.l3);
         Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.l4, o.l5, o.l6, o.l7);
