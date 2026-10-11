@@ -7,13 +7,14 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.11.4` (Knuth-D division + math
-completeness); implementation matrix and all measurements
-(including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
+Version: see repo-root `VERSION` (single authority). Current `0.11.10` (mc line:
+hard-wiring layer - sparse dispatch, magic constant division, Java 17+);
+implementation matrix and all measurements (including negative results) in
+`CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
 
 ## What it is
 
-- `Wide128` / `Wide256` / `Wide384` / `Wide512` / `Wide768` / `Wide1024`:
+- `Wide128` / `Wide256` / `Wide384` / `Wide512` (mc line, <=512):
   fixed-width two's-complement big ints (little-endian limbs);
   `MutableWide128/256` are allocation-free scratch carriers.
 - Ops: `add` `sub` `neg` `mul` (low N bits) `mulHigh` (high N bits) `div` `rem`
@@ -47,11 +48,11 @@ completeness); implementation matrix and all measurements
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.4' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v0.11.10' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:0.11.4` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:0.11.10` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),

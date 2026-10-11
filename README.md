@@ -8,7 +8,7 @@
 > 纯标量定点大数库（mc 版 **128 → 512 位，四档**），零 SIMD、零平台探测。
 > 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
-版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.4`（除法 Knuth-D 翻盘 + 数学完整性）；实现矩阵与全部实测
+版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.10`（硬接线层：稀疏派发 + 魔法常数除法 + Java 17+）；实现矩阵与全部实测
 （含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`。
 
 ## 这是什么
@@ -41,14 +41,14 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v0.11.4' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v0.11.10' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.4`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.10`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512`（不可变值类型，mc 版 ≤512）、`MutableWide128/256`（零分配 scratch）、
-  语义见各类 Javadoc 与 `docs/DESIGN.md`。
+  `DivMagic`（常数除法）、MC 工具包（`com.scalarwide.mc`）；语义见各类 Javadoc 与 `docs/DESIGN.md`。
 - 红线：`MutableWide*` 非线程安全、永不可作 map 键；加 `-Dscalarwide.guard=true` 可开启共享误用
   检测（跨线程调用抛 `IllegalStateException`，best-effort，关闭时零成本）。
 
@@ -61,11 +61,15 @@
 - 仓库双分支：`main` = 完整库（全宽度/全工具）；`mc` = 改版 MC 精简极致版
   （宽度 ≤512、零已知退化，标签 `mc-v*`）。策略见 `docs/BRANCHES.md`。
 
-### MC 工具包（`mc` 分支专属，`com.scalarwide.mc`）
+### MC 工具包（`mc` 分支专属）
 
-- `Wide256FlatMap`：交错槽开放寻址键映射（零分配、免装箱）——1M 键随机查找较
-  `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×（`FlatMapProbe`）。
+- `Wide256FlatMap` / `LongLongFlatMap`：开放寻址键映射（零分配、免装箱）——256 位键 1M 查找较
+  `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×；64 位打包键 **25–27 ns**（较 `HashMap<Long>` 1.9×）。
+- `DivMagic`（`com.scalarwide`）：常数除数魔法除法——div **1.33–1.36×**、rem **1.84–1.91×**、
+  2 的幂 **6.05×**。
 - `McWarmup`：初始化预热，`run()` 一次后 256 位首百次调用 5144→134 ns（38×）。
+- 稀疏宽断派发：`Wide256.mulFull/mulHigh`、`Wide512.mulHigh/div/rem` 在操作数 ≤半宽时走短路
+  （稀疏域 1.25×–20×，稠密域 ≤2% 门禁）。
 
 ## 快速使用
 
@@ -78,33 +82,34 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 
 ## 宽度与坐标范围（必读）
 
-| 宽度 | 定位 | 说明 |
+| 宽度 | 定位 | vs BigInteger（工作站实测）|
 |---|---|---|
-| 128 | 原子 · 存储 key / Long128 的替代 | 实测 key 场景只需 59+59 位；128 是收益/代价甜点 |
-| 256 | 原子 · 通用档（key、哈希、混合运算） | 主原子 |
-| 384 | 3×128 · 中继 | 组合：add/比较/乘（mul 10×、反超 big 2.55×）；mulHigh 待做 |
-| 512 | 2×256 · 数据域单缓存行 | 组合：add/比较/乘（mul 3.15×、反超 big 1.5×）；sub/移位待做 |
-| 768 | 3×256 · 超大坐标 | 组合：mul（vs 引擎 1.98×；落后 big 1.42×）；mulHigh 待做 |
-| 1024 | 4×256 · 逼近 double 上限 | 组合：mul（vs 引擎 1.43×；落后 big 1.81×）；mulHigh 待做 |
+| 128 | 原子 · 存储 key / Long128 的替代 | add 5.7× · sub 5.7× · mul 8.6× · div 2.7× |
+| 256 | 原子 · 通用档（key、哈希、混合运算） | add 4.2× · mul 4.3× · div 1.6× · hash 2.8× |
+| 384 | 3×128 · 中继 | add 2.7× · mul 3.2× · mulHigh 1.13× · shr 4.6× |
+| 512 | 2×256 · 数据域单缓存行 | add 2.3× · mul 2.2× · mulHigh 1.06→（稀疏派发后更高）· div 1.1× |
 
-**不覆盖**：1e306 量级的原始坐标（≈1020 bit）。原始坐标应保持"大数坐标 + 局部窗口"的分层设计，本库负责其中的 key / 哈希 / 短大数运算。
+**不覆盖**：1e306 量级的原始坐标（≈1020 bit）。原始坐标应保持"大数坐标 + 局部窗口"的分层设计，本库负责其中的 key / 哈希 / 短大数运算（全库对 BigInteger 无已知退化）。
 
 ## 目录
 
 ```
-src/main/java/com/scalarwide/     Limbs（参考引擎）、Wide128/256/384
-src/test/java/com/scalarwide/     BigInteger 对拍测试
-src/jmh/java/com/scalarwide/bench JMH 基准（BigInteger 同场对照）
-docs/DESIGN.md                    设计决策 / 附魔路线 / 验收标准
+src/main/java/com/scalarwide/     核心：Limbs（参考引擎）、Wide128/256/384/512、
+                                  MutableWide128/256、DivMagic、MulHi
+src/main/java/com/scalarwide/mc/  MC 工具包：Wide256FlatMap、LongLongFlatMap、McWarmup
+src/main/java21/…/MulHi.java      Java 21+ 多版本覆层（intrinsic 恢复）
+src/test/java/com/scalarwide/     BigInteger 对拍（含稀疏/域外/消费者契约门禁）
+src/jmh/java/com/scalarwide/bench JMH 基准与诊断探针（稀疏/魔法除法/多版本等）
+docs/DESIGN.md · BENCH.md · BRANCHES.md · COMPATIBILITY.md
 ```
 
 ## 路线
 
-1. **0.1.x 基线**：正确性闭环 + JMH 基线数字（记录在 `docs/BENCH.md`）。
-2. **附魔轮 1（0.2.0 已完成）**：128/256 热路径寄存器化 + 手动展开（一次一变量，JMH 锁核前后对照）。
-3. **附魔轮 2**：零分配 API（结果写调用方缓冲 / 对象池）。
-4. **附魔轮 3**：内联验证（`-XX:+PrintInlining`）、`VarHandle` 评估。
-5. SIMD 冻结为实验项（标量是产品，SIMD 是 oracle 对照下的实验）。
+- **已完成（0.11.x 性能线）**：比较式进位、全宽度直算化、Knuth-D 除法、商模式除法、
+  稀疏宽断派发、魔法常数除法、Java 17+ 多版本覆层、MC 工具包与硬接线层。
+- **待办（见 `docs/BENCH.md` 账本）**：批量 SoA 键组（V2 规格触发）、LongLongFlatMap 大表分片、
+  序列化（NBT/网络包）补齐、main 线 768/1024 mulHigh 剩余差距（行向量路线已证伪，等待新结构）。
+- **久期**：SIMD 冻结为实验项（标量是产品，SIMD 是 oracle 对照下的实验）。
 
 ## 许可
 

@@ -2,6 +2,51 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.10
+
+### Added
+
+- `DivMagic` (mc line): OI-style constant-divisor division via a precomputed
+  reciprocal (`floor(2^64/d)`, divisor domain `[1, 2^32)`); powers of two use
+  the shift/mask path. Measured on coordinate fixtures: div 1.33-1.36x,
+  rem 1.84-1.91x, powers of two 6.05x. Purely additive API.
+
+### Archived (negative, main line)
+
+- OI column-accumulation `mulHigh` rejected: 768 +52%, 1024 +3% versus the
+  shipped implementations (array loops lose to unrolled straight-line code
+  under the Java JIT; third independent confirmation).
+
+## 0.11.9
+
+### Changed
+
+- Quotient-only division engine: `Limbs.divmod`'s remainder parameter is
+  nullable; `div()` skips remainder allocation and denormalization. Dense
+  `512.div` -24% (flipping the P14 regression into a 1.07x lead over
+  BigInteger); every width's `div()` benefits.
+- Nullable quotient parameter was tried for `rem` and reverted after two
+  re-measurements (saved ~5.5 ns on rem, cost 2.4 ns on the div hot path).
+
+## 0.11.8
+
+### Added
+
+- 512 sparse width-dispatch (mc): `Wide512.mulHigh` (sparse 20x) and
+  `div`/`rem` (sparse 1.25x) take 256-bit shortcuts for half-sparse operands;
+  `mul` candidate rejected (dense +8%, mixed +25%). Dense-regression gate
+  formalized: keep only if <= 2% dense regression with an improved mixed
+  profile.
+
+## 0.11.7
+
+### Added
+
+- Sparse width-dispatch (mc; first mc-exclusive per-op wins): `Wide256.mulFull`
+  (sparse 1.85x, 2.4x ahead of BigInteger) and `Wide256.mulHigh` (sparse 9.7x)
+  for operands that fit 128 bits - fully correct, dense falls back unchanged;
+  `mul`/`div`/`rem` candidates rejected after measurement.
+
 ## 0.11.6
 
 ### Added
