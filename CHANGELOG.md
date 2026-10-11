@@ -2,6 +2,16 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.11
+
+### Changed
+
+- Sync merge from `main` v0.11.6 (mc line): byte serialization lands on the
+  <=512 face (`toByteArray`/`toByteArrayLE`/`toByteArrayFixed` +
+  `fromByteArray`/`fromByteArrayLE`, BigInteger interop), together with the
+  quotient-only division engine and the `Provenance` bench header. 768/1024
+  artifacts and their tests stay pruned (ByteIoTest adapted to <=512).
+
 ## 0.11.10
 
 ### Added
