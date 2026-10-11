@@ -55,7 +55,7 @@ implementation matrix and all measurements (including negative results) in
   `com.scalarwide:scalarwide:0.11.10` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
-- API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
+- API entry points: `Wide128/256/384/512` (immutable value types, mc line <=512),
   `MutableWide128/256` (allocation-free scratch); semantics in the Javadoc and
   `docs/DESIGN.md`.
 - Red lines: `MutableWide*` are not thread-safe and never valid as map keys;

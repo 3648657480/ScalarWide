@@ -69,6 +69,47 @@
 - Full test suite green on JDK 17 / 21 / 25; jmh jar smoke-tested on JDK 17
   (base path) and benched on JDK 21 (overlay path).
 
+## 0.11.6（main 线：字节序列化）
+
+### Added
+
+- **Byte serialization on all six widths**: `toByteArray()` (unsigned
+  big-endian minimal), `toByteArrayLE()`, `toByteArrayFixed()` (BITS/8 bytes,
+  zero-padded), `fromByteArray(...)` and `fromByteArrayLE(...)` (big-endian
+  tolerates leading zero padding, so `BigInteger.toByteArray()` output
+  round-trips). Needed by mods for NBT/network persistence of wide keys and
+  coordinates; gated by `ByteIoTest` (round-trips, minimality, interop,
+  length limits) and pinned in `ConsumerApiTest`.
+
+### Measured (workstation, JDK 21)
+
+- Encoders were rewritten to limb-block field writes after the first version
+  measured 0.70x/0.44x behind BigInteger at 256/512 (per-byte `limb()`
+  switch dispatch was the bottleneck). Final: toBytes 5.1 / 9.0 / 17.0 ns at
+  128/256/512 (2.0-2.4x ahead of `BigInteger.toByteArray`); fromBytes
+  10.8 / 18.5 / 37.8 ns (1.55-1.66x ahead).
+
+## 0.11.5（main 线：商模式除法移植 + 1024 单片）
+
+### Changed
+
+- **Quotient-only division engine** (ported back from the `mc` line):
+  `Limbs.divmod`'s remainder parameter is nullable; `div()` no longer allocates
+  or writes the remainder (skips denormalization and zero-fill). Measured on
+  the DivisionBench fixtures: div128 -8%, div256 -8%, div512 -7%; div1024 is
+  within the documented fixed-pair layout variance (+11% noted, same class as
+  the 768.add anomaly).
+- **1024 `mulHigh` rewritten as a monolithic 64-bit-limb schoolbook** (from
+  the "single-piece" experiment): 415.6 -> 365.4 ns (-12%); the block-composed
+  implementation is kept as the differential oracle (`mulHighComposed`).
+  768 `mulHigh` kept the composed version (the loop variant measured 60%
+  slower there; element-wise decision).
+
+### Added
+
+- `Provenance` (bench): every measurement can print the host / CPUID-derived
+  CPU / threads / JDK / commit header - the ledger's machine anchor (R10).
+
 ## 0.11.4
 
 ### Changed

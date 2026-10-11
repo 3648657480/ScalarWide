@@ -13,11 +13,11 @@
 
 ## 这是什么
 
-- `Wide128` / `Wide256` / `Wide384` / `Wide512` / `Wide768` / `Wide1024`：定宽二补码大整数（little-endian limbs）；
+- `Wide128` / `Wide256` / `Wide384` / `Wide512`（mc 版 ≤512）：定宽二补码大整数（little-endian limbs）；
   `MutableWide128/256` 为零分配 scratch 载体。
-- 运算：`add` `sub` `neg` `mul`（低 N 位）`mulHigh`（高 N 位）`div` `rem` `pow` `and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned` `bitLength` `bitCount` `min` `max` `abs`，以及 `fromBigInteger` / `toBigInteger` / `toHexString`。
+- 运算：`add` `sub` `neg` `mul`（低 N 位）`mulHigh`（高 N 位）`div` `rem` `pow` `and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned` `compareSigned` `bitLength` `bitCount` `min` `max` `abs`，以及 `fromBigInteger` / `toBigInteger` / `toHexString` / `toByteArray`（BE/LE/定宽）/ `fromByteArray`。
 - 默认语义：算术按 2^N 回绕；`compareTo` = 无符号序（与 `equals` 一致，适合做 key）；移位量必须在 `[0, N)`，否则抛 `IllegalArgumentException`。
-- 组合层：384/512/768/1024 的乘法由 128/256 原子块积组合而成（512/384 档另有直算 add/比较）；
+- 组合层：384/512 的乘法由 128/256 原子块积组合而成（另有直算 add/子运算）；
   设计与边界见 `docs/DESIGN.md` / `docs/INLINE.md`；`Limbs`（包私有）为常驻内部 oracle，参与三路对拍。
 
 ## 构建 / 测试 / 跑分
