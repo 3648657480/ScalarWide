@@ -810,3 +810,14 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
   与 `MathOpsTest` 全绿；`ConsumerApiTest` drop-in 门禁保持。
 - **落后清单只剩**：1024.mulHigh 0.71×、768.mulHigh 0.92×（架构上限，已记录）。
 
+## 2026-10-11 · P16（main）：OI 列累加 mulHigh 负结果 + 布局敏感性第二例
+
+- **OI 式列累加 mulHigh 否决（负结果）**：每列 (lo, mid, top) 三进位元、乘积间零串行链、末尾单次归一化。
+  实测（固定对，同 run）：768 **226.4 vs 148.8（+52%）**；1024 **365.7 vs 354.5（+3%）**——
+  与 Round-H/loop 单片同一死因家族：**Java JIT 下数组循环不敌展开直写**（第三次独立验证）。
+  已回退；诊断基架 `DiagMulHighBench`（current / composed）保留。
+- **布局敏感性第二例**：本 run 中 1024 单固定对 mono/composed 名次互换（313.6 vs 354.5；决策点时
+  mono 曾以 365.4 vs 415.6 胜出）——与 768 车道异常同类，记录不翻转。
+- 0.11.5 移植记账：商模式除法（r 可空）回流自 mc——div128/256/512 -7~8%（DivisionBench 夹具），
+  div1024 固定对 +11% 判为上述布局波动；详见 mc 线 `P15` 与 CHANGELOG 0.11.5。
+
