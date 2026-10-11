@@ -89,8 +89,7 @@ public final class Wide128 implements Comparable<Wide128> {
      */
     public Wide128 div(Wide128 o) {
         long[] q = new long[LIMBS];
-        long[] r = new long[LIMBS];
-        Limbs.divmod(pack(), o.pack(), q, r);
+        Limbs.divmod(pack(), o.pack(), q, null);
         return of(q[0], q[1]);
     }
 

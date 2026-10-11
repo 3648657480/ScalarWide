@@ -99,8 +99,7 @@ public final class Wide384 implements Comparable<Wide384> {
      */
     public Wide384 div(Wide384 o) {
         long[] q = new long[LIMBS];
-        long[] r = new long[LIMBS];
-        Limbs.divmod(pack(), o.pack(), q, r);
+        Limbs.divmod(pack(), o.pack(), q, null);
         return of(q[0], q[1], q[2], q[3],
                 q[4], q[5]);
     }

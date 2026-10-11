@@ -2,6 +2,27 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.5
+
+### Changed
+
+- **Quotient-only division engine** (ported back from the `mc` line):
+  `Limbs.divmod`'s remainder parameter is nullable; `div()` no longer allocates
+  or writes the remainder (skips denormalization and zero-fill). Measured on
+  the DivisionBench fixtures: div128 -8%, div256 -8%, div512 -7%; div1024 is
+  within the documented fixed-pair layout variance (+11% noted, same class as
+  the 768.add anomaly).
+- **1024 `mulHigh` rewritten as a monolithic 64-bit-limb schoolbook** (from
+  the "single-piece" experiment): 415.6 -> 365.4 ns (-12%); the block-composed
+  implementation is kept as the differential oracle (`mulHighComposed`).
+  768 `mulHigh` kept the composed version (the loop variant measured 60%
+  slower there; element-wise decision).
+
+### Added
+
+- `Provenance` (bench): every measurement can print the host / CPUID-derived
+  CPU / threads / JDK / commit header - the ledger's machine anchor (R10).
+
 ## 0.11.4
 
 ### Changed

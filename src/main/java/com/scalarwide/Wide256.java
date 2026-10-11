@@ -103,8 +103,7 @@ public final class Wide256 implements Comparable<Wide256> {
      */
     public Wide256 div(Wide256 o) {
         long[] q = new long[LIMBS];
-        long[] r = new long[LIMBS];
-        Limbs.divmod(pack(), o.pack(), q, r);
+        Limbs.divmod(pack(), o.pack(), q, null);
         return of(q[0], q[1], q[2], q[3]);
     }
 
