@@ -821,3 +821,21 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 - 0.11.5 移植记账：商模式除法（r 可空）回流自 mc——div128/256/512 -7~8%（DivisionBench 夹具），
   div1024 固定对 +11% 判为上述布局波动；详见 mc 线 `P15` 与 CHANGELOG 0.11.5。
 
+## 2026-10-11 · P17（main）：字节序列化 + 编码器块重写
+
+- 新增六宽度 `toByteArray`（大端最小）/`toByteArrayLE`/`toByteArrayFixed`（BITS/8 定宽）+
+  `fromByteArray`/`fromByteArrayLE`（大端容忍前导零填充，BigInteger 符号字节可往返）。
+- 首版编码逐字节走 `limb()` 运行时 switch → toBytes256/512 **落后 0.70×/0.44×**；
+  改为"按 limb 块直写字段 + 定长短循环"（让 JIT 常量折叠）后：
+
+| ns/op | 首版 | 块重写 | BigInteger | 比值 |
+|---|---|---|---|---|
+| toBytes128 | 10.63 | **5.06** | 12.11 | **2.39×** |
+| toBytes256 | 28.87 | **9.02** | 20.19 | **2.24×** |
+| toBytes512 | 79.01 | **16.97** | 34.61 | **2.04×** |
+| fromBytes128/256/512 | — | 10.8 / 18.5 / 37.8 | 16.6 / 30.9 / 59.6 | 1.55–1.66× |
+
+- 教训入库：**动态长度循环 + 运行时索引访问器 = 杀手**；块式直写换取常量折叠——
+  与 OI 列累加 mulHigh 负结果互为镜像证据（同一 JIT 行为的两面）。
+- 测试：`ByteIoTest`（六宽度 × 往返/最小性/定宽/互操作含符号字节/越界拒绝）+ `ConsumerApiTest` 钉口。
+

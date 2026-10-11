@@ -2,6 +2,26 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 0.11.6
+
+### Added
+
+- **Byte serialization on all six widths**: `toByteArray()` (unsigned
+  big-endian minimal), `toByteArrayLE()`, `toByteArrayFixed()` (BITS/8 bytes,
+  zero-padded), `fromByteArray(...)` and `fromByteArrayLE(...)` (big-endian
+  tolerates leading zero padding, so `BigInteger.toByteArray()` output
+  round-trips). Needed by mods for NBT/network persistence of wide keys and
+  coordinates; gated by `ByteIoTest` (round-trips, minimality, interop,
+  length limits) and pinned in `ConsumerApiTest`.
+
+### Measured (workstation, JDK 21)
+
+- Encoders were rewritten to limb-block field writes after the first version
+  measured 0.70x/0.44x behind BigInteger at 256/512 (per-byte `limb()`
+  switch dispatch was the bottleneck). Final: toBytes 5.1 / 9.0 / 17.0 ns at
+  128/256/512 (2.0-2.4x ahead of `BigInteger.toByteArray`); fromBytes
+  10.8 / 18.5 / 37.8 ns (1.55-1.66x ahead).
+
 ## 0.11.5
 
 ### Changed

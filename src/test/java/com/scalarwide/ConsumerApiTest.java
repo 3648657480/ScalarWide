@@ -63,6 +63,16 @@ class ConsumerApiTest {
     }
 
     @Test
+    void byteIoPattern() {
+        Wide256 k = Wide256.of(0x1122334455667788L, 0x99AABBCCDDEEFF00L, 1, 2);
+        byte[] be = k.toByteArray();
+        assertEquals(k, Wide256.fromByteArray(be));
+        assertEquals(k, Wide256.fromByteArrayLE(k.toByteArrayLE()));
+        assertEquals(32, k.toByteArrayFixed().length);
+        assertEquals(k, Wide256.fromByteArray(k.toByteArrayFixed()));
+    }
+
+    @Test
     void mathOpsPattern() {
         assertEquals(Wide256.of(14), Wide256.of(100).div(Wide256.of(7)));
         assertEquals(Wide256.of(2), Wide256.of(100).rem(Wide256.of(7)));

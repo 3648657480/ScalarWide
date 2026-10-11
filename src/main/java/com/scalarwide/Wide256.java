@@ -160,6 +160,142 @@ public final class Wide256 implements Comparable<Wide256> {
     public Wide256 abs() {
         return l3 < 0 ? neg() : this;
     }
+    /** Unsigned big-endian minimal byte array (zero returns a single 0x00 byte). */
+    public byte[] toByteArray() {
+        int bits = bitLength();
+        if (bits == 0) {
+            return new byte[] {0};
+        }
+        byte[] out = new byte[(bits + 7) >>> 3];
+        int pos = out.length;
+        long x = l0;
+        for (int k = 0; k < 8 && pos > 0; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l1;
+        for (int k = 0; k < 8 && pos > 0; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l2;
+        for (int k = 0; k < 8 && pos > 0; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l3;
+        for (int k = 0; k < 8 && pos > 0; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        return out;
+    }
+
+    /** Unsigned little-endian minimal byte array (zero returns a single 0x00 byte). */
+    public byte[] toByteArrayLE() {
+        int bits = bitLength();
+        if (bits == 0) {
+            return new byte[] {0};
+        }
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int pos = 0;
+        long x = l0;
+        for (int k = 0; k < 8 && pos < n; k++) {
+            out[pos++] = (byte) x;
+            x >>>= 8;
+        }
+        x = l1;
+        for (int k = 0; k < 8 && pos < n; k++) {
+            out[pos++] = (byte) x;
+            x >>>= 8;
+        }
+        x = l2;
+        for (int k = 0; k < 8 && pos < n; k++) {
+            out[pos++] = (byte) x;
+            x >>>= 8;
+        }
+        x = l3;
+        for (int k = 0; k < 8 && pos < n; k++) {
+            out[pos++] = (byte) x;
+            x >>>= 8;
+        }
+        return out;
+    }
+
+    /** Unsigned big-endian fixed-width byte array (BITS/8 bytes, zero-padded). */
+    public byte[] toByteArrayFixed() {
+        byte[] out = new byte[BITS >>> 3];
+        int pos = out.length;
+        long x = l0;
+        for (int k = 0; k < 8; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l1;
+        for (int k = 0; k < 8; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l2;
+        for (int k = 0; k < 8; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        x = l3;
+        for (int k = 0; k < 8; k++) {
+            out[--pos] = (byte) x;
+            x >>>= 8;
+        }
+        return out;
+    }
+
+    /**
+     * Unsigned big-endian decode; leading zero padding is tolerated (so
+     * BigInteger.toByteArray output with a sign byte round-trips).
+     *
+     * @throws IllegalArgumentException if the significant length exceeds BITS/8
+     */
+    public static Wide256 fromByteArray(byte[] src, int off, int len) {
+        int max = LIMBS * 8;
+        while (len > max && src[off] == 0) {
+            off++;
+            len--;
+        }
+        if (len > max) {
+            throw new IllegalArgumentException("byte array too long: " + len);
+        }
+        long[] out = new long[LIMBS];
+        for (int i = 0; i < len; i++) {
+            int b = (len - 1 - i) << 3;
+            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        }
+        return of(out[0], out[1], out[2], out[3]);
+    }
+
+    /** @see #fromByteArray(byte[], int, int) */
+    public static Wide256 fromByteArray(byte[] src) {
+        return fromByteArray(src, 0, src.length);
+    }
+
+    /** Unsigned little-endian decode. */
+    public static Wide256 fromByteArrayLE(byte[] src, int off, int len) {
+        int max = LIMBS * 8;
+        if (len > max) {
+            throw new IllegalArgumentException("byte array too long: " + len);
+        }
+        long[] out = new long[LIMBS];
+        for (int i = 0; i < len; i++) {
+            int b = i << 3;
+            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        }
+        return of(out[0], out[1], out[2], out[3]);
+    }
+
+    /** @see #fromByteArrayLE(byte[], int, int) */
+    public static Wide256 fromByteArrayLE(byte[] src) {
+        return fromByteArrayLE(src, 0, src.length);
+    }
     public int bitLength() {
         if (l3 != 0) {
             return 192 + (64 - Long.numberOfLeadingZeros(l3));
