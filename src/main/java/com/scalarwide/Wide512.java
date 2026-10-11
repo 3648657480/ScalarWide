@@ -117,6 +117,10 @@ public final class Wide512 implements Comparable<Wide512> {
      * @throws ArithmeticException if `o` is zero
      */
     public Wide512 div(Wide512 o) {
+        if (((l4 | l5 | l6 | l7) | (o.l4 | o.l5 | o.l6 | o.l7)) == 0) {
+            Wide256 q = Wide256.of(l0, l1, l2, l3).div(Wide256.of(o.l0, o.l1, o.l2, o.l3));
+            return of(q.limb(0), q.limb(1), q.limb(2), q.limb(3), 0, 0, 0, 0);
+        }
         long[] q = new long[LIMBS];
         long[] r = new long[LIMBS];
         Limbs.divmod(pack(), o.pack(), q, r);
@@ -130,6 +134,10 @@ public final class Wide512 implements Comparable<Wide512> {
      * @throws ArithmeticException if `o` is zero
      */
     public Wide512 rem(Wide512 o) {
+        if (((l4 | l5 | l6 | l7) | (o.l4 | o.l5 | o.l6 | o.l7)) == 0) {
+            Wide256 r = Wide256.of(l0, l1, l2, l3).rem(Wide256.of(o.l0, o.l1, o.l2, o.l3));
+            return of(r.limb(0), r.limb(1), r.limb(2), r.limb(3), 0, 0, 0, 0);
+        }
         long[] q = new long[LIMBS];
         long[] r = new long[LIMBS];
         Limbs.divmod(pack(), o.pack(), q, r);
@@ -285,6 +293,9 @@ public final class Wide512 implements Comparable<Wide512> {
      * intermediate objects), with compare-based carry fix-ups at limb level.
      */
     public Wide512 mulHigh(Wide512 o) {
+        if (((l4 | l5 | l6 | l7) | (o.l4 | o.l5 | o.l6 | o.l7)) == 0) {
+            return ZERO;
+        }
         long[] s = new long[32];
         Wide256.mulFullInto8(s, 0, l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));
         Wide256.mulFullInto8(s, 8, l0, l1, l2, l3, o.limb(4), o.limb(5), o.limb(6), o.limb(7));

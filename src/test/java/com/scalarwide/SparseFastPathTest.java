@@ -62,4 +62,43 @@ class SparseFastPathTest {
         assertThrows(ArithmeticException.class, () -> Wide256.of(5).div(Wide256.ZERO));
         assertThrows(ArithmeticException.class, () -> Wide256.of(5).rem(Wide256.ZERO));
     }
+
+    @Test
+    void wide512SparseBothOperands() {
+        Random rnd = new Random(512512L);
+        BigInteger mask512 = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
+        for (int i = 0; i < 10_000; i++) {
+            BigInteger a = new BigInteger(1 + rnd.nextInt(255), rnd);
+            BigInteger b = new BigInteger(1 + rnd.nextInt(254), rnd).add(BigInteger.ONE);
+            Wide512 wa = Wide512.fromBigInteger(a);
+            Wide512 wb = Wide512.fromBigInteger(b);
+            assertEquals(a.multiply(b), wa.mul(wb).toBigInteger(), "mul " + a + "*" + b);
+            assertEquals(BigInteger.ZERO, wa.mulHigh(wb).toBigInteger(), "mulHigh " + a + "*" + b);
+            assertEquals(a.divide(b), wa.div(wb).toBigInteger(), "div " + a + "/" + b);
+            assertEquals(a.remainder(b), wa.rem(wb).toBigInteger(), "rem " + a + "%" + b);
+        }
+        BigInteger max256 = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
+        Wide512 wm = Wide512.fromBigInteger(max256);
+        assertEquals(max256.multiply(max256), wm.mul(wm).toBigInteger());
+        assertEquals(BigInteger.ZERO, wm.mulHigh(wm).toBigInteger());
+        assertEquals(BigInteger.ONE, wm.div(wm).toBigInteger());
+    }
+
+    @Test
+    void wide512MixedFallback() {
+        Random rnd = new Random(513513L);
+        BigInteger mask512 = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
+        for (int i = 0; i < 5000; i++) {
+            BigInteger a = rnd.nextBoolean() ? new BigInteger(256, rnd) : new BigInteger(512, rnd);
+            BigInteger b = rnd.nextBoolean() ? new BigInteger(256, rnd) : new BigInteger(512, rnd);
+            b = b.max(BigInteger.ONE);
+            Wide512 wa = Wide512.fromBigInteger(a);
+            Wide512 wb = Wide512.fromBigInteger(b);
+            assertEquals(a.multiply(b).and(mask512), wa.mul(wb).toBigInteger(), "mixed mul");
+            assertEquals(a.multiply(b).shiftRight(512), wa.mulHigh(wb).toBigInteger(), "mixed mulHigh");
+            assertEquals(a.divide(b), wa.div(wb).toBigInteger(), "mixed div");
+            assertEquals(a.remainder(b), wa.rem(wb).toBigInteger(), "mixed rem");
+        }
+        assertThrows(ArithmeticException.class, () -> Wide512.of(5).div(Wide512.ZERO));
+    }
 }
