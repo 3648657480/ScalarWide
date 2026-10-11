@@ -222,6 +222,9 @@ public final class Wide256 implements Comparable<Wide256> {
 
     /** High 256 bits of the 512-bit product, i.e. {@code (a*b) >>> 256}. */
     public Wide256 mulHigh(Wide256 o) {
+        if (((l2 | l3) | (o.l2 | o.l3)) == 0) {
+            return ZERO;
+        }
         MulAcc acc = new MulAcc();
         col0(acc, o);
         col1(acc, o);
@@ -242,6 +245,10 @@ public final class Wide256 implements Comparable<Wide256> {
      *         (equal to {@link #mulHigh})
      */
     public Wide512 mulFull(Wide256 o) {
+        if (((l2 | l3) | (o.l2 | o.l3)) == 0) {
+            Wide256 p = Wide128.of(l0, l1).mulFull(Wide128.of(o.l0, o.l1));
+            return Wide512.of(p.limb(0), p.limb(1), p.limb(2), p.limb(3), 0, 0, 0, 0);
+        }
         MulAcc acc = new MulAcc();
         col0(acc, o);
         col1(acc, o);
