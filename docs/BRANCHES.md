@@ -20,7 +20,9 @@
 ## 版本与坐标
 
 - `mc` 的 `VERSION` 与 `main` 同号（随合并演进）；标签以 `mc-` 前缀区分。
-- JitPack：`com.github.3648657480:ScalarWide:mc-v0.11.1`；框架钉 `mc-` 标签。
+- **两线已冻结于 `1.0.0`**（`main`→`v1.0.0`、`mc`→`mc-v1.0.0`）；维护模式与
+  按需唤醒清单见 `docs/FUTURE-WORK.md`。
+- JitPack：`com.github.3648657480:ScalarWide:mc-v1.0.0`；框架钉 `mc-` 标签。
 - 兼容契约（`docs/COMPATIBILITY.md`）对 `mc` 同样有效（≤512 子集）。
 
 ## CI 与发布纪律（2026-10-11 起）
