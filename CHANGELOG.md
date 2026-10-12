@@ -2,6 +2,32 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.0 — 冻结（项目结项）
+
+> **冻结起点**：公开 API 的签名与语义自本版起冻结（版本语义见 `docs/COMPATIBILITY.md` §6）。
+> 两线同步冻结：`main` → `v1.0.0`、`mc` → `mc-v1.0.0`。项目转入**维护模式**：
+> 只接受 bug 修复与消费者驱动的性能/纯增量（patch 级）；未竟优化归档于
+> `docs/FUTURE-WORK.md`（带触发条件）。
+
+### 冻结面
+
+- 全部公开类型/方法的签名、语义与异常行为：二补码回绕、无符号 `compareTo`、
+  移位区间 `[0, N)` 校验、`MutableWide*` 单线程属主与零分配、字节序列化格式
+  （BE/LE/定宽互操作）——自 `1.0.0` 起不变。
+- `ConsumerApiTest` 为冻结回归门：破坏即违反冻结承诺，须走新主版本线。
+
+### 结项时两线状态
+
+- `main`：全宽度 128–1024；直算化引擎 + Knuth-D 除法 + 商模式除法 + 字节序列化；
+  768/1024 `mulHigh` 为已记录的架构短板（行向量路线三次证伪，见 `docs/BENCH.md`）。
+- `mc`：≤512 零已知退化；MC 工具包（`LongLongFlatMap` / `Wide256FlatMap` /
+  `McWarmup` / 稀疏宽断派发 / `DivMagic`）+ Java 17+ MR-JAR（`META-INF/versions/21`）。
+
+### 发布纪律
+
+- CI（GitHub Actions）**绿了才打 tag**（`docs/BRANCHES.md`）；JitPack 自动构建；
+  升级通道（patch/minor/major）见 `docs/COMPATIBILITY.md` §6。
+
 ## 0.11.11
 
 ### Changed

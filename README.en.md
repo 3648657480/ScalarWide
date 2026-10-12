@@ -7,10 +7,11 @@
 > Correctness is gated by BigInteger differential testing; performance is
 > measured with JMH.
 
-Version: see repo-root `VERSION` (single authority). Current `0.11.10` (mc line:
-hard-wiring layer - sparse dispatch, magic constant division, Java 17+);
-implementation matrix and all measurements (including negative results) in
-`CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`.
+Version: see repo-root `VERSION` (single authority). **Frozen at `1.0.0` (project
+closed, maintenance mode)** - public-API freeze semantics in `docs/COMPATIBILITY.md`
+§6, deferred work in `docs/FUTURE-WORK.md`; implementation matrix and all
+measurements (including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`,
+`docs/BENCH.md`.
 
 ## What it is
 
@@ -20,12 +21,12 @@ implementation matrix and all measurements (including negative results) in
 - Ops: `add` `sub` `neg` `mul` (low N bits) `mulHigh` (high N bits) `div` `rem`
   `pow` `and` `or` `xor` `not` `andNot` `shl` `ushr` `shr` `compareUnsigned`
   `compareSigned` `bitLength` `bitCount` `min` `max` `abs`, plus `fromBigInteger`
-  / `toBigInteger` / `toHexString`.
+  / `toBigInteger` / `toHexString` / `toByteArray` (BE/LE/fixed) / `fromByteArray`.
 - Semantics: arithmetic wraps mod 2^N; `compareTo` is unsigned (consistent with
   `equals`, suitable for keys); shift amounts must be in `[0, N)` or an
   `IllegalArgumentException` is thrown.
-- Composition layer: 384/512/768/1024 multiplication composes 128/256 atom
-  block products (512/384 also have direct add/compare); design and boundaries
+- Composition layer: 384/512 multiplication composes 128/256 atom block
+  products (plus direct add/sub/shift paths); design and boundaries
   in `docs/DESIGN.md` / `docs/INLINE.md`; the package-private `Limbs` engine
   is the permanent internal oracle in the three-way differential testing.
 
@@ -48,11 +49,11 @@ implementation matrix and all measurements (including negative results) in
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v0.11.10' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.0' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:0.11.10` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:1.0.0` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512` (immutable value types, mc line <=512),
@@ -66,9 +67,10 @@ implementation matrix and all measurements (including negative results) in
 
 - **The library evolves independently; consumers get performance upgrades with
   zero code changes**: version numbers are decoupled, a consumer only pins the
-  dependency coordinate. Within the `0.11.x` line, releases are performance /
-  bugfix / additive only (signatures and semantics frozen) - upgrading means
-  changing one dependency version and rebuilding.
+  dependency coordinate. Within the `1.0.x` patch line, releases are performance /
+  bugfix / additive only (signatures and semantics frozen - see
+  `docs/COMPATIBILITY.md` §6) - upgrading means changing one dependency version
+  and rebuilding.
 - Breaking changes only enter a new minor line with a migration note; the
   protected public API surface and the consumer regression contract are in
   `docs/COMPATIBILITY.md` (test: `ConsumerApiTest`).
@@ -87,14 +89,14 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 
 ## Widths and coordinate range
 
-| Width | Role | Notes |
+| Width | Role | vs BigInteger (workstation-measured) |
 |---|---|---|
-| 128 | atom - storage keys / Long128 replacement | real keys need ~59+59 bits; best cost/benefit |
-| 256 | atom - general purpose (keys, hashing, mixing) | main atom |
-| 384 | 3x128 - relay | composed: add/compare/mul (mul 10x, 2.55x over BigInteger); mulHigh pending |
-| 512 | 2x256 - single-cache-line data domain | composed: add/compare/mul (mul 1.5x over BigInteger); sub/shifts pending |
-| 768 | 3x256 - extra-large coordinates | engine-backed; composition pending |
-| 1024 | 4x256 - double's exponent ceiling | engine-backed; composition pending |
+| 128 | atom - storage keys / Long128 replacement | add 5.7x, sub 5.7x, mul 8.6x, div 2.7x |
+| 256 | atom - general purpose (keys, hashing, mixing) | add 4.2x, mul 4.3x, div 1.6x, hash 2.8x |
+| 384 | 3x128 - relay | add 2.7x, mul 3.2x, mulHigh 1.13x, shr 4.6x |
+| 512 | 2x256 - single-cache-line data domain | add 2.3x, mul 2.2x, mulHigh 1.06x (higher with sparse dispatch), div 1.1x |
+
+No known regressions vs BigInteger across the whole library.
 
 **Not covered**: raw coordinates near 1e306 (~1020 bits). Raw coordinates stay
 on the "big coordinate + local window" layered design; this library covers the
@@ -103,22 +105,24 @@ key / hash / short big-integer math inside it.
 ## Layout
 
 ```
-src/main/java/com/scalarwide/     Limbs (reference engine), Wide128/256/384
-src/test/java/com/scalarwide/     BigInteger differential tests
-src/jmh/java/com/scalarwide/bench JMH benches (BigInteger side by side)
-docs/DESIGN.md                    decisions / enchantment roadmap / acceptance
+src/main/java/com/scalarwide/      core: Limbs (reference engine), Wide128/256/384/512, MutableWide128/256, DivMagic, MulHi
+src/main/java/com/scalarwide/mc/   MC toolkit: Wide256FlatMap, LongLongFlatMap, McWarmup
+src/main/java21/.../MulHi.java     Java 21+ multi-release overlay (intrinsic restore)
+src/test/java/com/scalarwide/      BigInteger differential tests (incl. sparse/domain/consumer gate)
+src/jmh/java/com/scalarwide/bench  JMH benches & probes
+docs/                              DESIGN / BENCH / BRANCHES / COMPATIBILITY / FUTURE-WORK
 ```
 
 ## Roadmap
 
-1. **0.1.x baseline**: correctness loop + JMH baseline numbers (`docs/BENCH.md`).
-2. **Enchantment 1 (done in 0.2.0)**: register/unrolled hot paths for 128/256
-   (one variable per round, CPU-pinned JMH before/after).
-3. **Enchantment 2**: zero-allocation API (output buffers / pooling).
-4. **Enchantment 3**: inlining verification (`-XX:+PrintInlining`), `VarHandle`
-   evaluation.
-5. SIMD stays frozen as an experiment (scalar is the product, SIMD is the
-   experiment against the scalar oracle).
+- **Done**: 0.11.x performance line (compare carries, direct implementations, Knuth-D
+  division, quotient-only division, sparse dispatch, magic constant division, Java 17+
+  multi-release overlay, MC toolkit & hard-wiring layer).
+- **Frozen (`1.0.0`)**: maintenance mode - deferred work (batch/SoA, large-table
+  sharding, `rem` q-skip, main-line 768/1024 `mulHigh`) in `docs/FUTURE-WORK.md`
+  (with trigger conditions).
+- **Long term**: SIMD stays frozen as an experiment (scalar is the product, SIMD is
+  the experiment against the scalar oracle).
 
 ## License
 

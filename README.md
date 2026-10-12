@@ -8,7 +8,8 @@
 > 纯标量定点大数库（mc 版 **128 → 512 位，四档**），零 SIMD、零平台探测。
 > 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
-版本：见仓库根 `VERSION`（唯一权威）。当前 `0.11.10`（硬接线层：稀疏派发 + 魔法常数除法 + Java 17+）；实现矩阵与全部实测
+版本：见仓库根 `VERSION`（唯一权威）。**已冻结于 `1.0.0`（项目结项，维护模式）**——
+公开 API 冻结语义见 `docs/COMPATIBILITY.md` §6，未竟优化见 `docs/FUTURE-WORK.md`；实现矩阵与全部实测
 （含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`。
 
 ## 这是什么
@@ -41,10 +42,10 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v0.11.10' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.0' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:0.11.10`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:1.0.0`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512`（不可变值类型，mc 版 ≤512）、`MutableWide128/256`（零分配 scratch）、
@@ -54,8 +55,8 @@
 
 ### 版本与兼容策略
 
-- **库独立演进、框架零改动吃性能**：版本号分离，消费者只钉依赖坐标；性能升级以补丁级发布
-  （`0.11.x` 线内仅性能/修复/纯增量，签名与语义冻结），升级 = 只改一行依赖版本号 + 重构建。
+- **库独立演进、框架零改动吃性能**：版本号分离，消费者只钉依赖坐标；`1.0.x` 补丁线内
+  仅性能/修复/纯增量（签名与语义冻结，见 `docs/COMPATIBILITY.md` §6），升级 = 只改一行依赖版本号 + 重构建。
 - 破坏性变更只能进新次版本线并附迁移说明；公开 API 面与消费者回归契约见
   `docs/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
 - 仓库双分支：`main` = 完整库（全宽度/全工具）；`mc` = 改版 MC 精简极致版
@@ -105,10 +106,10 @@ docs/DESIGN.md · BENCH.md · BRANCHES.md · COMPATIBILITY.md
 
 ## 路线
 
-- **已完成（0.11.x 性能线）**：比较式进位、全宽度直算化、Knuth-D 除法、商模式除法、
-  稀疏宽断派发、魔法常数除法、Java 17+ 多版本覆层、MC 工具包与硬接线层。
-- **待办（见 `docs/BENCH.md` 账本）**：批量 SoA 键组（V2 规格触发）、LongLongFlatMap 大表分片、
-  序列化（NBT/网络包）补齐、main 线 768/1024 mulHigh 剩余差距（行向量路线已证伪，等待新结构）。
+- **已完成**：0.11.x 性能线（比较式进位、全宽度直算化、Knuth-D 除法、商模式除法、
+  稀疏宽断派发、魔法常数除法、Java 17+ 多版本覆层、MC 工具包与硬接线层）。
+- **已冻结（`1.0.0`）**：项目转入维护模式——未竟优化（batch/SoA、大表分片、
+  `rem` q-skip、main 线 768/1024 `mulHigh` 等）见 `docs/FUTURE-WORK.md`（带触发条件）。
 - **久期**：SIMD 冻结为实验项（标量是产品，SIMD 是 oracle 对照下的实验）。
 
 ## 许可
