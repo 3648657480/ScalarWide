@@ -23,6 +23,15 @@
 - JitPack：`com.github.3648657480:ScalarWide:mc-v0.11.1`；框架钉 `mc-` 标签。
 - 兼容契约（`docs/COMPATIBILITY.md`）对 `mc` 同样有效（≤512 子集）。
 
+## CI 与发布纪律（2026-10-11 起）
+
+- push / PR 触发 GitHub Actions（`.github/workflows/ci.yml`）：`test` 矩阵 JDK 21/25
+  （两线通用）、`test (JDK 17, mc floor)`（仅 mc 线 push / PR 到 mc）、
+  `package`（JDK 21 组装 jar + sources 并上传产物）。
+- **打 tag 前置条件：目标 commit 的 CI 必须全绿。** JitPack 只看 tag、不等 CI——
+  绿灯纪律由人执行：先等 Actions 结果，再 `git tag` + push。
+- tag 命名（沿用）：`main` 线 `v0.11.x`；`mc` 线 `mc-v0.11.x`。
+
 ## `mc` 现状
 
 ### mc-v0.11.1
