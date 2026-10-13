@@ -2,6 +2,21 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.1（mc 线，纯增量）
+
+### Added
+
+- `com.scalarwide.mc.Wide128FlatMap`：128 位键（`Wide128`）→ Object 的开放寻址平表
+  （控制字节 + `Wide128[]` + `Object[]`，键不装箱；`get / put / remove / remove(条件) /
+  containsKey / values / clone / clear`；迭代为表序、非线程安全、空值即移除）。
+  用途：消费者驱动的 W4（G2 chunk 2^49 可达）——`ChunkPos` 式 (x, z) 对键超出 64 位打包时，
+  替代 `LongLongFlatMap` / `LongLong` 映射。
+- 测试 `Wide128FlatMapTest`：HashMap 差分（2 万随机操作）/ 超 64 位键区分 / clone 独立 /
+  条件移除 / 簇删除。
+
+> 冻结契约（`docs/COMPATIBILITY.md` §6）：本版为**纯增量**，drop-in；`main` 线不受影响
+> （该工具类为 `mc` 线专属）。
+
 ## 1.0.0 — 冻结（项目结项）
 
 > **冻结起点**：公开 API 的签名与语义自本版起冻结（版本语义见 `docs/COMPATIBILITY.md` §6）。
