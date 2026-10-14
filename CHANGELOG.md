@@ -2,6 +2,25 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.3（mc 线，纯增量）
+
+### Added
+
+- `com.scalarwide.mc.WideChunkKey`：W4 chunk 键编码静态工具——`pack(x, z)` → `Wide512`
+  （x 高 256 / z 低 256，逐轴符号扩展，与补丁后的 `ChunkPos.packWide()` 同一布局）、
+  `x(key)` / `z(key)`、`neighbor(key, dx, dz)`（field-wise：解包 → 半区偏移 → 重打包，
+  避免对打包值 ±1 时低半区符号扩展向 x 半区进位污染）。
+- `com.scalarwide.mc.Wide512ByteMap`：`Wide512` 键 → `byte` 值的开放寻址平表
+  （图核 `DynamicGraphMinFixedPoint.computedLevels` 载体；`put` / `getOrDefault` / `remove` /
+  `containsKey` / `keys()` 快照；表序迭代、非线程安全）。
+- `com.scalarwide.mc.Wide512OrderedSet`：插入序集合（`LeveledPriorityQueue` 分桶载体；
+  O(1) add / remove / contains + FIFO `removeFirst`）。
+- 测试：`WideChunkKeyTest`（往返 / 布局一致 / 符号缝邻居不越半区 / 远域邻居）、
+  `Wide512ByteMapTest`（HashMap 差分 2 万操作 / 扩容 4096 / 簇删除）、
+  `Wide512OrderedSetTest`（FIFO / 重复 add / 任意删后续序）。
+
+> 冻结契约（`docs/COMPATIBILITY.md` §6）：本版为**纯增量**、drop-in；`main` 线不受影响。
+
 ## 1.0.2（mc 线，纯增量）
 
 ### Added
