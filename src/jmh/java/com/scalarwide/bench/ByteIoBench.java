@@ -14,11 +14,15 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-/** Byte serialization: ours vs BigInteger.toByteArray / BigInteger(byte[]). */
+/**
+ * Byte serialization benchmark（自有 API 绝对口径）。
+ *
+ * <p>比较体系 v2（2026-10-14）：BigInteger 对照已移除（仅正确性对拍；
+ * 字节级往返正确性在 ByteIoTest/ConsumerApiTest 中与 BigInteger 互操作验证）。</p>
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -30,9 +34,6 @@ public class ByteIoBench {
     public Wide128 a128;
     public Wide256 a256;
     public Wide512 a512;
-    public BigInteger r128;
-    public BigInteger r256;
-    public BigInteger r512;
     public byte[] b128;
     public byte[] b256;
     public byte[] b512;
@@ -44,9 +45,6 @@ public class ByteIoBench {
         a256 = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         a512 = Wide512.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
-        r128 = a128.toBigInteger();
-        r256 = a256.toBigInteger();
-        r512 = a512.toBigInteger();
         b128 = a128.toByteArray();
         b256 = a256.toByteArray();
         b512 = a512.toByteArray();
@@ -58,18 +56,8 @@ public class ByteIoBench {
     }
 
     @Benchmark
-    public byte[] bigToBytes128() {
-        return r128.toByteArray();
-    }
-
-    @Benchmark
     public Wide128 fromBytes128() {
         return Wide128.fromByteArray(b128);
-    }
-
-    @Benchmark
-    public BigInteger bigFromBytes128() {
-        return new BigInteger(1, b128);
     }
 
     @Benchmark
@@ -78,18 +66,8 @@ public class ByteIoBench {
     }
 
     @Benchmark
-    public byte[] bigToBytes256() {
-        return r256.toByteArray();
-    }
-
-    @Benchmark
     public Wide256 fromBytes256() {
         return Wide256.fromByteArray(b256);
-    }
-
-    @Benchmark
-    public BigInteger bigFromBytes256() {
-        return new BigInteger(1, b256);
     }
 
     @Benchmark
@@ -98,17 +76,7 @@ public class ByteIoBench {
     }
 
     @Benchmark
-    public byte[] bigToBytes512() {
-        return r512.toByteArray();
-    }
-
-    @Benchmark
     public Wide512 fromBytes512() {
         return Wide512.fromByteArray(b512);
-    }
-
-    @Benchmark
-    public BigInteger bigFromBytes512() {
-        return new BigInteger(1, b512);
     }
 }

@@ -3,7 +3,6 @@ package com.scalarwide.bench;
 import com.scalarwide.Wide128;
 import com.scalarwide.Wide256;
 
-import java.math.BigInteger;
 import java.util.Random;
 
 /**
@@ -11,9 +10,10 @@ import java.util.Random;
  * state, to bound "JIT not engaged yet" cost. One op per JVM (fork per op) to
  * avoid class-loading/JIT bootstrap contamination between probes.
  *
- * <p>Args: 128mul | 256mul | 128big | 256big.
+ * <p>Args: 128mul | 256mul.
  * Run with different JIT modes: default, {@code -XX:TieredStopAtLevel=1},
  * {@code -Xint}. Operands rotate through a fixed table so the JIT cannot fold.
+ * BigInteger 对照已移除（比较体系 v2：BigInteger 仅正确性对拍）。
  */
 public final class ColdStartProbe {
 
@@ -26,14 +26,9 @@ public final class ColdStartProbe {
     private static final Wide128[] B128 = new Wide128[N];
     private static final Wide256[] A256 = new Wide256[N];
     private static final Wide256[] B256 = new Wide256[N];
-    private static final BigInteger[] A128B = new BigInteger[N];
-    private static final BigInteger[] B128B = new BigInteger[N];
-    private static final BigInteger[] A256B = new BigInteger[N];
-    private static final BigInteger[] B256B = new BigInteger[N];
 
     private static Wide128 sink128;
     private static Wide256 sink256;
-    private static BigInteger sinkBig;
 
     private static int i;
 
@@ -44,17 +39,11 @@ public final class ColdStartProbe {
             B128[k] = Wide128.of(rnd.nextLong(), rnd.nextLong());
             A256[k] = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
             B256[k] = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
-            A128B[k] = A128[k].toBigInteger();
-            B128B[k] = B128[k].toBigInteger();
-            A256B[k] = A256[k].toBigInteger();
-            B256B[k] = B256[k].toBigInteger();
         }
         String op = args.length > 0 ? args[0] : "128mul";
         switch (op) {
             case "128mul" -> probe("128.mul", () -> sink128 = A128[idx()].mul(B128[idx()]));
             case "256mul" -> probe("256.mul", () -> sink256 = A256[idx()].mul(B256[idx()]));
-            case "128big" -> probe("128.mul(big)", () -> sinkBig = A128B[idx()].multiply(B128B[idx()]));
-            case "256big" -> probe("256.mul(big)", () -> sinkBig = A256B[idx()].multiply(B256B[idx()]));
             default -> throw new IllegalArgumentException(op);
         }
     }

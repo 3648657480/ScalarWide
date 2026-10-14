@@ -2,27 +2,29 @@
 
 > 规则：一次一变量、同机同命令同版本；换设置必须整批重跑。只记录现象，不夸大。
 
-## 口径声明：与 BigInteger 对照的等价性（2026-10-14 · issue #1 修正）
+## 比较体系 v2（2026-10-14 · issue #1 两轮审议后定稿）
 
-社区审议（InfGithub，issue #1）指出两处口径问题，均成立，此处为本仓的正式口径修正：
+社区审议（InfGithub）两轮意见均成立，本仓正式废弃"Wide vs BigInteger 性能对照"体系：
 
-1. **BigInteger 不是同域性能基线**：两者设计用途不同（任意精度/不可变 vs 定宽截断算术）。
-   BigInteger 在本仓的角色 = **正确性 oracle 与语义参照**；对照比值仅为参照信息，**不作为验收线**。
-   **性能主对照 = 同场景加速库**（当前：BouncyCastle `math.raw.Nat*` 定宽 limb 算术，见下节；
-   2026-10-14 起）；BigInteger 在任何表格中只承担 oracle 角色。
-2. **对照必须同映射**：定宽运算的域是 Z/2^N；裸 `BigInteger` 运算是 Z 上的全操作。历史表中
-   `mul`（低半）vs `bigMul`（全积）、`add/sub`（模 2^N）vs `bigAdd/bigSub`（不截断）、
-   `shl`（截断）vs `bigShl`（增长）均**不是同一数学映射**——其比值自本声明起视为
-   "历史口径（信息性）"，不得用作性能判决。`mulFull` vs `bigMul`、`mulHigh` vs
-   `bigMulHigh`（= `multiply().shiftRight(N)`）、以及**非负操作数**（基准 setup 顶 limb 顶位清零）
-   前提下的 `and/hash/compare/ushr/shr` 为同映射对照。
-3. **等价构造**（2026-10-14 起启用）：`bigAddTrunc / bigSubTrunc / bigMulLow / bigShlTrunc`
-   = BigInteger 运算 + 掩码到 N 位（`.and(MASK)`），与对应定宽运算同一映射。注意这要求
-   BigInteger 做其设计上不做的事（截断），其代价一并入账——这正是"设计用途不同"的量化表现。
-   记录时**裸 big 与截断 big 两组数字并列**，且说明：两组比值均不单独构成性能判决。
-4. 适用：本声明之后的批次一律同时跑等价构造；历史数字保留原样（只记录现象，不回填）。
+1. **BigInteger = 正确性 oracle，仅在测试套件中用于对拍**（差分/互操作/除法 oracle 等）。
+   性能基准中不再出现任何 BigInteger 对照（已从 `src/jmh` 全面移除，含此前的"截断构造"
+   `bigMulLow` 等——该操作不表达任何真实用途，属错误的补救，一并废弃）。
+2. **性能对照只有两类**：
+   - ① **同场景加速库**：定宽 limb 算术 = BouncyCastle `math.raw.Nat*`（见下节）；
+     键/映射场景 = fastutil/JDK 实现；
+   - ② **本库版本前后对比**（BENCH 账本原有主体形态）。
+3. **记录主体 = 绝对 ns/op + 分配（`-prof gc`）**；比值均为参照。
+4. **历史存证**：本文件 2026-10-14 之前的全部 `vs BigInteger` 比值一律视为历史存证
+   （不作结论）——不回填、不删除（只记录现象纪律）；其中 `mul`(低半) vs `bigMul`(全积)、
+   `add/sub` vs 裸 big、`shl` vs `bigShl` 等亦非同映射，双重不构成判决。
+5. 场景级探针（Pipeline/Batch：键映射与批量工作集）中 `HashMap<BigInteger>` 作为
+   **场景候选实现**保留并标注——那里对照的是"键类型架构选择"而非算术。
 
-## 2026-10-14 · 等价口径对照批次（issue #1 修正后首测）
+### （已废弃）2026-10-14 · 等价口径对照批次
+
+> 本节为失败的修正尝试（BigInteger + 截断掩码），已被第二轮审议否决并废除；仅存证
+> （CSV 保留：`BENCH-2026-10-14-equivalence.csv`）。
+
 
 - 环境：工作站 DESKTOP-8ADRQTA（Ryzen 9 7950X，32 线程），Windows；**JDK 21.0.3**（基准默认）；
   `-wi 5 -i 10 -f 1 -w 1s -r 1s`，未锁核（同 2026-10-09/10 工作站基线口径）；commit `b0c4aa2`。

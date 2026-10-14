@@ -12,10 +12,13 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 算术基准（比较体系 v2，2026-10-14）：性能对照 = 同场景加速库（{@link NatCompareBench}）
+ * 与自有版本前后对比；BigInteger 仅用于正确性对拍（测试套件），性能基准中不再出现。
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -24,12 +27,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 public class Wide768Bench {
 
-    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(768).subtract(BigInteger.ONE);
-
     public Wide768 a;
     public Wide768 b;
-    public BigInteger ra;
-    public BigInteger rb;
 
     @Setup
     public void setup() {
@@ -40,8 +39,6 @@ public class Wide768Bench {
         b = Wide768.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & Long.MAX_VALUE);
-        ra = a.toBigInteger();
-        rb = b.toBigInteger();
     }
 
     @Benchmark
@@ -55,44 +52,8 @@ public class Wide768Bench {
     }
 
     @Benchmark
-    public BigInteger bigMul() {
-        return ra.multiply(rb);
-    }
-
-    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
-
-    /** 低 768 位积 = BigInteger 全积 + 截断。 */
-    @Benchmark
-    public BigInteger bigMulLow() {
-        return ra.multiply(rb).and(MASK);
-    }
-
-    /** 模 2^768 加 = BigInteger 加 + 截断。 */
-    @Benchmark
-    public BigInteger bigAddTrunc() {
-        return ra.add(rb).and(MASK);
-    }
-
-    /** 模 2^768 减 = BigInteger 减 + 截断（二补码低 768 位）。 */
-    @Benchmark
-    public BigInteger bigSubTrunc() {
-        return ra.subtract(rb).and(MASK);
-    }
-
-    /** 定宽左移 = BigInteger 左移 + 截断。 */
-    @Benchmark
-    public BigInteger bigShlTrunc() {
-        return ra.shiftLeft(123).and(MASK);
-    }
-
-    @Benchmark
     public Wide768 add() {
         return a.add(b);
-    }
-
-    @Benchmark
-    public BigInteger bigAdd() {
-        return ra.add(rb);
     }
 
     @Benchmark
@@ -101,18 +62,8 @@ public class Wide768Bench {
     }
 
     @Benchmark
-    public BigInteger bigSub() {
-        return ra.subtract(rb);
-    }
-
-    @Benchmark
     public Wide768 and() {
         return a.and(b);
-    }
-
-    @Benchmark
-    public BigInteger bigAnd() {
-        return ra.and(rb);
     }
 
     @Benchmark
@@ -121,18 +72,8 @@ public class Wide768Bench {
     }
 
     @Benchmark
-    public int bigCompare() {
-        return ra.compareTo(rb);
-    }
-
-    @Benchmark
     public int hash() {
         return a.hashCode();
-    }
-
-    @Benchmark
-    public int bigHash() {
-        return ra.hashCode();
     }
 
     @Benchmark
@@ -141,32 +82,12 @@ public class Wide768Bench {
     }
 
     @Benchmark
-    public BigInteger bigShl() {
-        return ra.shiftLeft(123);
-    }
-
-    @Benchmark
     public Wide768 ushr() {
         return a.ushr(123);
     }
 
     @Benchmark
-    public BigInteger bigUshr() {
-        return ra.shiftRight(123);
-    }
-
-    @Benchmark
-    public BigInteger bigMulHigh() {
-        return ra.multiply(rb).shiftRight(768);
-    }
-
-    @Benchmark
     public Wide768 shr() {
         return a.shr(123);
-    }
-
-    @Benchmark
-    public BigInteger bigShr() {
-        return ra.shiftRight(123);
     }
 }

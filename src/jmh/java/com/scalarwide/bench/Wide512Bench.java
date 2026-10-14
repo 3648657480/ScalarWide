@@ -13,10 +13,13 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 算术基准（比较体系 v2，2026-10-14）：性能对照 = 同场景加速库（{@link NatCompareBench}）
+ * 与自有版本前后对比；BigInteger 仅用于正确性对拍（测试套件），性能基准中不再出现。
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -25,12 +28,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 public class Wide512Bench {
 
-    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
-
     public Wide512 a;
     public Wide512 b;
-    public BigInteger ra;
-    public BigInteger rb;
     public Wide256 aLow;
     public Wide256 aHigh;
     public Wide256 bLow;
@@ -44,8 +43,6 @@ public class Wide512Bench {
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
         b = Wide512.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() & top);
-        ra = a.toBigInteger();
-        rb = b.toBigInteger();
         aLow = Wide256.of(a.limb(0), a.limb(1), a.limb(2), a.limb(3));
         aHigh = Wide256.of(a.limb(4), a.limb(5), a.limb(6), a.limb(7));
         bLow = Wide256.of(b.limb(0), b.limb(1), b.limb(2), b.limb(3));
@@ -73,11 +70,6 @@ public class Wide512Bench {
     }
 
     @Benchmark
-    public BigInteger bigAdd() {
-        return ra.add(rb);
-    }
-
-    @Benchmark
     public Wide512 mul() {
         return a.mul(b);
     }
@@ -88,44 +80,8 @@ public class Wide512Bench {
     }
 
     @Benchmark
-    public BigInteger bigMul() {
-        return ra.multiply(rb);
-    }
-
-    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
-
-    /** 低 512 位积 = BigInteger 全积 + 截断。 */
-    @Benchmark
-    public BigInteger bigMulLow() {
-        return ra.multiply(rb).and(MASK);
-    }
-
-    /** 模 2^512 加 = BigInteger 加 + 截断。 */
-    @Benchmark
-    public BigInteger bigAddTrunc() {
-        return ra.add(rb).and(MASK);
-    }
-
-    /** 模 2^512 减 = BigInteger 减 + 截断（二补码低 512 位）。 */
-    @Benchmark
-    public BigInteger bigSubTrunc() {
-        return ra.subtract(rb).and(MASK);
-    }
-
-    /** 定宽左移 = BigInteger 左移 + 截断。 */
-    @Benchmark
-    public BigInteger bigShlTrunc() {
-        return ra.shiftLeft(123).and(MASK);
-    }
-
-    @Benchmark
     public int compare() {
         return a.compareUnsigned(b);
-    }
-
-    @Benchmark
-    public int bigCompare() {
-        return ra.compareTo(rb);
     }
 
     @Benchmark
@@ -134,18 +90,8 @@ public class Wide512Bench {
     }
 
     @Benchmark
-    public BigInteger bigSub() {
-        return ra.subtract(rb);
-    }
-
-    @Benchmark
     public Wide512 and() {
         return a.and(b);
-    }
-
-    @Benchmark
-    public BigInteger bigAnd() {
-        return ra.and(rb);
     }
 
     @Benchmark
@@ -154,32 +100,12 @@ public class Wide512Bench {
     }
 
     @Benchmark
-    public BigInteger bigShl() {
-        return ra.shiftLeft(123);
-    }
-
-    @Benchmark
     public Wide512 ushr() {
         return a.ushr(123);
     }
 
     @Benchmark
-    public BigInteger bigUshr() {
-        return ra.shiftRight(123);
-    }
-
-    @Benchmark
-    public BigInteger bigMulHigh() {
-        return ra.multiply(rb).shiftRight(512);
-    }
-
-    @Benchmark
     public Wide512 shr() {
         return a.shr(123);
-    }
-
-    @Benchmark
-    public BigInteger bigShr() {
-        return ra.shiftRight(123);
     }
 }
