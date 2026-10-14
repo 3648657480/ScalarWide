@@ -2,6 +2,20 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.2（mc 线，纯增量）
+
+### Added
+
+- `com.scalarwide.mc.Wide512FlatMap`：512 位键（`Wide512`）→ Object 的开放寻址平表
+  （控制字节 + `Wide512[]` + `Object[]`，键不装箱；`get / put / remove / remove(条件) /
+  containsKey / values / clone / clear`；表序迭代、非线程安全、空值即移除）。
+  用途：W4 键位账本——chunk 键 = `(x:Wide256, z:Wide256)` 打包为单个 `Wide512`
+  （x 高 256 / z 低 256），供远域区块映射使用。
+- 测试 `Wide512FlatMapTest`：HashMap 差分（2 万操作，base 2^60 高位簇）/ 全 limb 参与 /
+  clone 独立 / 条件移除 / 簇删除。
+
+> 冻结契约（`docs/COMPATIBILITY.md` §6）：本版为**纯增量**、drop-in；`main` 线不受影响。
+
 ## 1.0.1（mc 线，纯增量）
 
 ### Added
