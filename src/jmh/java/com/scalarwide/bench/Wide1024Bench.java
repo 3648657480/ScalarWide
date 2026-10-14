@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 public class Wide1024Bench {
 
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(1024).subtract(BigInteger.ONE);
+
     public Wide1024 a;
     public Wide1024 b;
     public BigInteger ra;
@@ -57,6 +59,32 @@ public class Wide1024Bench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
+
+    /** 低 1024 位积 = BigInteger 全积 + 截断。 */
+    @Benchmark
+    public BigInteger bigMulLow() {
+        return ra.multiply(rb).and(MASK);
+    }
+
+    /** 模 2^1024 加 = BigInteger 加 + 截断。 */
+    @Benchmark
+    public BigInteger bigAddTrunc() {
+        return ra.add(rb).and(MASK);
+    }
+
+    /** 模 2^1024 减 = BigInteger 减 + 截断（二补码低 1024 位）。 */
+    @Benchmark
+    public BigInteger bigSubTrunc() {
+        return ra.subtract(rb).and(MASK);
+    }
+
+    /** 定宽左移 = BigInteger 左移 + 截断。 */
+    @Benchmark
+    public BigInteger bigShlTrunc() {
+        return ra.shiftLeft(123).and(MASK);
     }
 
     @Benchmark
