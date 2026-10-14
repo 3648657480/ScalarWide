@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 public class Wide512Bench {
 
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
+
     public Wide512 a;
     public Wide512 b;
     public BigInteger ra;
@@ -88,6 +90,32 @@ public class Wide512Bench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
+
+    /** 低 512 位积 = BigInteger 全积 + 截断。 */
+    @Benchmark
+    public BigInteger bigMulLow() {
+        return ra.multiply(rb).and(MASK);
+    }
+
+    /** 模 2^512 加 = BigInteger 加 + 截断。 */
+    @Benchmark
+    public BigInteger bigAddTrunc() {
+        return ra.add(rb).and(MASK);
+    }
+
+    /** 模 2^512 减 = BigInteger 减 + 截断（二补码低 512 位）。 */
+    @Benchmark
+    public BigInteger bigSubTrunc() {
+        return ra.subtract(rb).and(MASK);
+    }
+
+    /** 定宽左移 = BigInteger 左移 + 截断。 */
+    @Benchmark
+    public BigInteger bigShlTrunc() {
+        return ra.shiftLeft(123).and(MASK);
     }
 
     @Benchmark

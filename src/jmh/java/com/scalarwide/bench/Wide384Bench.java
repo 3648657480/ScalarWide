@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 public class Wide384Bench {
 
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(384).subtract(BigInteger.ONE);
+
     public Wide384 a;
     public Wide384 b;
     public BigInteger ra;
@@ -63,6 +65,32 @@ public class Wide384Bench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
+
+    /** 低 384 位积 = BigInteger 全积 + 截断。 */
+    @Benchmark
+    public BigInteger bigMulLow() {
+        return ra.multiply(rb).and(MASK);
+    }
+
+    /** 模 2^384 加 = BigInteger 加 + 截断。 */
+    @Benchmark
+    public BigInteger bigAddTrunc() {
+        return ra.add(rb).and(MASK);
+    }
+
+    /** 模 2^384 减 = BigInteger 减 + 截断（二补码低 384 位）。 */
+    @Benchmark
+    public BigInteger bigSubTrunc() {
+        return ra.subtract(rb).and(MASK);
+    }
+
+    /** 定宽左移 = BigInteger 左移 + 截断。 */
+    @Benchmark
+    public BigInteger bigShlTrunc() {
+        return ra.shiftLeft(123).and(MASK);
     }
 
     @Benchmark

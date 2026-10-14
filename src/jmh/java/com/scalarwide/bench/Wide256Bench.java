@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class Wide256Bench {
 
     private static final int SHIFT = 37;
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
     public Wide256 a;
     public Wide256 b;
@@ -70,6 +71,34 @@ public class Wide256Bench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
+    // 定宽运算的域是 Z/2^N；裸 BigInteger 运算是 Z 上的全操作。以下变体使
+    // 两边为同一数学映射（含 BigInteger 侧为模拟截断应付出的开销）。
+
+    /** 低 256 位积 = BigInteger 全积 + 截断。 */
+    @Benchmark
+    public BigInteger bigMulLow() {
+        return ra.multiply(rb).and(MASK);
+    }
+
+    /** 模 2^256 加 = BigInteger 加 + 截断。 */
+    @Benchmark
+    public BigInteger bigAddTrunc() {
+        return ra.add(rb).and(MASK);
+    }
+
+    /** 模 2^256 减 = BigInteger 减 + 截断（二补码低 256 位）。 */
+    @Benchmark
+    public BigInteger bigSubTrunc() {
+        return ra.subtract(rb).and(MASK);
+    }
+
+    /** 定宽左移 = BigInteger 左移 + 截断。 */
+    @Benchmark
+    public BigInteger bigShlTrunc() {
+        return ra.shiftLeft(SHIFT).and(MASK);
     }
 
     @Benchmark

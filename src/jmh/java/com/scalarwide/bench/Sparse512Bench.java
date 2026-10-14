@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class Sparse512Bench {
 
     private static final int N = 256;
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
 
     public final Wide512[] sparseA = new Wide512[N];
     public final Wide512[] sparseB = new Wide512[N];
@@ -147,6 +148,20 @@ public class Sparse512Bench {
     public BigInteger bigMulDense() {
         int i = next();
         return bigDenseA[i].multiply(bigDenseB[i]);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：低 512 位积 ----
+
+    @Benchmark
+    public BigInteger bigMulLowSparse() {
+        int i = next();
+        return bigSparseA[i].multiply(bigSparseB[i]).and(MASK);
+    }
+
+    @Benchmark
+    public BigInteger bigMulLowDense() {
+        int i = next();
+        return bigDenseA[i].multiply(bigDenseB[i]).and(MASK);
     }
 
     @Benchmark

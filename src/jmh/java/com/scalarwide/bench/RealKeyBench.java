@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
 public class RealKeyBench {
 
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
+
     public Wide256 a;
     public Wide256 b;
     public BigInteger ra;
@@ -78,6 +80,18 @@ public class RealKeyBench {
     @Benchmark
     public BigInteger bigMul() {
         return ra.multiply(rb);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：低 256 位积 ----
+
+    @Benchmark
+    public BigInteger bigMulLow() {
+        return ra.multiply(rb).and(MASK);
+    }
+
+    @Benchmark
+    public BigInteger bigMulLowUniform() {
+        return rua.multiply(rub).and(MASK);
     }
 
     @Benchmark

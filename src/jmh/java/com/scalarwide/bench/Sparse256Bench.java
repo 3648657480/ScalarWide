@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 public class Sparse256Bench {
 
     private static final int N = 256;
+    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
     public final Wide256[] sparseA = new Wide256[N];
     public final Wide256[] sparseB = new Wide256[N];
@@ -153,6 +154,20 @@ public class Sparse256Bench {
     public BigInteger bigMulDense() {
         int i = next();
         return bigDenseA[i].multiply(bigDenseB[i]);
+    }
+
+    // ---- 同映射对照（issue #1 修正）：低 256 位积 ----
+
+    @Benchmark
+    public BigInteger bigMulLowSparse() {
+        int i = next();
+        return bigSparseA[i].multiply(bigSparseB[i]).and(MASK);
+    }
+
+    @Benchmark
+    public BigInteger bigMulLowDense() {
+        int i = next();
+        return bigDenseA[i].multiply(bigDenseB[i]).and(MASK);
     }
 
     @Benchmark
