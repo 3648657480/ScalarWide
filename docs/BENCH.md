@@ -2,18 +2,17 @@
 
 > 规则：一次一变量、同机同命令同版本；换设置必须整批重跑。只记录现象，不夸大。
 
-## 口径声明：与 BigInteger 对照的等价性（2026-10-14 · issue #1 修正，mc 线）
+## 比较体系 v2（2026-10-14 · issue #1 两轮审议后定稿，mc 线）
 
-与 main 同文口径（详细四条见 main 分支 `docs/BENCH.md` 顶部声明，数据批次见
-`BENCH-2026-10-14-equivalence.csv`）：
+与 main 同文：**废弃"Wide vs BigInteger 性能对照"体系**。要点（详见 main 分支
+`docs/BENCH.md` 顶部《比较体系 v2》）：
 
-1. **BigInteger = 正确性 oracle / 语义参照**，不是同域性能基线；对照比值仅供参考，**不作验收线**。
-2. **对照必须同映射**：`mul`（低半）vs `bigMul`（全积）、`add/sub`（模 2^N）vs 裸 big、
-   `shl`（截断）vs `bigShl`（增长）在历史表中为不同映射 → 降级为"历史口径（信息性）"。
-   `mulFull vs bigMul`、`mulHigh vs bigMulHigh`、非负操作数下的 `and/hash/compare/ushr/shr` 为同映射。
-3. **等价构造**（本线已入代码）：`Wide*Bench` 与 `Sparse256/512Bench`、`RealKeyBench` 均增
-   `bigAddTrunc/bigSubTrunc/bigMulLow/bigShlTrunc`（`.and(MASK)`）；裸 big 对照保留历史可比。
-   两组比值均不单独构成判决；判决依据 = 各库在自身用途下的绝对代价。
+1. **BigInteger = 正确性 oracle，仅测试套件使用**；性能基准中不再出现（已从本线
+   `src/jmh` 移除全部 big*/截断构造，含 Sparse/RealKey/Division/DiagDiv/ColdStart）。
+2. **性能对照两类**：①同场景加速库（main：BouncyCastle `math.raw.Nat*`；键/映射场景
+   fastutil/JDK）；②本库版本前后对比。记录主体 = 绝对 ns/op + 分配（`-prof gc`）。
+3. **历史存证**：本文件过往全部 `vs BigInteger` 比值均为历史存证（不作结论）。
+4. 场景级探针（FlatMap/Pipeline/Batch）中 `HashMap<BigInteger>` 作为场景候选实现保留。
 
 
 ## 2026-10-08 · 附魔轮 1（0.1.0 → 0.2.0，锁核权威）

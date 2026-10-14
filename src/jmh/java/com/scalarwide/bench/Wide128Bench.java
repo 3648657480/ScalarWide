@@ -13,10 +13,14 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 算术基准（比较体系 v2，2026-10-14）：性能对照 = 同场景加速库（{@link NatCompareBench}，
+ * BouncyCastle 定宽 limb 内核）与自有版本前后对比；BigInteger 仅用于正确性对拍（测试套件），
+ * 性能基准中不再出现（详见 docs/BENCH.md 口径声明）。
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -26,20 +30,15 @@ import java.util.concurrent.TimeUnit;
 public class Wide128Bench {
 
     private static final int SHIFT = 37;
-    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(128).subtract(BigInteger.ONE);
 
     public Wide128 a;
     public Wide128 b;
-    public BigInteger ra;
-    public BigInteger rb;
 
     @Setup
     public void setup() {
         Random rnd = new Random(12345L);
         a = Wide128.of(rnd.nextLong(), rnd.nextLong() & Long.MAX_VALUE);
         b = Wide128.of(rnd.nextLong(), rnd.nextLong() & Long.MAX_VALUE);
-        ra = a.toBigInteger();
-        rb = b.toBigInteger();
     }
 
     @Benchmark
@@ -48,56 +47,13 @@ public class Wide128Bench {
     }
 
     @Benchmark
-    public BigInteger bigAdd() {
-        return ra.add(rb);
-    }
-
-    @Benchmark
     public Wide128 sub() {
         return a.sub(b);
     }
 
     @Benchmark
-    public BigInteger bigSub() {
-        return ra.subtract(rb);
-    }
-
-    @Benchmark
     public Wide128 mul() {
         return a.mul(b);
-    }
-
-    @Benchmark
-    public BigInteger bigMul() {
-        return ra.multiply(rb);
-    }
-
-    // ---- 同映射对照（issue #1 修正）：BigInteger 运算 + 截断到 N 位 ----
-    // 定宽运算的域是 Z/2^N；裸 BigInteger 运算是 Z 上的全操作。以下变体使
-    // 两边为同一数学映射（含 BigInteger 侧为模拟截断应付出的开销）。
-
-    /** 低 128 位积 = BigInteger 全积 + 截断。 */
-    @Benchmark
-    public BigInteger bigMulLow() {
-        return ra.multiply(rb).and(MASK);
-    }
-
-    /** 模 2^128 加 = BigInteger 加 + 截断。 */
-    @Benchmark
-    public BigInteger bigAddTrunc() {
-        return ra.add(rb).and(MASK);
-    }
-
-    /** 模 2^128 减 = BigInteger 减 + 截断（二补码低 128 位）。 */
-    @Benchmark
-    public BigInteger bigSubTrunc() {
-        return ra.subtract(rb).and(MASK);
-    }
-
-    /** 定宽左移 = BigInteger 左移 + 截断。 */
-    @Benchmark
-    public BigInteger bigShlTrunc() {
-        return ra.shiftLeft(SHIFT).and(MASK);
     }
 
     @Benchmark
@@ -111,18 +67,8 @@ public class Wide128Bench {
     }
 
     @Benchmark
-    public BigInteger bigAnd() {
-        return ra.and(rb);
-    }
-
-    @Benchmark
     public int hash() {
         return a.hashCode();
-    }
-
-    @Benchmark
-    public int bigHash() {
-        return ra.hashCode();
     }
 
     @Benchmark
@@ -131,27 +77,12 @@ public class Wide128Bench {
     }
 
     @Benchmark
-    public int bigCompare() {
-        return ra.compareTo(rb);
-    }
-
-    @Benchmark
     public Wide128 shl() {
         return a.shl(SHIFT);
     }
 
     @Benchmark
-    public BigInteger bigShl() {
-        return ra.shiftLeft(SHIFT);
-    }
-
-    @Benchmark
     public Wide128 ushr() {
         return a.ushr(SHIFT);
-    }
-
-    @Benchmark
-    public BigInteger bigUshr() {
-        return ra.shiftRight(SHIFT);
     }
 }

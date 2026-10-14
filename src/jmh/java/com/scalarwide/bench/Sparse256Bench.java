@@ -13,7 +13,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -21,6 +20,8 @@ import java.util.concurrent.TimeUnit;
  * B4 sparse-dispatch bench: coordinate-scale operands (log-uniform &lt; 2^127,
  * the mc fast-path domain), dense controls, and a randomized sparse/dense mix
  * to expose branch mispredict cost. Operands rotate so the JIT cannot fold.
+ *
+ * <p>比较体系 v2（2026-10-14）：BigInteger 对照已移除（仅正确性对拍）。</p>
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -31,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 public class Sparse256Bench {
 
     private static final int N = 256;
-    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
 
     public final Wide256[] sparseA = new Wide256[N];
     public final Wide256[] sparseB = new Wide256[N];
@@ -39,10 +39,6 @@ public class Sparse256Bench {
     public final Wide256[] denseB = new Wide256[N];
     public final Wide256[] mixA = new Wide256[N];
     public final Wide256[] mixB = new Wide256[N];
-    public final BigInteger[] bigSparseA = new BigInteger[N];
-    public final BigInteger[] bigSparseB = new BigInteger[N];
-    public final BigInteger[] bigDenseA = new BigInteger[N];
-    public final BigInteger[] bigDenseB = new BigInteger[N];
 
     private int idx;
 
@@ -54,10 +50,6 @@ public class Sparse256Bench {
             sparseB[i] = Wide256.fromBigInteger(RealKeyStats.sampleCoord(rnd));
             denseA[i] = Wide256.of(rnd.nextLong(), rnd.nextLong() | 1L, rnd.nextLong(), rnd.nextLong() | 1L);
             denseB[i] = Wide256.of(rnd.nextLong(), rnd.nextLong() | 1L, rnd.nextLong(), rnd.nextLong() | 1L);
-            bigSparseA[i] = sparseA[i].toBigInteger();
-            bigSparseB[i] = sparseB[i].toBigInteger();
-            bigDenseA[i] = denseA[i].toBigInteger();
-            bigDenseB[i] = denseB[i].toBigInteger();
             if (rnd.nextBoolean()) {
                 mixA[i] = sparseA[i];
                 mixB[i] = sparseB[i];
@@ -142,43 +134,5 @@ public class Sparse256Bench {
     public Wide256 remDense() {
         int i = next();
         return denseA[i].rem(denseB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigMulSparse() {
-        int i = next();
-        return bigSparseA[i].multiply(bigSparseB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigMulDense() {
-        int i = next();
-        return bigDenseA[i].multiply(bigDenseB[i]);
-    }
-
-    // ---- 同映射对照（issue #1 修正）：低 256 位积 ----
-
-    @Benchmark
-    public BigInteger bigMulLowSparse() {
-        int i = next();
-        return bigSparseA[i].multiply(bigSparseB[i]).and(MASK);
-    }
-
-    @Benchmark
-    public BigInteger bigMulLowDense() {
-        int i = next();
-        return bigDenseA[i].multiply(bigDenseB[i]).and(MASK);
-    }
-
-    @Benchmark
-    public BigInteger bigDivSparse() {
-        int i = next();
-        return bigSparseA[i].divide(bigSparseB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigDivDense() {
-        int i = next();
-        return bigDenseA[i].divide(bigDenseB[i]);
     }
 }

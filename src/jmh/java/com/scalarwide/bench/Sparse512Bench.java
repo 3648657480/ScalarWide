@@ -12,13 +12,14 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
  * B5 512-width sparse-dispatch bench: "half-sparse" operands (fit 256 bits),
  * dense controls, and a randomized mix for branch-mispredict exposure.
+ *
+ * <p>比较体系 v2（2026-10-14）：BigInteger 对照已移除（仅正确性对拍）。</p>
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -29,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 public class Sparse512Bench {
 
     private static final int N = 256;
-    private static final BigInteger MASK = BigInteger.ONE.shiftLeft(512).subtract(BigInteger.ONE);
 
     public final Wide512[] sparseA = new Wide512[N];
     public final Wide512[] sparseB = new Wide512[N];
@@ -37,10 +37,6 @@ public class Sparse512Bench {
     public final Wide512[] denseB = new Wide512[N];
     public final Wide512[] mixA = new Wide512[N];
     public final Wide512[] mixB = new Wide512[N];
-    public final BigInteger[] bigSparseA = new BigInteger[N];
-    public final BigInteger[] bigSparseB = new BigInteger[N];
-    public final BigInteger[] bigDenseA = new BigInteger[N];
-    public final BigInteger[] bigDenseB = new BigInteger[N];
 
     private int idx;
 
@@ -54,10 +50,6 @@ public class Sparse512Bench {
                     rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | 1L);
             denseB[i] = Wide512.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                     rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | 1L);
-            bigSparseA[i] = sparseA[i].toBigInteger();
-            bigSparseB[i] = sparseB[i].toBigInteger();
-            bigDenseA[i] = denseA[i].toBigInteger();
-            bigDenseB[i] = denseB[i].toBigInteger();
             if (rnd.nextBoolean()) {
                 mixA[i] = sparseA[i];
                 mixB[i] = sparseB[i];
@@ -136,43 +128,5 @@ public class Sparse512Bench {
     public Wide512 remMixed() {
         int i = next();
         return mixA[i].rem(mixB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigMulSparse() {
-        int i = next();
-        return bigSparseA[i].multiply(bigSparseB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigMulDense() {
-        int i = next();
-        return bigDenseA[i].multiply(bigDenseB[i]);
-    }
-
-    // ---- 同映射对照（issue #1 修正）：低 512 位积 ----
-
-    @Benchmark
-    public BigInteger bigMulLowSparse() {
-        int i = next();
-        return bigSparseA[i].multiply(bigSparseB[i]).and(MASK);
-    }
-
-    @Benchmark
-    public BigInteger bigMulLowDense() {
-        int i = next();
-        return bigDenseA[i].multiply(bigDenseB[i]).and(MASK);
-    }
-
-    @Benchmark
-    public BigInteger bigDivSparse() {
-        int i = next();
-        return bigSparseA[i].divide(bigSparseB[i]);
-    }
-
-    @Benchmark
-    public BigInteger bigDivDense() {
-        int i = next();
-        return bigDenseA[i].divide(bigDenseB[i]);
     }
 }

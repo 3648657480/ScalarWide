@@ -14,11 +14,16 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-/** Division/remainder benchmark (v1 binary engine vs BigInteger divide). */
+/**
+ * Division/remainder benchmark（无符号口径；除数半宽保证非短路）。
+ *
+ * <p>比较体系 v2（2026-10-14）：BigInteger 对照已移除（其 divide 为有符号、
+ * 与无符号口径非同映射）；正确性对拍在测试套件（DivisionInternalTest 的
+ * fast vs binary vs BigInteger oracle）。</p>
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Benchmark)
@@ -29,34 +34,22 @@ public class DivisionBench {
 
     public Wide128 a128;
     public Wide128 b128;
-    public BigInteger r128a;
-    public BigInteger r128b;
     public Wide256 a256;
     public Wide256 b256;
-    public BigInteger r256a;
-    public BigInteger r256b;
     public Wide512 a512;
     public Wide512 b512;
-    public BigInteger r512a;
-    public BigInteger r512b;
 
     @Setup
     public void setup() {
         Random rnd = new Random(12345L);
         a128 = Wide128.of(rnd.nextLong(), rnd.nextLong());
         b128 = Wide128.of(rnd.nextLong() | 1L, 0);
-        r128a = a128.toBigInteger();
-        r128b = b128.toBigInteger();
         a256 = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         b256 = Wide256.of(rnd.nextLong() | 1L, rnd.nextLong(), 0, 0);
-        r256a = a256.toBigInteger();
-        r256b = b256.toBigInteger();
         a512 = Wide512.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         b512 = Wide512.of(rnd.nextLong() | 1L, rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 0, 0, 0, 0);
-        r512a = a512.toBigInteger();
-        r512b = b512.toBigInteger();
     }
 
     @Benchmark
@@ -65,18 +58,8 @@ public class DivisionBench {
     }
 
     @Benchmark
-    public BigInteger bigDiv128() {
-        return r128a.divide(r128b);
-    }
-
-    @Benchmark
     public Wide128 rem128() {
         return a128.rem(b128);
-    }
-
-    @Benchmark
-    public BigInteger bigRem128() {
-        return r128a.remainder(r128b);
     }
 
     @Benchmark
@@ -85,18 +68,8 @@ public class DivisionBench {
     }
 
     @Benchmark
-    public BigInteger bigDiv256() {
-        return r256a.divide(r256b);
-    }
-
-    @Benchmark
     public Wide256 rem256() {
         return a256.rem(b256);
-    }
-
-    @Benchmark
-    public BigInteger bigRem256() {
-        return r256a.remainder(r256b);
     }
 
     @Benchmark
@@ -105,17 +78,7 @@ public class DivisionBench {
     }
 
     @Benchmark
-    public BigInteger bigDiv512() {
-        return r512a.divide(r512b);
-    }
-
-    @Benchmark
     public Wide512 rem512() {
         return a512.rem(b512);
-    }
-
-    @Benchmark
-    public BigInteger bigRem512() {
-        return r512a.remainder(r512b);
     }
 }

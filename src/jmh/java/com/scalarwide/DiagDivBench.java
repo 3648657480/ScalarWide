@@ -29,16 +29,12 @@ public class DiagDivBench {
 
     public Wide512 a;
     public Wide512 b;
-    public java.math.BigInteger ra;
-    public java.math.BigInteger rb;
     public long[] u;
     public long[] v;
     public long[] qReuse;
     public long[] rReuse;
     public Wide512[] arrA;
     public Wide512[] arrB;
-    public java.math.BigInteger[] arrRa;
-    public java.math.BigInteger[] arrRb;
 
     @Setup
     public void setup() {
@@ -47,16 +43,12 @@ public class DiagDivBench {
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         b = Wide512.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | 1L);
-        ra = a.toBigInteger();
-        rb = b.toBigInteger();
         u = new long[] {a.limb(0), a.limb(1), a.limb(2), a.limb(3), a.limb(4), a.limb(5), a.limb(6), a.limb(7)};
         v = new long[] {b.limb(0), b.limb(1), b.limb(2), b.limb(3), b.limb(4), b.limb(5), b.limb(6), b.limb(7)};
         qReuse = new long[8];
         rReuse = new long[8];
         arrA = new Wide512[] {a};
         arrB = new Wide512[] {b};
-        arrRa = new java.math.BigInteger[] {ra};
-        arrRb = new java.math.BigInteger[] {rb};
     }
 
     @Benchmark
@@ -65,18 +57,8 @@ public class DiagDivBench {
     }
 
     @Benchmark
-    public java.math.BigInteger fixedBig() {
-        return ra.divide(rb);
-    }
-
-    @Benchmark
     public Wide512 arrApi() {
         return arrA[0].div(arrB[0]);
-    }
-
-    @Benchmark
-    public java.math.BigInteger arrBig() {
-        return arrRa[0].divide(arrRb[0]);
     }
 
     @Benchmark
