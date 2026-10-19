@@ -2,6 +2,22 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.4（mc 线，纯增量）
+
+### Added
+
+- `com.scalarwide.mc.WideChunkCoord1024`：1024-bit 有符号 chunk 轴（16 limbs，±1 邻居、比较、hash/equals、128B 往返）。
+- `com.scalarwide.mc.WideChunkPos`：2D X/Z 各 1024-bit 的 chunk 位置；Y 不进 ChunkPos。
+- `com.scalarwide.mc.WideSectionCoord512`：512-bit section Y。
+- `com.scalarwide.mc.WideSectionKey2560`：X 1024 + Y 512 + Z 1024 的 section key，扁平 40-limb。
+- `com.scalarwide.mc.WideSectionKey2560FlatMap` / `WideSectionKey2560ByteMap` / `WideSectionKey2560OrderedSet`：2560 section 的平表/字节表/插入序集合。
+- `com.scalarwide.mc.WideChunkPosFlatMap` / `WideChunkPosByteMap` / `WideChunkPosOrderedSet`：1024+1024 chunk key 的平表/字节表/插入序集合，X/Z 完整比较。
+- FlatMap 构造参数 `loadPercent`（50..90，默认 75）与对应 A/B 记录；默认行为不变。
+- `com.scalarwide.mc.WideRegionPos` / `WideChunkCoord1024.shiftRight`：1024-bit region key 和 region/local 分解（32×32）。
+- 测试：1024/512/2560/region 边界与 BigInteger oracle、差分/删除簇、JOL 布局、load factor 参数；总计 137 tests 全绿。
+
+> 本版仍为 `1.0.x` 纯增量，不改既有公开 API；G2 的 `ChunkPos` 全量迁移另线进行。
+
 ## 1.0.3（mc 线，纯增量）
 
 ### Added
