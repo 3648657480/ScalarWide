@@ -19,7 +19,12 @@ Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Pat
 
 $java = $Java
 if (-not (Test-Path $java)) { throw "missing java at $java" }
+# `java -version` writes to stderr; under ErrorActionPreference=Stop that would
+# abort the script before JMH ever starts. Capture it with the preference relaxed.
+$savedEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $javaVersion = (& $java -version 2>&1 | Select-Object -First 1)
+$ErrorActionPreference = $savedEap
 
 $jarFull = (Resolve-Path $Jar).Path
 $outFull = Join-Path (Get-Location).Path $Out
