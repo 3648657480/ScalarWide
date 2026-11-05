@@ -4,8 +4,6 @@ import java.math.BigInteger;
 
 final class Limbs {
 
-    private static final BigInteger TWO64 = BigInteger.ONE.shiftLeft(64);
-
     private Limbs() {
     }
 
@@ -444,15 +442,27 @@ final class Limbs {
         System.arraycopy(full, a.length, out, 0, out.length);
     }
 
+    /**
+     * Unsigned value of {@code a} (little-endian limbs) as a non-negative
+     * {@link BigInteger}. Single pass: the limb vector is laid out big-endian
+     * once and handed to {@link BigInteger#BigInteger(int, byte[])}; signum 1
+     * keeps leading zero bytes out of the magnitude.
+     */
     static BigInteger toBigInteger(long[] a) {
-        BigInteger v = BigInteger.ZERO;
+        byte[] be = new byte[a.length * 8];
+        int pos = 0;
         for (int i = a.length - 1; i >= 0; i--) {
-            BigInteger limb = BigInteger.valueOf(a[i]);
-            if (a[i] < 0) {
-                limb = limb.add(TWO64);
-            }
-            v = v.shiftLeft(64).or(limb);
+            long v = a[i];
+            be[pos] = (byte) (v >>> 56);
+            be[pos + 1] = (byte) (v >>> 48);
+            be[pos + 2] = (byte) (v >>> 40);
+            be[pos + 3] = (byte) (v >>> 32);
+            be[pos + 4] = (byte) (v >>> 24);
+            be[pos + 5] = (byte) (v >>> 16);
+            be[pos + 6] = (byte) (v >>> 8);
+            be[pos + 7] = (byte) v;
+            pos += 8;
         }
-        return v;
+        return new BigInteger(1, be);
     }
 }

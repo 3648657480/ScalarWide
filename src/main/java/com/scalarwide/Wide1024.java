@@ -785,23 +785,163 @@ public final class Wide1024 implements Comparable<Wide1024> {
      * (monolithic 64-bit-limb schoolbook). The earlier block-composed
      * implementation is kept as {@link #mulHighComposed} for differential
      * testing.
+     *
+     * <p>{@code a}'s limb is taken once per row; {@code b}'s sixteen limbs are
+     * read as fields at constant offsets. The inner loop is unrolled so no
+     * 16-way {@link #limb} switch is re-entered on any of the 256 products
+     * (P17: runtime-index accessors inside a loop defeat constant folding).
      */
     public Wide1024 mulHigh(Wide1024 o) {
         long[] acc = new long[32];
         for (int i = 0; i < 16; i++) {
             long ai = limb(i);
             long carry = 0;
-            for (int j = 0; j < 16; j++) {
-                long bj = o.limb(j);
-                long lo = ai * bj;
-                long hi = Math.unsignedMultiplyHigh(ai, bj);
-                long t = acc[i + j] + carry;
-                long c1 = Long.compareUnsigned(t, acc[i + j]) < 0 ? 1 : 0;
-                long x = t + lo;
-                long c2 = Long.compareUnsigned(x, t) < 0 ? 1 : 0;
-                acc[i + j] = x;
-                carry = hi + c1 + c2;
-            }
+            int c = i;
+
+            long p = ai * o.l0;
+            long h = Math.unsignedMultiplyHigh(ai, o.l0);
+            long t = acc[c] + carry;
+            long k = Long.compareUnsigned(t, acc[c]) < 0 ? 1 : 0;
+            long x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c] = x;
+            carry = h + k;
+
+            p = ai * o.l1;
+            h = Math.unsignedMultiplyHigh(ai, o.l1);
+            t = acc[c + 1] + carry;
+            k = Long.compareUnsigned(t, acc[c + 1]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 1] = x;
+            carry = h + k;
+
+            p = ai * o.l2;
+            h = Math.unsignedMultiplyHigh(ai, o.l2);
+            t = acc[c + 2] + carry;
+            k = Long.compareUnsigned(t, acc[c + 2]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 2] = x;
+            carry = h + k;
+
+            p = ai * o.l3;
+            h = Math.unsignedMultiplyHigh(ai, o.l3);
+            t = acc[c + 3] + carry;
+            k = Long.compareUnsigned(t, acc[c + 3]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 3] = x;
+            carry = h + k;
+
+            p = ai * o.l4;
+            h = Math.unsignedMultiplyHigh(ai, o.l4);
+            t = acc[c + 4] + carry;
+            k = Long.compareUnsigned(t, acc[c + 4]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 4] = x;
+            carry = h + k;
+
+            p = ai * o.l5;
+            h = Math.unsignedMultiplyHigh(ai, o.l5);
+            t = acc[c + 5] + carry;
+            k = Long.compareUnsigned(t, acc[c + 5]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 5] = x;
+            carry = h + k;
+
+            p = ai * o.l6;
+            h = Math.unsignedMultiplyHigh(ai, o.l6);
+            t = acc[c + 6] + carry;
+            k = Long.compareUnsigned(t, acc[c + 6]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 6] = x;
+            carry = h + k;
+
+            p = ai * o.l7;
+            h = Math.unsignedMultiplyHigh(ai, o.l7);
+            t = acc[c + 7] + carry;
+            k = Long.compareUnsigned(t, acc[c + 7]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 7] = x;
+            carry = h + k;
+
+            p = ai * o.l8;
+            h = Math.unsignedMultiplyHigh(ai, o.l8);
+            t = acc[c + 8] + carry;
+            k = Long.compareUnsigned(t, acc[c + 8]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 8] = x;
+            carry = h + k;
+
+            p = ai * o.l9;
+            h = Math.unsignedMultiplyHigh(ai, o.l9);
+            t = acc[c + 9] + carry;
+            k = Long.compareUnsigned(t, acc[c + 9]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 9] = x;
+            carry = h + k;
+
+            p = ai * o.l10;
+            h = Math.unsignedMultiplyHigh(ai, o.l10);
+            t = acc[c + 10] + carry;
+            k = Long.compareUnsigned(t, acc[c + 10]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 10] = x;
+            carry = h + k;
+
+            p = ai * o.l11;
+            h = Math.unsignedMultiplyHigh(ai, o.l11);
+            t = acc[c + 11] + carry;
+            k = Long.compareUnsigned(t, acc[c + 11]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 11] = x;
+            carry = h + k;
+
+            p = ai * o.l12;
+            h = Math.unsignedMultiplyHigh(ai, o.l12);
+            t = acc[c + 12] + carry;
+            k = Long.compareUnsigned(t, acc[c + 12]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 12] = x;
+            carry = h + k;
+
+            p = ai * o.l13;
+            h = Math.unsignedMultiplyHigh(ai, o.l13);
+            t = acc[c + 13] + carry;
+            k = Long.compareUnsigned(t, acc[c + 13]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 13] = x;
+            carry = h + k;
+
+            p = ai * o.l14;
+            h = Math.unsignedMultiplyHigh(ai, o.l14);
+            t = acc[c + 14] + carry;
+            k = Long.compareUnsigned(t, acc[c + 14]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 14] = x;
+            carry = h + k;
+
+            p = ai * o.l15;
+            h = Math.unsignedMultiplyHigh(ai, o.l15);
+            t = acc[c + 15] + carry;
+            k = Long.compareUnsigned(t, acc[c + 15]) < 0 ? 1 : 0;
+            x = t + p;
+            k += Long.compareUnsigned(x, t) < 0 ? 1 : 0;
+            acc[c + 15] = x;
+            carry = h + k;
+
             acc[i + 16] = carry;
         }
         return Wide1024.of(acc[16], acc[17], acc[18], acc[19], acc[20], acc[21],
