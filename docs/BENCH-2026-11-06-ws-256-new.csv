@@ -1,0 +1,6 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.Wide256Bench.mul","avgt",1,10,5.945997,0.023491,"ns/op"
+"com.scalarwide.bench.Wide256Bench.mul:gc.alloc.rate","avgt",1,10,15391.041649,59.758675,"MB/sec"
+"com.scalarwide.bench.Wide256Bench.mul:gc.alloc.rate.norm","avgt",1,10,96.000080,0.000002,"B/op"
+"com.scalarwide.bench.Wide256Bench.mul:gc.count","avgt",1,10,79.000000,NaN,"counts"
+"com.scalarwide.bench.Wide256Bench.mul:gc.time","avgt",1,10,40.000000,NaN,"ms"
