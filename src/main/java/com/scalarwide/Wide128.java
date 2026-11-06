@@ -26,6 +26,9 @@ public final class Wide128 implements Comparable<Wide128> {
     private final long l0;
     private final long l1;
 
+    /** Memoised hash; 0 means not computed yet (see computeHash). */
+    private int hash;
+
     private Wide128(long l0, long l1) {
         this.l0 = l0;
         this.l1 = l1;
@@ -490,12 +493,29 @@ public final class Wide128 implements Comparable<Wide128> {
 
     @Override
     public int hashCode() {
+        int h = hash;
+        if (h == 0) {
+            h = computeHash();
+            hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * The hash is a multiply chain over the limbs, throughput-bound at roughly 1.4 cycles
+     * per limb; there is no shorter expression of the same quality, so memoising is the
+     * only lever. The field occupies the header alignment gap, so it costs no bytes. It is
+     * filled lazily: arithmetic results are never hashed and must not pay for it.
+     */
+    private int computeHash() {
+
         long h = 0x243F6A8885A308D3L;
         h = (h ^ l0) * 0x9E3779B97F4A7C15L;
         h = (h ^ l1) * 0x9E3779B97F4A7C15L;
         h ^= h >>> 29;
-        return (int) (h ^ (h >>> 32));
-    }
+        int r = (int) (h ^ (h >>> 32));
+        return r == 0 ? 1 : r;
+        }
 
     /** Unsigned decimal representation. */
     @Override

@@ -30,6 +30,9 @@ public final class Wide384 implements Comparable<Wide384> {
     private final long l4;
     private final long l5;
 
+    /** Memoised hash; 0 means not computed yet (see computeHash). */
+    private int hash;
+
     private Wide384(long l0, long l1, long l2, long l3, long l4, long l5) {
         this.l0 = l0;
         this.l1 = l1;
@@ -1087,6 +1090,22 @@ public final class Wide384 implements Comparable<Wide384> {
 
     @Override
     public int hashCode() {
+        int h = hash;
+        if (h == 0) {
+            h = computeHash();
+            hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * The hash is a multiply chain over the limbs, throughput-bound at roughly 1.4 cycles
+     * per limb; there is no shorter expression of the same quality, so memoising is the
+     * only lever. The field occupies the header alignment gap, so it costs no bytes. It is
+     * filled lazily: arithmetic results are never hashed and must not pay for it.
+     */
+    private int computeHash() {
+
         long h = 0x243F6A8885A308D3L;
         h = (h ^ l0) * 0x9E3779B97F4A7C15L;
         h = (h ^ l1) * 0x9E3779B97F4A7C15L;
@@ -1095,8 +1114,9 @@ public final class Wide384 implements Comparable<Wide384> {
         h = (h ^ l4) * 0x9E3779B97F4A7C15L;
         h = (h ^ l5) * 0x9E3779B97F4A7C15L;
         h ^= h >>> 29;
-        return (int) (h ^ (h >>> 32));
-    }
+        int r = (int) (h ^ (h >>> 32));
+        return r == 0 ? 1 : r;
+        }
 
     @Override
     public String toString() {

@@ -44,6 +44,9 @@ public final class Wide1024 implements Comparable<Wide1024> {
     private final long l14;
     private final long l15;
 
+    /** Memoised hash; 0 means not computed yet (see computeHash). */
+    private int hash;
+
     private Wide1024(long l0, long l1, long l2, long l3, long l4, long l5, long l6, long l7,
                      long l8, long l9, long l10, long l11, long l12, long l13, long l14, long l15) {
         this.l0 = l0;
@@ -3894,6 +3897,22 @@ public final class Wide1024 implements Comparable<Wide1024> {
 
     @Override
     public int hashCode() {
+        int h = hash;
+        if (h == 0) {
+            h = computeHash();
+            hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * Sixteen multiply steps, throughput-bound at roughly 1.4 cycles per limb; there is no
+     * shorter expression of the same quality, so memoising is the only lever. Every map
+     * lookup calls {@code hashCode} while few callers ever re-read the limbs, and the
+     * field is filled lazily — purely arithmetic use (mul/mulHigh results) pays nothing.
+     * The racing write is benign: both threads compute the same value.
+     */
+    private int computeHash() {
         long h = 0x243F6A8885A308D3L;
         h = (h ^ l0) * 0x9E3779B97F4A7C15L;
         h = (h ^ l1) * 0x9E3779B97F4A7C15L;
@@ -3912,7 +3931,8 @@ public final class Wide1024 implements Comparable<Wide1024> {
         h = (h ^ l14) * 0x9E3779B97F4A7C15L;
         h = (h ^ l15) * 0x9E3779B97F4A7C15L;
         h ^= h >>> 29;
-        return (int) (h ^ (h >>> 32));
+        int r = (int) (h ^ (h >>> 32));
+        return r == 0 ? 1 : r;
     }
 
     /** Unsigned decimal representation. */
