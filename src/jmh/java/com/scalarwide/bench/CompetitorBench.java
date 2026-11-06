@@ -210,4 +210,149 @@ public class CompetitorBench {
     public Int1024 l1024FromBytes() {
         return Int1024.of(long2Fixed1024);
     }
+
+    // ---------------- 全项：位运算 / 一元 / 比较 / 度量 / 字符串 ----------------
+
+    @Benchmark
+    public Wide1024 w1024Sub() {
+        return a1024.sub(b1024);
+    }
+
+    @Benchmark
+    public Int1024 l1024Sub() {
+        return la1024.subtract(lb1024);
+    }
+
+    @Benchmark
+    public Wide1024 w1024Or() {
+        return a1024.or(b1024);
+    }
+
+    @Benchmark
+    public Int1024 l1024Or() {
+        return la1024.or(lb1024);
+    }
+
+    @Benchmark
+    public Wide1024 w1024Xor() {
+        return a1024.xor(b1024);
+    }
+
+    @Benchmark
+    public Int1024 l1024Xor() {
+        return la1024.xor(lb1024);
+    }
+
+    @Benchmark
+    public Wide1024 w1024Not() {
+        return a1024.not();
+    }
+
+    @Benchmark
+    public Int1024 l1024Not() {
+        return la1024.not();
+    }
+
+    @Benchmark
+    public Wide1024 w1024Neg() {
+        return a1024.neg();
+    }
+
+    @Benchmark
+    public Int1024 l1024Neg() {
+        return la1024.negate();
+    }
+
+    @Benchmark
+    public boolean w1024Equals() {
+        return a1024.equals(b1024);
+    }
+
+    @Benchmark
+    public boolean l1024Equals() {
+        return la1024.equals(lb1024);
+    }
+
+    /** 两边都是有符号比较：我方 compareSigned 对应对方 compareTo。 */
+    @Benchmark
+    public int w1024Cmp() {
+        return a1024.compareSigned(b1024);
+    }
+
+    @Benchmark
+    public int l1024Cmp() {
+        return la1024.compareTo(lb1024);
+    }
+
+    /** 左移 7：我方 shl(7) 对应对方 shift(7)。 */
+    @Benchmark
+    public Wide1024 w1024Shl() {
+        return a1024.shl(7);
+    }
+
+    @Benchmark
+    public Int1024 l1024Shl() {
+        return la1024.shift(7);
+    }
+
+    /** 算术右移 7：我方 shr(7) 对应对方 shift(-7)。 */
+    @Benchmark
+    public Wide1024 w1024Shr() {
+        return a1024.shr(7);
+    }
+
+    @Benchmark
+    public Int1024 l1024Shr() {
+        return la1024.shift(-7);
+    }
+
+    @Benchmark
+    public int w1024BitCount() {
+        return a1024.bitCount();
+    }
+
+    @Benchmark
+    public int l1024BitCount() {
+        return la1024.bitCount();
+    }
+
+    @Benchmark
+    public int w1024BitLength() {
+        return a1024.bitLength();
+    }
+
+    @Benchmark
+    public int l1024BitLength() {
+        return la1024.bitLength();
+    }
+
+    @Benchmark
+    public long w1024ToLong() {
+        return a1024.longValue();
+    }
+
+    @Benchmark
+    public long l1024ToLong() {
+        return la1024.toLong();
+    }
+
+    @Benchmark
+    public String w1024ToHex() {
+        return a1024.toHexString();
+    }
+
+    @Benchmark
+    public String l1024ToHex() {
+        return la1024.toHexString();
+    }
+
+    @Benchmark
+    public String w1024ToStr() {
+        return a1024.toString();
+    }
+
+    @Benchmark
+    public String l1024ToStr() {
+        return la1024.toString();
+    }
 }

@@ -1128,7 +1128,7 @@ public final class Wide384 implements Comparable<Wide384> {
     }
 
     public String toHexString() {
-        return toBigInteger().toString(16);
+        return Limbs.toHexString(pack());
     }
 
     private long[] pack() {

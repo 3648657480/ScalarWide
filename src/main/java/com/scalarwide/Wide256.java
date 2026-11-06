@@ -1642,7 +1642,7 @@ public final class Wide256 implements Comparable<Wide256> {
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */
     public String toHexString() {
-        return toBigInteger().toString(16);
+        return Limbs.toHexString(pack());
     }
 
     private long[] pack() {

@@ -458,6 +458,31 @@ final class Limbs {
     }
 
     /**
+     * Unsigned hexadecimal representation of {@code a} (little-endian limbs), no prefix,
+     * {@code "0"} for zero. Base 16 is four bits per digit, so the limbs are converted
+     * in place — routing through {@link BigInteger} costs ~4x more.
+     */
+    static String toHexString(long[] a) {
+        int top = a.length - 1;
+        while (top >= 0 && a[top] == 0) {
+            top--;
+        }
+        if (top < 0) {
+            return "0";
+        }
+        StringBuilder sb = new StringBuilder((top + 1) * 16);
+        sb.append(Long.toHexString(a[top]));
+        for (int i = top - 1; i >= 0; i--) {
+            String s = Long.toHexString(a[i]);
+            for (int pad = s.length(); pad < 16; pad++) {
+                sb.append('0');
+            }
+            sb.append(s);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Unsigned value of {@code a} (little-endian limbs) as a non-negative
      * {@link BigInteger}. Single pass: the limb vector is laid out big-endian
      * once and handed to {@link BigInteger#BigInteger(int, byte[])}; signum 1
