@@ -1,16 +1,23 @@
-# Generates the column-major (two-phase carry) low-half multiply kernel and splices it
-# into Wide1024.java, replacing the existing `public Wide1024 mul(Wide1024 o)` method.
+# Generates a column-major multiply kernel and splices it into Wide<bits>.java.
 #
-# Shape (textbook column schoolbook with delayed carry):
-#   column k = all lo(a_i,b_j) with i+j == k, plus all hi(a_i,b_j) with i+j == k-1.
-#   Each column accumulates in two registers (u = sum, q = overflow count) and is
-#   written out once; the count q becomes the next column's input carry.
-#   16 wide: 136 lo multiplies + 120 hi multiplies = 256 multiply instructions.
+#   -Mode low   replaces `public WideX mul(WideX o)`       (columns 0..N-1, low-half product)
+#   -Mode high  replaces `public WideX mulHigh(WideX o)`   (columns 0..2N-1, writes only k>=N)
 #
-# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File tools\gen-colmul.ps1 [-Bits 1024] [-Splice]
+# Column k of the full product = lo(a_i,b_j) with i+j==k, plus hi(a_i,b_j) with i+j==k-1.
+# Each column accumulates in a pair of registers (running sum `u` + overflow count `q`) and is
+# written exactly once at the end of the column; `q` is the next column's input carry.
+#
+# Chunking is mandatory: HotSpot's -XX:HugeMethodLimit (8000 B) silently refuses to JIT a method
+# larger than that (measured 7765.9 ns vs 89.4 ns on 1024 mul). Columns are packed greedily into
+# helpers of at most -MaxTerms product terms each.
+#
+# Usage:
+#   powershell -File tools\gen-colmul.ps1 -Bits 1024 -Mode low  -Splice
+#   powershell -File tools\gen-colmul.ps1 -Bits 1024 -Mode high -Splice
 param(
     [int]$Bits = 1024,
-    [int]$Groups = 4,
+    [ValidateSet('low', 'high')][string]$Mode = 'low',
+    [int]$MaxTerms = 180,
     [switch]$Splice
 )
 
@@ -19,59 +26,75 @@ Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Pat
 $N = $Bits / 64
 $class = "Wide$Bits"
 $src = "src/main/java/com/scalarwide/$class.java"
-$genDir = 'build/gen'
+$genDir = Join-Path (Get-Location).Path 'build/gen'
 New-Item -ItemType Directory -Force -Path $genDir | Out-Null
+
+$isHigh = ($Mode -eq 'high')
+$lastCol = if ($isHigh) { 2 * $N - 1 } else { $N - 1 }
+$helper = if ($isHigh) { 'mulHighCols' } else { 'mulCols' }
+$target = if ($isHigh) { 'mulHigh' } else { 'mul' }
+
+# Terms of column k, in evaluation order: all lo terms (i+j==k), then all hi terms (i+j==k-1).
+function Get-Terms([int]$k) {
+    $terms = New-Object System.Collections.ArrayList
+    $iLo = [Math]::Max(0, $k - ($N - 1))
+    $iHi = [Math]::Min($N - 1, $k)
+    for ($i = $iLo; $i -le $iHi; $i++) {
+        $j = $k - $i
+        if ($j -ge 0 -and $j -le ($N - 1)) { [void]$terms.Add("l$i * o.l$j") }
+    }
+    $k1 = $k - 1
+    $iLo2 = [Math]::Max(0, $k1 - ($N - 1))
+    $iHi2 = [Math]::Min($N - 1, $k1)
+    for ($i = $iLo2; $i -le $iHi2; $i++) {
+        $j = $k1 - $i
+        if ($j -ge 0 -and $j -le ($N - 1)) { [void]$terms.Add("Math.unsignedMultiplyHigh(l$i, o.l$j)") }
+    }
+    return , $terms
+}
+
+# Greedy column packing under the term budget.
+$colTerms = @{}
+for ($k = 0; $k -le $lastCol; $k++) { $colTerms[$k] = (Get-Terms $k).Count }
+$chunks = New-Object System.Collections.ArrayList
+$curCols = New-Object System.Collections.ArrayList
+$curCount = 0
+for ($k = 0; $k -le $lastCol; $k++) {
+    $t = $colTerms[$k]
+    if ($curCols.Count -gt 0 -and ($curCount + $t) -gt $MaxTerms) {
+        [void]$chunks.Add(@($curCols.ToArray(), $curCount))
+        $curCols = New-Object System.Collections.ArrayList
+        $curCount = 0
+    }
+    [void]$curCols.Add($k)
+    $curCount += $t
+}
+if ($curCols.Count -gt 0) { [void]$chunks.Add(@($curCols.ToArray(), $curCount)) }
 
 $sb = New-Object System.Text.StringBuilder
 function Line([string]$s) { [void]$sb.AppendLine($s) }
 
-# Column k's term list: lo(a_i,b_j) for i+j==k, then hi(a_i,b_j) for i+j==k-1.
-function Get-Terms([int]$k) {
-    $terms = New-Object System.Collections.ArrayList
-    $iLo = [Math]::Max(0, $k - $N + 1)
-    $iHi = [Math]::Min($k, $N - 1)
-    for ($i = $iLo; $i -le $iHi; $i++) {
-        $j = $k - $i
-        [void]$terms.Add("l$i * o.l$j")
-    }
-    $iLo2 = [Math]::Max(0, $k - 1 - $N + 1)
-    $iHi2 = [Math]::Min($k - 1, $N - 1)
-    for ($i = $iLo2; $i -le $iHi2; $i++) {
-        $j = $k - 1 - $i
-        [void]$terms.Add("Math.unsignedMultiplyHigh(l$i, o.l$j)")
-    }
-    if ($terms.Count -eq 0) { throw "column $k has no terms" }
-    return , $terms
-}
-
-# Column groups, balanced by term count. A single 876-line method exceeds
-# -XX:HugeMethodLimit (8000 B) and is never JIT-compiled, so the kernel is split.
-$colGroups = @()
-$per = [int][Math]::Ceiling(([double]$N) / $Groups)
-for ($g = 0; $g -lt $Groups; $g++) {
-    $a = $g * $per
-    $b = [Math]::Min($N - 1, $a + $per - 1)
-    if ($a -le $b) { $colGroups += , @($a, $b) }
-}
-
-for ($gi = 0; $gi -lt $colGroups.Count; $gi++) {
-    $a = $colGroups[$gi][0]
-    $b = $colGroups[$gi][1]
-    Line ("    private long mulCols$gi($class o, long[] r, long carry) {")
+for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
+    $cols = $chunks[$gi][0]
+    Line ("    private long $helper$gi($class o, long[] r, long carry) {")
     Line '        long t;'
-    for ($k = $a; $k -le $b; $k++) {
+    foreach ($k in $cols) {
         $terms = Get-Terms $k
         Line '        {'
         Line ("            long u = " + $terms[0] + ';')
         Line '            long q = 0;'
-        for ($t = 1; $t -lt $terms.Count; $t++) {
-            Line ("            t = u + " + $terms[$t] + ';')
+        for ($ti = 1; $ti -lt $terms.Count; $ti++) {
+            Line ("            t = u + " + $terms[$ti] + ';')
             Line '            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;'
             Line '            u = t;'
         }
         Line '            t = u + carry;'
         Line '            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;'
-        Line ("            r[$k] = t;")
+        if ($isHigh) {
+            if ($k -ge $N) { Line ("            r[" + ($k - $N) + '] = t;') }
+        } else {
+            Line ("            r[$k] = t;")
+        }
         Line '            carry = q;'
         Line '        }'
     }
@@ -81,39 +104,42 @@ for ($gi = 0; $gi -lt $colGroups.Count; $gi++) {
 }
 
 Line '    /**'
-Line '     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb'
-Line '     * is accumulated by its own pair of registers (running sum + overflow count) and'
-Line '     * written exactly once, so no product round-trips through memory. Generated by'
-Line '     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.'
+if ($isHigh) {
+    Line '     * High N bits of the 2N-bit product, column-major with delayed carry. Columns below N'
+    Line '     * only feed the carry chain (their value is discarded); columns N..2N-1 are the result.'
+    Line '     * Generated by tools/gen-colmul.ps1 -- do not edit this method or the mulHighCols*'
+    Line '     * helpers by hand.'
+} else {
+    Line '     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb'
+    Line '     * is accumulated by its own pair of registers (running sum + overflow count) and'
+    Line '     * written exactly once, so no product round-trips through memory. Generated by'
+    Line '     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.'
+}
 Line '     */'
-Line "    public $class mul($class o) {"
+Line "    public $class $target($class o) {"
 Line "        long[] r = new long[$N];"
 Line '        long carry = 0;'
-for ($gi = 0; $gi -lt $colGroups.Count; $gi++) {
-    Line "        carry = mulCols$gi(o, r, carry);"
+for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
+    Line "        carry = $helper$gi(o, r, carry);"
 }
-$args16 = (0..($N - 1) | ForEach-Object { "r[$_]" }) -join ', '
-Line "        return $class.of($args16);"
+$ofArgList = (0..($N - 1) | ForEach-Object { "r[$_]" }) -join ', '
+Line "        return $class.of($ofArgList);"
 Line '    }'
 
 $text = $sb.ToString()
-$genFile = Join-Path (Get-Location).Path $genDir
-New-Item -ItemType Directory -Force -Path $genFile | Out-Null
-$genPath = Join-Path $genFile "mul$N.txt"
+$genPath = Join-Path $genDir "$helper$Bits.txt"
 [System.IO.File]::WriteAllText($genPath, $text, (New-Object System.Text.UTF8Encoding($false)))
-"generated: $genPath  ($($text.Length) chars, $((($text -split "`n").Count)) lines)"
+"generated: $genPath  ($((($text -split "`n").Count)) lines, $($chunks.Count) chunks of <=$MaxTerms terms)"
 
 if (-not $Splice) { return }
 
-# --- splice: replace the existing `public <Class> mul(<Class> o) { ... }` by brace matching ---
 $full = (Resolve-Path $src).Path
 $orig = [System.IO.File]::ReadAllText($full)
-$backup = Join-Path $genDir ("$class.java.bak")
-[System.IO.File]::WriteAllText($backup, $orig, (New-Object System.Text.UTF8Encoding($false)))
+[System.IO.File]::WriteAllText((Join-Path $genDir "$class.java.bak"), $orig, (New-Object System.Text.UTF8Encoding($false)))
 
-$anchor = "    public $class mul($class o) {"
+$anchor = "    public $class $target($class o) {"
 $start = $orig.IndexOf($anchor)
-if ($start -lt 0) { throw "anchor not found in $src" }
+if ($start -lt 0) { throw "anchor not found: $anchor" }
 $braceStart = $orig.IndexOf('{', $start)
 $depth = 0
 $end = -1
@@ -122,8 +148,8 @@ for ($p = $braceStart; $p -lt $orig.Length; $p++) {
     if ($ch -eq '{') { $depth++ }
     elseif ($ch -eq '}') { $depth--; if ($depth -eq 0) { $end = $p; break } }
 }
-if ($end -lt 0) { throw "unbalanced braces" }
+if ($end -lt 0) { throw 'unbalanced braces' }
 
 $new = $orig.Substring(0, $start) + $text.TrimEnd() + $orig.Substring($end + 1)
 [System.IO.File]::WriteAllText($full, $new, (New-Object System.Text.UTF8Encoding($false)))
-" spliced into $src (backup: $backup)"
+" spliced into $src"
