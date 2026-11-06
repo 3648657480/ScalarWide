@@ -19,6 +19,12 @@ param(
     [int]$Bits = 1024,
     [ValidateSet('low', 'high', 'full')][string]$Mode = 'low',
     [int]$MaxTerms = 180,
+    # Split each column's term list into N independent accumulator chains (1 = off).
+    # NOT VALIDATED: the multi-chunk path mis-maps column indices (write sequence came out
+    # as 0,3,6,... instead of 0..15) and the differential gate caught it as an
+    # ArrayIndexOutOfBoundsException. Kept as a stub for a future careful retry; the idea
+    # (halving the per-column dependency chain) is still open.
+    [int]$Split = 1,
     # Keep the results in local variables (no long[] at all). Only valid when the whole
     # kernel fits in a single chunk, i.e. 128/256/384/512/768 low mode.
     [switch]$Locals,
@@ -27,6 +33,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+if ($Split -gt 1) {
+    throw '-Split > 1 is not validated: the column index mapping is wrong in multi-chunk mode. Retry after fixing Emit-Column.'
+}
 $N = $Bits / 64
 $class = "Wide$Bits"
 $src = "src/main/java/com/scalarwide/$class.java"
@@ -82,20 +91,54 @@ if ($curCols.Count -gt 0) { [void]$chunks.Add(@($curCols.ToArray(), $curCount)) 
 $sb = New-Object System.Text.StringBuilder
 function Line([string]$s) { [void]$sb.AppendLine($s) }
 
-# Emits one column block. $ind is the leading whitespace, $target_ is the destination
-# expression for the column's value ("r3" for a local, "r[3]" for an array slot).
+# Emits one column block. $ind is the leading whitespace; $writeExpr maps a column
+# index to the destination expression ("r3" for a local, "r[3]" for an array slot, "" to
+# discard).
+#
+# With -Split 2 the column's terms are accumulated on TWO independent chains (u/q and
+# v/q2) and merged once. A column can hold up to 2N-1 terms, so without the split the
+# dependency chain through `q` is 31 links long; splitting halves that critical path at
+# the cost of one merge (~3 ops per column).
 function Emit-Column([int]$k, [string]$ind, [scriptblock]$writeExpr) {
     $terms = Get-Terms $k
+    $n = $terms.Count
     Line ("$ind{")
-    Line ("$ind    long u = " + $terms[0] + ';')
-    Line ("$ind    long q = 0;")
-    for ($ti = 1; $ti -lt $terms.Count; $ti++) {
-        Line ("$ind    t = u + " + $terms[$ti] + ';')
+    if ($Split -le 1 -or $n -lt 4) {
+        Line ("$ind    long u = " + $terms[0] + ';')
+        Line ("$ind    long q = 0;")
+        for ($ti = 1; $ti -lt $n; $ti++) {
+            Line ("$ind    t = u + " + $terms[$ti] + ';')
+            Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
+            Line ("$ind    u = t;")
+        }
+        Line ("$ind    t = u + carry;")
+        Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
+    } else {
+        $half = [int][Math]::Ceiling($n / 2)
+        # chain A: terms 0 .. half-1
+        Line ("$ind    long u = " + $terms[0] + ';')
+        Line ("$ind    long q = 0;")
+        for ($ti = 1; $ti -lt $half; $ti++) {
+            Line ("$ind    t = u + " + $terms[$ti] + ';')
+            Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
+            Line ("$ind    u = t;")
+        }
+        # chain B: terms half .. n-1
+        Line ("$ind    long v = " + $terms[$half] + ';')
+        Line ("$ind    long q2 = 0;")
+        for ($ti = $half + 1; $ti -lt $n; $ti++) {
+            Line ("$ind    t = v + " + $terms[$ti] + ';')
+            Line ("$ind    q2 += Long.compareUnsigned(t, v) < 0 ? 1L : 0L;")
+            Line ("$ind    v = t;")
+        }
+        # merge: at most one of the two overflow counts fires per add
+        Line ("$ind    t = u + v;")
         Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
         Line ("$ind    u = t;")
+        Line ("$ind    q += q2;")
+        Line ("$ind    t = u + carry;")
+        Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
     }
-    Line ("$ind    t = u + carry;")
-    Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
     $dest = & $writeExpr $k
     if ($dest -eq '') {
         # low column of a mulHigh: only the carry matters
@@ -178,6 +221,29 @@ if (-not $Splice) { return }
 $full = (Resolve-Path $src).Path
 $orig = [System.IO.File]::ReadAllText($full)
 [System.IO.File]::WriteAllText((Join-Path $genDir "$class.java.bak"), $orig, (New-Object System.Text.UTF8Encoding($false)))
+
+# Remove any previously generated helpers with this prefix, so re-running the generator
+# on the same file is idempotent (otherwise the new helpers are added next to the old).
+while ($true) {
+    $m = [regex]::Match($orig, "    private long $helper\d+\(")
+    if (-not $m.Success) { break }
+    $hs = $orig.IndexOf('{', $m.Index)
+    $d = 0; $he = -1
+    for ($p = $hs; $p -lt $orig.Length; $p++) {
+        $ch = $orig[$p]
+        if ($ch -eq '{') { $d++ }
+        elseif ($ch -eq '}') { $d--; if ($d -eq 0) { $he = $p; break } }
+    }
+    if ($he -lt 0) { throw 'unbalanced helper' }
+    $after = $he + 1
+    foreach ($nlSeq in @("`r`n`r`n", "`r`n", "`n")) {
+        if ($after + $nlSeq.Length -le $orig.Length -and $orig.Substring($after, $nlSeq.Length) -eq $nlSeq) {
+            $after += $nlSeq.Length
+            break
+        }
+    }
+    $orig = $orig.Substring(0, $m.Index) + $orig.Substring($after)
+}
 
 $anchor = "    public $resClass $target($class o) {"
 $start = $orig.IndexOf($anchor)
