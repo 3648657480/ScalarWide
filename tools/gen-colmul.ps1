@@ -19,6 +19,9 @@ param(
     [int]$Bits = 1024,
     [ValidateSet('low', 'high', 'full')][string]$Mode = 'low',
     [int]$MaxTerms = 180,
+    # Keep the results in local variables (no long[] at all). Only valid when the whole
+    # kernel fits in a single chunk, i.e. 128/256/384/512/768 low mode.
+    [switch]$Locals,
     [switch]$Splice
 )
 
@@ -79,35 +82,49 @@ if ($curCols.Count -gt 0) { [void]$chunks.Add(@($curCols.ToArray(), $curCount)) 
 $sb = New-Object System.Text.StringBuilder
 function Line([string]$s) { [void]$sb.AppendLine($s) }
 
-for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
-    $cols = $chunks[$gi][0]
-    Line ("    private long $helper$gi($class o, long[] r, long carry) {")
-    Line '        long t;'
-    foreach ($k in $cols) {
-        $terms = Get-Terms $k
-        Line '        {'
-        Line ("            long u = " + $terms[0] + ';')
-        Line '            long q = 0;'
-        for ($ti = 1; $ti -lt $terms.Count; $ti++) {
-            Line ("            t = u + " + $terms[$ti] + ';')
-            Line '            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;'
-            Line '            u = t;'
-        }
-        Line '            t = u + carry;'
-        Line '            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;'
-        if ($isHigh -and $k -lt $N) {
-            # low columns only feed the carry chain; their value is discarded
-        } elseif ($isHigh) {
-            Line ("            r[" + ($k - $N) + '] = t;')
-        } else {
-            Line ("            r[$k] = t;")
-        }
-        Line '            carry = q;'
-        Line '        }'
+# Emits one column block. $ind is the leading whitespace, $target_ is the destination
+# expression for the column's value ("r3" for a local, "r[3]" for an array slot).
+function Emit-Column([int]$k, [string]$ind, [scriptblock]$writeExpr) {
+    $terms = Get-Terms $k
+    Line ("$ind{")
+    Line ("$ind    long u = " + $terms[0] + ';')
+    Line ("$ind    long q = 0;")
+    for ($ti = 1; $ti -lt $terms.Count; $ti++) {
+        Line ("$ind    t = u + " + $terms[$ti] + ';')
+        Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
+        Line ("$ind    u = t;")
     }
-    Line '        return carry;'
-    Line '    }'
-    Line ''
+    Line ("$ind    t = u + carry;")
+    Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
+    $dest = & $writeExpr $k
+    if ($dest -eq '') {
+        # low column of a mulHigh: only the carry matters
+    } else {
+        Line ("$ind    $dest = t;")
+    }
+    Line ("$ind    carry = q;")
+    Line ("$ind}")
+}
+
+# A kernel that fits in one chunk can keep its N (or 2N) results in local
+# variables, so no long[] is allocated at all.
+$useLocals = $Locals -and ($chunks.Count -eq 1)
+
+if (-not $useLocals) {
+    for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
+        $cols = $chunks[$gi][0]
+        Line ("    private long $helper$gi($class o, long[] r, long carry) {")
+        Line '        long t;'
+        foreach ($k in $cols) {
+            Emit-Column $k '        ' {
+                param($kk)
+                if ($isHigh -and $kk -lt $N) { '' } elseif ($isHigh) { "r[" + ($kk - $N) + ']' } else { "r[$kk]" }
+            }
+        }
+        Line '        return carry;'
+        Line '    }'
+        Line ''
+    }
 }
 
 Line '    /**'
@@ -129,12 +146,25 @@ if ($isFull) {
 }
 Line '     */'
 Line "    public $resClass $target($class o) {"
-Line "        long[] r = new long[$resLimbs];"
-Line '        long carry = 0;'
-for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
-    Line "        carry = $helper$gi(o, r, carry);"
+if ($useLocals) {
+    for ($k = 0; $k -lt $resLimbs; $k++) { Line "        long r$k;" }
+    Line '        long carry = 0;'
+    Line '        long t;'
+    foreach ($k in $chunks[0][0]) {
+        Emit-Column $k '        ' {
+            param($kk)
+            if ($isHigh -and $kk -lt $N) { '' } elseif ($isHigh) { 'r' + ($kk - $N) } else { "r$kk" }
+        }
+    }
+    $ofArgList = (0..($resLimbs - 1) | ForEach-Object { "r$_" }) -join ', '
+} else {
+    Line "        long[] r = new long[$resLimbs];"
+    Line '        long carry = 0;'
+    for ($gi = 0; $gi -lt $chunks.Count; $gi++) {
+        Line "        carry = $helper$gi(o, r, carry);"
+    }
+    $ofArgList = (0..($resLimbs - 1) | ForEach-Object { "r[$_]" }) -join ', '
 }
-$ofArgList = (0..($resLimbs - 1) | ForEach-Object { "r[$_]" }) -join ', '
 Line "        return $resClass.of($ofArgList);"
 Line '    }'
 
