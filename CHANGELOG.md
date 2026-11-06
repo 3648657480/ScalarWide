@@ -2,6 +2,55 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.1 — 消费者驱动性能批次（G2 首屏）
+
+> 纯性能 + 一个纯增量 API（`Wide512.mulFull(Wide512) → Wide1024`），按 `docs/COMPATIBILITY.md` §6
+> 属 **patch 级：一行替换、无感**。既有公开签名与语义未变（`ConsumerApiTest` 冻结门全绿）。
+> 全部数据 = 工作站 7950X / JDK 25 / 锁核 LP0，记录见 `docs/BENCH.md` 2026-11-05/06 各轮。
+
+### 性能
+
+| 项目 | 宽度 | 改前 → 改后 | 倍数 |
+|---|---|---|---|
+| `toBigInteger` 单趟字节桥 | 1024 | 1146 → 59.3 ns | **19.3×** |
+| `toHexString` 按肢直转 | 1024 | 2984 → 184 ns | **16.0×** |
+| `hashCode` 懒加载缓存 | 1024 | 4.98 → 0.35 ns | **14.1×** |
+| `toByteArrayFixed` VarHandle | 1024 | 29.4 → 5.55 ns | **5.30×** |
+| `fromByteArray` VarHandle | 1024 / 512 | 69.4 / 40.2 → 15.2 / 8.8 ns | **4.6×** |
+| `bitLength` 拆内联快路径 | 1024 | 1.15 → 0.38 ns | **3.01×** |
+| `mulHigh` 列累加 + 列内双链 | 384 / 512 / 768 / 1024 | 46.7 / 71.6 / 162.9 / 271.7 → 17.5 / 32.2 / 82.9 / 164.8 ns | **2.66 / 2.22 / 1.96 / 1.65×** |
+| `add` / `sub` 单比较进位 | 384 / 512 / 768 / 256 / 1024 | — | **1.75 / 1.49 / 1.41 / 1.30 / 1.09×** |
+| `mul` 列累加内核 | 512 / 1024 / 768 / 256 / 384 | 30.6 / 153.4 / ~71 / 6.9 / 14.0 → 15.9 / 88.8 / ~42 / 4.8 / 11.3 ns | **1.92 / 1.73 / ~1.7 / 1.42 / 1.24×** |
+
+- `mul` 的分配 1024 档 672 → 288 B/op；`mulHigh` 768 档 816 → 224 B/op；六档对象尺寸**全部不变**
+  （`hashCode` 的 `int` 字段落在对象头对齐空档，零成本）。
+
+### 新增（纯增量）
+
+- `Wide512.mulFull(Wide512) → Wide1024`：补齐 128→256→512 的全积阶梯（42.05 ns）。
+
+### 工程
+
+- 生成器 `tools/gen-colmul.ps1`：按位宽/模式/拆分/分块/局部变量/分带参数化产出乘法内核，
+  并做到幂等拼接。配套 `patch-carry` / `patch-bytecodec` / `patch-tofixed` / `patch-lazyhash` /
+  `patch-bitlength` / `strip-colhelpers`。
+- `tools/bench-pinned.ps1`（锁核 JMH 运行器，支持跨机 JDK）、`tools/ws/*`（工作站驱动脚本）。
+- JMH 新增：`CompetitorBench`（同场景对照 Long2 0.1.8）、`MulCseBench`、`BatchOverlapBench`、
+  `KernelFormBench`、`ConversionBench`、`LongBaselineBench`。
+- jar 内补 `META-INF/LICENSE.txt`（此前产物无许可证文件）。
+
+### 记录与负结果
+
+- `docs/BENCH.md` 新增 12 个章节，含 **5 个负结果**：批量交错（重叠 = 0）、分带并行（更慢）、
+  列内三进位元（P16 复现）、单值 SIMD（≤1%）、Karatsuba（有落点但不划算）。
+- `docs/LAYOUT.md` 订正：原"缓存一个 `int` 要 +8 B（128 +25%）"的前提错误，JOL 实测该字段
+  落在对象头对齐空档，六档尺寸不变。
+- 发现的硬限制：HotSpot `HugeMethodLimit` 的可编译边界落在 **215–240 项**之间；越界后
+  **静默不编译**（实测慢 45–90×）。
+- 与 Long2 0.1.8 全项对照（1024，18 项）：**7 胜 / 8 平 / 3 负**——hash 领先 29.4×、
+  `toHexString` 3.68×、左移 3.62×、右移 2.21×、`bitLength` 1.16×；`multiply` 落后 10.0%
+  （参数空间已扫穿）、`sub` 6.1%、`equals` 4.0%。
+
 ## 1.0.0 — 冻结（项目结项）
 
 > **冻结起点**：公开 API 的签名与语义自本版起冻结（版本语义见 `docs/COMPATIBILITY.md` §6）。

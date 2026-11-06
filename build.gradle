@@ -120,4 +120,9 @@ jar {
                 'Implementation-Version': version
         )
     }
+    // Ship the licence inside the artifact: the mc line is `include`d into downstream
+    // mod jars, so a jar without a licence file propagates that gap to consumers.
+    from('LICENSE.txt') {
+        into 'META-INF'
+    }
 }
