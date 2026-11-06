@@ -328,9 +328,15 @@ public final class Wide384 implements Comparable<Wide384> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l5 != 0) {
-            return 320 + (64 - Long.numberOfLeadingZeros(l5));
+        long v = l5;
+        if (v != 0) {
+            return 320 + (64 - Long.numberOfLeadingZeros(v));
         }
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
         if (l4 != 0) {
             return 256 + (64 - Long.numberOfLeadingZeros(l4));
         }
@@ -343,10 +349,7 @@ public final class Wide384 implements Comparable<Wide384> {
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^384. */

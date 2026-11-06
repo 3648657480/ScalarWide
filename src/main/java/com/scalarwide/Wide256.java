@@ -307,19 +307,22 @@ public final class Wide256 implements Comparable<Wide256> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l3 != 0) {
-            return 192 + (64 - Long.numberOfLeadingZeros(l3));
+        long v = l3;
+        if (v != 0) {
+            return 192 + (64 - Long.numberOfLeadingZeros(v));
         }
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
         if (l2 != 0) {
             return 128 + (64 - Long.numberOfLeadingZeros(l2));
         }
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^256. */

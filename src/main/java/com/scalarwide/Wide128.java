@@ -270,13 +270,16 @@ public final class Wide128 implements Comparable<Wide128> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l1 != 0) {
-            return 64 + (64 - Long.numberOfLeadingZeros(l1));
+        long v = l1;
+        if (v != 0) {
+            return 64 + (64 - Long.numberOfLeadingZeros(v));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^128. */

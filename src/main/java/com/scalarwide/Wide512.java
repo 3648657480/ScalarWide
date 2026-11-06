@@ -370,9 +370,15 @@ public final class Wide512 implements Comparable<Wide512> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l7 != 0) {
-            return 448 + (64 - Long.numberOfLeadingZeros(l7));
+        long v = l7;
+        if (v != 0) {
+            return 448 + (64 - Long.numberOfLeadingZeros(v));
         }
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
         if (l6 != 0) {
             return 384 + (64 - Long.numberOfLeadingZeros(l6));
         }
@@ -391,10 +397,7 @@ public final class Wide512 implements Comparable<Wide512> {
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^512. */

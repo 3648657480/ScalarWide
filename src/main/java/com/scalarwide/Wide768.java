@@ -435,9 +435,15 @@ public final class Wide768 implements Comparable<Wide768> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l11 != 0) {
-            return 704 + (64 - Long.numberOfLeadingZeros(l11));
+        long v = l11;
+        if (v != 0) {
+            return 704 + (64 - Long.numberOfLeadingZeros(v));
         }
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
         if (l10 != 0) {
             return 640 + (64 - Long.numberOfLeadingZeros(l10));
         }
@@ -468,10 +474,7 @@ public final class Wide768 implements Comparable<Wide768> {
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^768. */
