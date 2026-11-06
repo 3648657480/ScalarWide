@@ -2,6 +2,8 @@ package com.scalarwide.bench;
 
 import com.inf.long2.ints.Int1024;
 import com.inf.long2.ints.Int256;
+import com.scalarwide.Wide512;
+import com.inf.long2.ints.Int512;
 import com.scalarwide.Wide1024;
 import com.scalarwide.Wide256;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -51,6 +53,14 @@ public class CompetitorBench {
     public Int256 la256;
     public Int256 lb256;
 
+    public Wide512 a512;
+    public Wide512 b512;
+    public Int512 la512;
+    public Int512 lb512;
+
+    public byte[] fixed1024;
+    public byte[] long2Fixed1024;
+
     @Setup
     public void setup() {
         Random rnd = new Random(12345L);
@@ -77,6 +87,20 @@ public class CompetitorBench {
         b256 = Wide256.of(q[4], q[5], q[6], q[7]);
         la256 = Int256.of(q[3], q[2], q[1], q[0]);
         lb256 = Int256.of(q[7], q[6], q[5], q[4]);
+
+        long[] s = new long[16];
+        long[] u = new long[16];
+        for (int i = 0; i < 16; i++) {
+            s[i] = rnd.nextLong();
+            u[i] = rnd.nextLong();
+        }
+        a512 = Wide512.of(s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]);
+        b512 = Wide512.of(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+        la512 = Int512.of(s[7], s[6], s[5], s[4], s[3], s[2], s[1], s[0]);
+        lb512 = Int512.of(u[7], u[6], u[5], u[4], u[3], u[2], u[1], u[0]);
+
+        fixed1024 = a1024.toByteArrayFixed();
+        long2Fixed1024 = la1024.toBytes();
     }
 
     // ---------------- 1024 ----------------
@@ -151,5 +175,39 @@ public class CompetitorBench {
     @Benchmark
     public int l256Hash() {
         return la256.hashCode();
+    }
+
+    // ---------------- 512 ----------------
+
+    @Benchmark
+    public Wide512 w512Mul() {
+        return a512.mul(b512);
+    }
+
+    @Benchmark
+    public Int512 l512Mul() {
+        return la512.multiply(lb512);
+    }
+
+    // ---------------- 字节（固定宽度，同映射）----------------
+
+    @Benchmark
+    public byte[] w1024ToBytes() {
+        return a1024.toByteArrayFixed();
+    }
+
+    @Benchmark
+    public byte[] l1024ToBytes() {
+        return la1024.toBytes();
+    }
+
+    @Benchmark
+    public Wide1024 w1024FromBytes() {
+        return Wide1024.fromByteArray(fixed1024, 0, fixed1024.length);
+    }
+
+    @Benchmark
+    public Int1024 l1024FromBytes() {
+        return Int1024.of(long2Fixed1024);
     }
 }
