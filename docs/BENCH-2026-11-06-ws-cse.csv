@@ -1,0 +1,6 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.MulCseBench.addOnly","avgt",1,10,0.198122,0.000168,"ns/op"
+"com.scalarwide.bench.MulCseBench.both","avgt",1,10,1.038020,0.000705,"ns/op"
+"com.scalarwide.bench.MulCseBench.hiOnly","avgt",1,10,0.803728,0.000593,"ns/op"
+"com.scalarwide.bench.MulCseBench.loOnly","avgt",1,10,0.362959,0.000205,"ns/op"
+"com.scalarwide.bench.MulCseBench.twoLo","avgt",1,10,0.371950,0.000335,"ns/op"

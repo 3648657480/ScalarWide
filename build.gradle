@@ -9,6 +9,8 @@ version = file('VERSION').text.trim()
 repositories {
     maven { url 'https://maven.aliyun.com/repository/public' }
     mavenCentral()
+    // 同场景对照（2026-11-06）：Long2 Int256/Int1024——列累加内核，固定宽度同映射
+    maven { url 'https://axorbisinfinitive.github.io/Long2/maven/' }
 }
 
 java {
@@ -42,6 +44,9 @@ dependencies {
     jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
     // 同场景对照（issue #1）：定宽 limb 算术加速库（BouncyCastle math.raw.Nat*）
     jmhImplementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // 同场景对照（2026-11-06）：Long2（com.inf.long2:Long2）——Int256/512/1024。
+    // 该库产物是 Java 25 字节码，故 jmh 源集单独用 release 25（库本体仍是 release 21）。
+    jmhImplementation 'com.inf.long2:Long2:0.1.8'
 }
 
 test {
@@ -51,6 +56,8 @@ test {
 
 tasks.named('compileJmhJava') {
     options.annotationProcessorPath = configurations.jmhAnnotationProcessor
+    // Long2 的产物是 Java 25 字节码；基准源集需要能引用它。库本体（main）仍为 release 21。
+    options.release = 25
 }
 
 tasks.register('jmh', JavaExec) {
