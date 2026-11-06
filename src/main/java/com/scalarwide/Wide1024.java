@@ -411,86 +411,22 @@ public final class Wide1024 implements Comparable<Wide1024> {
     public byte[] toByteArrayFixed() {
         byte[] out = new byte[BITS >>> 3];
         int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l6;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l7;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l8;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l9;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l10;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l11;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l12;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l13;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l14;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l15;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l1);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l2);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l3);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l4);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l5);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l6);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l7);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l8);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l9);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l10);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l11);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l12);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l13);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l14);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l15);
         return out;
     }
 
@@ -510,9 +446,20 @@ public final class Wide1024 implements Comparable<Wide1024> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = (len - 1 - i) << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int idx = ((len + 7) >>> 3) - 1;
+        int rem = len & 7;
+        if (rem != 0) {
+            long head = 0;
+            for (int k = 0; k < rem; k++) {
+                head = (head << 8) | (src[pos + k] & 0xFFL);
+            }
+            out[idx--] = head;
+            pos += rem;
+        }
+        while (idx >= 0) {
+            out[idx--] = (long) Limbs.BE_LONG.get(src, pos);
+            pos += 8;
         }
         return of(out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11], out[12], out[13], out[14], out[15]);
     }
@@ -529,9 +476,21 @@ public final class Wide1024 implements Comparable<Wide1024> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = i << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int end = off + len;
+        int idx = 0;
+        while (end - pos >= 8) {
+            out[idx++] = (long) Limbs.LE_LONG.get(src, pos);
+            pos += 8;
+        }
+        if (pos < end) {
+            long tail = 0;
+            int shift = 0;
+            while (pos < end) {
+                tail |= (src[pos++] & 0xFFL) << shift;
+                shift += 8;
+            }
+            out[idx] = tail;
         }
         return of(out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11], out[12], out[13], out[14], out[15]);
     }

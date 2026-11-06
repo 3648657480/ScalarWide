@@ -1,8 +1,23 @@
 package com.scalarwide;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 
 final class Limbs {
+
+    /**
+     * Big-endian 64-bit view over a {@code byte[]}: one accessor call decodes a whole
+     * limb instead of eight byte loads with shifting and a runtime index. The call is
+     * signature-polymorphic, so the cast to {@code long} does not box.
+     */
+    static final VarHandle BE_LONG =
+            MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
+
+    /** Little-endian counterpart of {@link #BE_LONG}. */
+    static final VarHandle LE_LONG =
+            MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
     private Limbs() {
     }

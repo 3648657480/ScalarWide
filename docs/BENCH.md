@@ -1388,6 +1388,38 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
      而 **Long2 结构上没有 `mulHigh`**，这是能力差而非速度差。
 - 正确性：`MulHighInternalTest` + 全量 `gradlew test` 全绿（六宽度）。
 
+## 2026-11-06 · Round 7（main）：字节编解码走 VarHandle——解码 4.6×、编码 5.3×
+
+- 起因：`DESIGN.md` 附魔阶梯第 4 步「`VarHandle` 评估」从未做过；而账本显示字节编解码是消费侧
+  最贵的一环。原实现是 P17 记过的反模式：
+  - `fromByteArray`：**逐字节循环 + 运行时索引**（`out[b >>> 6] |= (src[off+i] & 0xFF) << (b & 63)`），
+    128 字节 = 128 次迭代；
+  - `toByteArrayFixed`：每肢 8 次字节存储，1024 档 = **128 次存**。
+- 改动：`Limbs` 增加 `MethodHandles.byteArrayViewVarHandle(long[].class, BIG/LITTLE_ENDIAN)`，
+  一次访问器调用读写**整肢**（签名多态，转型 `(long)` 不装箱；JIT 侧确认被 intrinsify）。
+  解码：头部不足 8 字节的部分按字节组装，其余按 8 字节整取；编码：直接从最低肢往高肢写。
+  六宽度 × 大端/小端解码 + 定宽编码全部替换（脚本 `tools/patch-bytecodec.ps1`、`patch-tofixed.ps1`）。
+- 环境：7950X / JDK 25 / 锁核 LP0 / `-wi 5 -i 10 -f 1 -w 500ms -r 500ms -prof gc`。
+  CSV：`BENCH-2026-11-06-ws-bytes-{base,after}.csv`；夹具 `ByteIoBench`。
+
+| ns/op | 改前 | **VarHandle** | 倍数 | B/op |
+|---|---|---|---|---|
+| `fromByteArray` 1024 | 69.41 | **15.21** | **4.56×** | 288 → 288 |
+| `fromByteArray` 512 | 40.22 | **8.79** | **4.58×** | 160 → 160 |
+| `toByteArrayFixed` 1024 | 29.39 | **5.55** | **5.30×** | 144 → 144 |
+
+- 观察（仅限本条件，R10）：
+  1. 收益量级与"每肢 8 次字节访存 → 1 次 64 位访存"完全吻合（8× 的理论上限，实测 4.6–5.3×，
+     差额是数组分配与对象构造的固定成本）。
+  2. 分配不变——**这是纯指令削减**，不是"用内存换时间"。
+  3. 这条正好落在消费侧热路径上（存档 / 网络包 / mc 线的字节往返），JFR 里
+     `WideChunkCoord1024.toByteArray` 6.89% 的那类成本属于同一族。
+  4. **未做**：`toByteArray`（最小长度大端）与 `toByteArrayLE` 仍是字节循环（512 档 15.4 ns），
+     预计同样能到 ~5 ns；`.set` 的部分肢头部需要单独写，留作下一轮。
+- 正确性：`ByteIoTest`（六宽度 × 往返/最小性/定宽/与 BigInteger 互操作含符号字节/越界拒绝）
+  + `ConsumerApiTest` 钉口 + 全量 `gradlew test` 全绿。
+
+
 
 
 

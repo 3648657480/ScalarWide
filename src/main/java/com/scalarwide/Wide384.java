@@ -246,36 +246,12 @@ public final class Wide384 implements Comparable<Wide384> {
     public byte[] toByteArrayFixed() {
         byte[] out = new byte[BITS >>> 3];
         int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l1);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l2);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l3);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l4);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l5);
         return out;
     }
 
@@ -295,9 +271,20 @@ public final class Wide384 implements Comparable<Wide384> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = (len - 1 - i) << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int idx = ((len + 7) >>> 3) - 1;
+        int rem = len & 7;
+        if (rem != 0) {
+            long head = 0;
+            for (int k = 0; k < rem; k++) {
+                head = (head << 8) | (src[pos + k] & 0xFFL);
+            }
+            out[idx--] = head;
+            pos += rem;
+        }
+        while (idx >= 0) {
+            out[idx--] = (long) Limbs.BE_LONG.get(src, pos);
+            pos += 8;
         }
         return of(out[0], out[1], out[2], out[3], out[4], out[5]);
     }
@@ -314,9 +301,21 @@ public final class Wide384 implements Comparable<Wide384> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = i << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int end = off + len;
+        int idx = 0;
+        while (end - pos >= 8) {
+            out[idx++] = (long) Limbs.LE_LONG.get(src, pos);
+            pos += 8;
+        }
+        if (pos < end) {
+            long tail = 0;
+            int shift = 0;
+            while (pos < end) {
+                tail |= (src[pos++] & 0xFFL) << shift;
+                shift += 8;
+            }
+            out[idx] = tail;
         }
         return of(out[0], out[1], out[2], out[3], out[4], out[5]);
     }
