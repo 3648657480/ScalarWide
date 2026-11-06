@@ -44,8 +44,32 @@ class MulFullTest {
     }
 
     @Test
-    void deferredFullProductMatchesBigInteger() {
-        for (BigInteger a : TestSupport.extremes(256)) {
+    void wide512FullProductMatchesBigInteger() {
+        for (BigInteger a : TestSupport.extremes(512)) {
+            for (BigInteger b : TestSupport.extremes(512)) {
+                check512(a, b);
+            }
+        }
+        for (int i = 0; i < 2000; i++) {
+            check512(new BigInteger(512, RND), new BigInteger(512, RND));
+        }
+    }
+
+    private static void check512(BigInteger a, BigInteger b) {
+        Wide512 wa = Wide512.fromBigInteger(a);
+        Wide512 wb = Wide512.fromBigInteger(b);
+        Wide1024 full = wa.mulFull(wb);
+        assertEquals(a.multiply(b), full.toBigInteger(), "mulFull 512 vs BigInteger");
+        Wide512 lo = wa.mul(wb);
+        Wide512 hi = wa.mulHigh(wb);
+        for (int i = 0; i < 8; i++) {
+            assertEquals(full.limb(i), lo.limb(i), "mul vs mulFull limb " + i);
+            assertEquals(full.limb(i + 8), hi.limb(i), "mulHigh vs mulFull limb " + i);
+        }
+    }
+
+    @Test
+    void deferredFullProductMatchesBigInteger() {        for (BigInteger a : TestSupport.extremes(256)) {
             for (BigInteger b : TestSupport.extremes(256)) {
                 checkDeferred(a, b);
             }

@@ -1,6 +1,7 @@
 package com.scalarwide.bench;
 
 import com.scalarwide.Wide256;
+import com.scalarwide.Wide1024;
 import com.scalarwide.Wide512;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -62,6 +63,12 @@ public class Wide512Bench {
     @Benchmark
     public Wide512 mulFullTwo() {
         return aLow.mulFull(bLow).add(aHigh.mulFull(bHigh));
+    }
+
+    /** Full 512x512 -> 1024-bit product (column-major kernel, one sweep for all 16 limbs). */
+    @Benchmark
+    public Wide1024 mulFull1024() {
+        return a.mulFull(b);
     }
 
     @Benchmark
