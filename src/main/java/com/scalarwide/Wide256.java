@@ -433,17 +433,154 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     /** High 256 bits of the 512-bit product, i.e. {@code (a*b) >>> 256}. */
+    private long mulHighCols0(Wide256 o, long[] r, long carry) {
+        long t;
+        {
+            long u = l0 * o.l0;
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l1;
+            long q = 0;
+            t = u + l1 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l0, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l2;
+            long q = 0;
+            t = u + l1 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l0, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l1, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l3;
+            long q = 0;
+            t = u + l1 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l3 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l0, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l1, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l2, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l1 * o.l3;
+            long q = 0;
+            t = u + l2 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l3 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l0, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l1, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l2, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l3, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[0] = t;
+            carry = q;
+        }
+        {
+            long u = l2 * o.l3;
+            long q = 0;
+            t = u + l3 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l1, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l2, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l3, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[1] = t;
+            carry = q;
+        }
+        {
+            long u = l3 * o.l3;
+            long q = 0;
+            t = u + Math.unsignedMultiplyHigh(l2, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + Math.unsignedMultiplyHigh(l3, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[2] = t;
+            carry = q;
+        }
+        {
+            long u = Math.unsignedMultiplyHigh(l3, o.l3);
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[3] = t;
+            carry = q;
+        }
+        return carry;
+    }
+
+    /**
+     * High N bits of the 2N-bit product, column-major with delayed carry. Columns below N
+     * only feed the carry chain (their value is discarded); columns N..2N-1 are the result.
+     * Generated by tools/gen-colmul.ps1 -- do not edit this method or the mulHighCols*
+     * helpers by hand.
+     */
     public Wide256 mulHigh(Wide256 o) {
-        MulAcc acc = new MulAcc();
-        col0(acc, o);
-        col1(acc, o);
-        col2(acc, o);
-        col3(acc, o);
-        col4(acc, o);
-        col5(acc, o);
-        col6(acc, o);
-        col7(acc, o);
-        return new Wide256(acc.c4, acc.c5, acc.c6, acc.c7);
+        long[] r = new long[4];
+        long carry = 0;
+        carry = mulHighCols0(o, r, carry);
+        return Wide256.of(r[0], r[1], r[2], r[3]);
     }
 
     /**
