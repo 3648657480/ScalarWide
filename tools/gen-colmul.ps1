@@ -33,9 +33,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
-if ($Split -gt 1) {
-    throw '-Split > 1 is not validated: the column index mapping is wrong in multi-chunk mode. Retry after fixing Emit-Column.'
-}
 $N = $Bits / 64
 $class = "Wide$Bits"
 $src = "src/main/java/com/scalarwide/$class.java"
@@ -99,7 +96,7 @@ function Line([string]$s) { [void]$sb.AppendLine($s) }
 # v/q2) and merged once. A column can hold up to 2N-1 terms, so without the split the
 # dependency chain through `q` is 31 links long; splitting halves that critical path at
 # the cost of one merge (~3 ops per column).
-function Emit-Column([int]$k, [string]$ind, [scriptblock]$writeExpr) {
+function Emit-Column([int]$k, [string]$ind, [string]$dest) {
     $terms = Get-Terms $k
     $n = $terms.Count
     Line ("$ind{")
@@ -131,7 +128,7 @@ function Emit-Column([int]$k, [string]$ind, [scriptblock]$writeExpr) {
             Line ("$ind    q2 += Long.compareUnsigned(t, v) < 0 ? 1L : 0L;")
             Line ("$ind    v = t;")
         }
-        # merge: at most one of the two overflow counts fires per add
+        # merge: the two chains are independent, so their overflow counts simply add
         Line ("$ind    t = u + v;")
         Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
         Line ("$ind    u = t;")
@@ -139,14 +136,20 @@ function Emit-Column([int]$k, [string]$ind, [scriptblock]$writeExpr) {
         Line ("$ind    t = u + carry;")
         Line ("$ind    q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;")
     }
-    $dest = & $writeExpr $k
-    if ($dest -eq '') {
-        # low column of a mulHigh: only the carry matters
-    } else {
+    if ($dest -ne '') {
         Line ("$ind    $dest = t;")
     }
     Line ("$ind    carry = q;")
     Line ("$ind}")
+}
+
+# Destination expression for column $k: a local ("r3") or an array slot ("r[3]"), or ''
+# when a mulHigh's low column only feeds the carry chain.
+function Get-Dest([int]$k, [bool]$locals) {
+    if ($isHigh -and $k -lt $N) { return '' }
+    $idx = if ($isHigh) { $k - $N } else { $k }
+    if ($locals) { return "r$idx" }
+    return "r[$idx]"
 }
 
 # A kernel that fits in one chunk can keep its N (or 2N) results in local
@@ -159,10 +162,7 @@ if (-not $useLocals) {
         Line ("    private long $helper$gi($class o, long[] r, long carry) {")
         Line '        long t;'
         foreach ($k in $cols) {
-            Emit-Column $k '        ' {
-                param($kk)
-                if ($isHigh -and $kk -lt $N) { '' } elseif ($isHigh) { "r[" + ($kk - $N) + ']' } else { "r[$kk]" }
-            }
+            Emit-Column $k '        ' (Get-Dest $k $false)
         }
         Line '        return carry;'
         Line '    }'
@@ -194,10 +194,7 @@ if ($useLocals) {
     Line '        long carry = 0;'
     Line '        long t;'
     foreach ($k in $chunks[0][0]) {
-        Emit-Column $k '        ' {
-            param($kk)
-            if ($isHigh -and $kk -lt $N) { '' } elseif ($isHigh) { 'r' + ($kk - $N) } else { "r$kk" }
-        }
+        Emit-Column $k '        ' (Get-Dest $k $true)
     }
     $ofArgList = (0..($resLimbs - 1) | ForEach-Object { "r$_" }) -join ', '
 } else {
