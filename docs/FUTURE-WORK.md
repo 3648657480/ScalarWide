@@ -16,8 +16,12 @@
 | batch/SoA 键 API | 批量宽整数键的 SoA 布局操作（大数组运算） | 出现真实批量场景（如 V2 框架规格落地） |
 | `LongLongFlatMap` 大表分片 | >1M 键规模的分片/再哈希 | 真实场景出现 >1M 键 |
 | `rem` 无商快路径（q-skip） | `rem` 在不需要商时跳过商的完整计算 | 真实 workload 证明 `rem` 是热点 |
-| 768/1024 `mulHigh` | 行向量/列累加等三条路线均已证伪；需新结构假设 | 出现新结构且过"预期先行"基线；否则接受为架构上限 |
+| ~~768/1024 `mulHigh`~~ | **已完成（1.0.1）**：列累加 + 列内双累加器，768 1.96×、1024 1.65× | — |
+| 1024 `mul` 的最后 10%（vs Long2） | 分块点/列内拆分/分带/局部变量已全部扫穿，落在 89–107 ns；疑为 HotSpot 对 `mulx`/`mulhi` 的寄存器分配差异 | 只有 `-prof perfasm` 逐条读汇编这一条路；出现新结构假设时再开 |
+| 768 的 12% 跑间漂移 | 同一份代码两次测出 39.80 / 44.57 ns；12 肢 × 2 缓存行这个尺寸对代码布局异常敏感 | 768 进入消费侧热路径时 |
 | 序列化扩展 | NBT/网络包等消费侧格式适配（当前：BE/LE/定宽字节） | 消费方提出具体格式需求 |
+| 最小长度编码器 `toByteArray`/`toByteArrayLE` | 仍是逐字节循环（512 档 15.4 ns）；可变长度头部需运行时取肢一次 | 序列化成为热点时（定宽版已 5.55 ns） |
+| mc 线向核心库收敛 | mc 的 `WideChunkCoord1024`/`WideSectionKey2560` 仍是独立实现（BigInteger 往返、8 字节内层循环） | **已具备条件**：本库 `Limbs` 的编解码/单比较进位/懒 hash 均已就位 |
 
 ## 唤醒流程
 
@@ -27,5 +31,8 @@
 
 ## 度量基建（保留，无需重建）
 
-工作站（7950X，JDK21 口径，Provenance 五元组）、`docs/BENCH.md` 账本（含全部负结果）、
-JMH 套件（`gradlew jmh` / `jmhJar`）、CI 矩阵（17/21/25 + package）、`ConsumerApiTest` 契约门。
+工作站（7950X，基准 JDK 25 口径；JDK 21 为历史口径，**跨 JDK 数据不可混用**）、
+`docs/BENCH.md` 账本（含全部负结果 + 顶部单页基线）、JMH 套件（`gradlew jmh` / `jmhJar`）、
+`tools/bench-pinned.ps1`（锁核运行器，支持跨机 JDK）、`tools/ws/*`（工作站驱动脚本）、
+`tools/gen-colmul.ps1`（参数化列内核生成器）、CI 矩阵（21/25 + package）、`ConsumerApiTest` 契约门。
+
