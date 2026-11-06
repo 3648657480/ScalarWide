@@ -774,11 +774,6 @@ public final class Wide1024 implements Comparable<Wide1024> {
             r[3] = t;
             carry = q;
         }
-        return carry;
-    }
-
-    private long mulCols1(Wide1024 o, long[] r, long carry) {
-        long t;
         {
             long u = l0 * o.l4;
             long q = 0;
@@ -946,7 +941,7 @@ public final class Wide1024 implements Comparable<Wide1024> {
         return carry;
     }
 
-    private long mulCols2(Wide1024 o, long[] r, long carry) {
+    private long mulCols1(Wide1024 o, long[] r, long carry) {
         long t;
         {
             long u = l0 * o.l8;
@@ -1208,11 +1203,6 @@ public final class Wide1024 implements Comparable<Wide1024> {
             r[11] = t;
             carry = q;
         }
-        return carry;
-    }
-
-    private long mulCols3(Wide1024 o, long[] r, long carry) {
-        long t;
         {
             long u = l0 * o.l12;
             long q = 0;
@@ -1583,8 +1573,6 @@ public final class Wide1024 implements Comparable<Wide1024> {
         long carry = 0;
         carry = mulCols0(o, r, carry);
         carry = mulCols1(o, r, carry);
-        carry = mulCols2(o, r, carry);
-        carry = mulCols3(o, r, carry);
         return Wide1024.of(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15]);
     }
 
