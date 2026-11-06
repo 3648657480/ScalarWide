@@ -19,6 +19,8 @@ param(
     [int]$Bits = 1024,
     [ValidateSet('low', 'high', 'full')][string]$Mode = 'low',
     [int]$MaxTerms = 180,
+    # Columns accumulated in parallel (register window). 1 = one column at a time.
+    [int]$Band = 1,
     # Split each column's term list into N independent accumulator chains (1 = off).
     # NOT VALIDATED: the multi-chunk path mis-maps column indices (write sequence came out
     # as 0,3,6,... instead of 0..15) and the differential gate caught it as an
@@ -152,6 +154,75 @@ function Get-Dest([int]$k, [bool]$locals) {
     return "r[$idx]"
 }
 
+# Emits a BAND of columns: all of the band's columns are accumulated at the same time,
+# each on its own register pair, and a single carry sweep finishes the band. With
+# -Band 1 this degenerates to the plain column-at-a-time form.
+#
+# This is the structural alternative to "one column at a time": a band of B columns keeps
+# B independent accumulator chains live, so the out-of-order engine can overlap them. The
+# sweep is B serial steps, but the products (the bulk) get B-way ILP.
+function Emit-Band([int[]]$cols, [string]$ind, [bool]$locals) {
+    Line ("$ind{")
+    $i = 0
+    foreach ($k in $cols) {
+        $terms = Get-Terms $k
+        $n = $terms.Count
+        if ($Split -le 1 -or $n -lt 4) {
+            Line ("$ind    long u$i = " + $terms[0] + ';')
+            Line ("$ind    long q$i = 0;")
+            for ($ti = 1; $ti -lt $n; $ti++) {
+                Line ("$ind    t = u$i + " + $terms[$ti] + ';')
+                Line ("$ind    q$i += Long.compareUnsigned(t, u$i) < 0 ? 1L : 0L;")
+                Line ("$ind    u$i = t;")
+            }
+        } else {
+            # two independent chains inside the column, merged once
+            $half = [int][Math]::Ceiling($n / 2)
+            Line ("$ind    long u$i = " + $terms[0] + ';')
+            Line ("$ind    long q$i = 0;")
+            for ($ti = 1; $ti -lt $half; $ti++) {
+                Line ("$ind    t = u$i + " + $terms[$ti] + ';')
+                Line ("$ind    q$i += Long.compareUnsigned(t, u$i) < 0 ? 1L : 0L;")
+                Line ("$ind    u$i = t;")
+            }
+            Line ("$ind    long v$i = " + $terms[$half] + ';')
+            Line ("$ind    long p$i = 0;")
+            for ($ti = $half + 1; $ti -lt $n; $ti++) {
+                Line ("$ind    t = v$i + " + $terms[$ti] + ';')
+                Line ("$ind    p$i += Long.compareUnsigned(t, v$i) < 0 ? 1L : 0L;")
+                Line ("$ind    v$i = t;")
+            }
+            Line ("$ind    t = u$i + v$i;")
+            Line ("$ind    q$i += Long.compareUnsigned(t, u$i) < 0 ? 1L : 0L;")
+            Line ("$ind    u$i = t;")
+            Line ("$ind    q$i += p$i;")
+        }
+        $i++
+    }
+    $i = 0
+    foreach ($k in $cols) {
+        $dest = Get-Dest $k $locals
+        Line ("$ind    t = u$i + carry;")
+        Line ("$ind    q$i += Long.compareUnsigned(t, u$i) < 0 ? 1L : 0L;")
+        if ($dest -ne '') { Line ("$ind    $dest = t;") }
+        Line ("$ind    carry = q$i;")
+        $i++
+    }
+    Line ("$ind}")
+}
+
+# Splits a column list into consecutive bands.
+function Get-Bands([object[]]$cols) {
+    $out = New-Object System.Collections.ArrayList
+    $cur = New-Object System.Collections.ArrayList
+    foreach ($k in $cols) {
+        [void]$cur.Add($k)
+        if ($cur.Count -ge $Band) { [void]$out.Add($cur.ToArray()); $cur = New-Object System.Collections.ArrayList }
+    }
+    if ($cur.Count -gt 0) { [void]$out.Add($cur.ToArray()) }
+    return $out.ToArray()
+}
+
 # A kernel that fits in one chunk can keep its N (or 2N) results in local
 # variables, so no long[] is allocated at all.
 $useLocals = $Locals -and ($chunks.Count -eq 1)
@@ -161,8 +232,8 @@ if (-not $useLocals) {
         $cols = $chunks[$gi][0]
         Line ("    private long $helper$gi($class o, long[] r, long carry) {")
         Line '        long t;'
-        foreach ($k in $cols) {
-            Emit-Column $k '        ' (Get-Dest $k $false)
+        foreach ($colBand in (Get-Bands $cols)) {
+            Emit-Band $colBand '        ' $false
         }
         Line '        return carry;'
         Line '    }'
@@ -194,7 +265,7 @@ if ($useLocals) {
     Line '        long carry = 0;'
     Line '        long t;'
     foreach ($k in $chunks[0][0]) {
-        Emit-Column $k '        ' (Get-Dest $k $true)
+        foreach ($colBand in (Get-Bands $cols)) { Emit-Band $colBand '        ' $true }
     }
     $ofArgList = (0..($resLimbs - 1) | ForEach-Object { "r$_" }) -join ', '
 } else {
