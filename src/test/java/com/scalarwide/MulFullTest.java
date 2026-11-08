@@ -69,6 +69,31 @@ class MulFullTest {
     }
 
     @Test
+    void wide384FullProductMatchesBigInteger() {
+        for (BigInteger a : TestSupport.extremes(384)) {
+            for (BigInteger b : TestSupport.extremes(384)) {
+                check384(a, b);
+            }
+        }
+        for (int i = 0; i < 2000; i++) {
+            check384(new BigInteger(384, RND), new BigInteger(384, RND));
+        }
+    }
+
+    private static void check384(BigInteger a, BigInteger b) {
+        Wide384 wa = Wide384.fromBigInteger(a);
+        Wide384 wb = Wide384.fromBigInteger(b);
+        Wide768 full = wa.mulFull(wb);
+        assertEquals(a.multiply(b), full.toBigInteger(), "mulFull 384 vs BigInteger");
+        Wide384 lo = wa.mul(wb);
+        Wide384 hi = wa.mulHigh(wb);
+        for (int i = 0; i < 6; i++) {
+            assertEquals(full.limb(i), lo.limb(i), "mul vs mulFull limb " + i);
+            assertEquals(full.limb(i + 6), hi.limb(i), "mulHigh vs mulFull limb " + i);
+        }
+    }
+
+    @Test
     void deferredFullProductMatchesBigInteger() {        for (BigInteger a : TestSupport.extremes(256)) {
             for (BigInteger b : TestSupport.extremes(256)) {
                 checkDeferred(a, b);

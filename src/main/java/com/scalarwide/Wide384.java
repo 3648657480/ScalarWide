@@ -168,37 +168,23 @@ public final class Wide384 implements Comparable<Wide384> {
         if (bits == 0) {
             return new byte[] {0};
         }
-        byte[] out = new byte[(bits + 7) >>> 3];
-        int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int rem = n & 7;
+        if (n >= 8) {
+            int pos = n;
+            pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l1); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l2); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l3); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l4); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l5); }
         }
-        x = l1;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        if (rem != 0) {
+            long top = limb(n >> 3);
+            for (int j = 0; j < rem; j++) {
+                out[j] = (byte) (top >>> (8 * (rem - 1 - j)));
+            }
         }
         return out;
     }
@@ -212,35 +198,17 @@ public final class Wide384 implements Comparable<Wide384> {
         int n = (bits + 7) >>> 3;
         byte[] out = new byte[n];
         int pos = 0;
-        long x = l0;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l0); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l1); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l2); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l3); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l4); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l5); pos += 8; }
+        if (pos < n) {
+            long top = limb(n >> 3);
+            for (int j = 0; pos + j < n; j++) {
+                out[pos + j] = (byte) (top >>> (j << 3));
+            }
         }
         return out;
     }
@@ -1146,5 +1114,323 @@ public final class Wide384 implements Comparable<Wide384> {
         if (k < 0 || k >= BITS) {
             throw new IllegalArgumentException("shift amount out of range: " + k);
         }
+    }
+
+    private long mulFullCols0(Wide384 o, long[] r, long carry) {
+        long t;
+        {
+            long u0 = l0 * o.l0;
+            long q0 = 0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[0] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l0 * o.l1;
+            long q0 = 0;
+            t = u0 + l1 * o.l0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l0, o.l0);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[1] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l0 * o.l2;
+            long q0 = 0;
+            t = u0 + l1 * o.l1;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l2 * o.l0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l0, o.l1);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l1, o.l0);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[2] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l0 * o.l3;
+            long q0 = 0;
+            t = u0 + l1 * o.l2;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l2 * o.l1;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l3 * o.l0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l0, o.l2);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l1, o.l1);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l2, o.l0);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[3] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l0 * o.l4;
+            long q0 = 0;
+            t = u0 + l1 * o.l3;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l2 * o.l2;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l3 * o.l1;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l4 * o.l0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l0, o.l3);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l1, o.l2);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l2, o.l1);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l3, o.l0);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[4] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l0 * o.l5;
+            long q0 = 0;
+            t = u0 + l1 * o.l4;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l2 * o.l3;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l3 * o.l2;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l4 * o.l1;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l5 * o.l0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l0, o.l4);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l1, o.l3);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l2, o.l2);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l3, o.l1);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l4, o.l0);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[5] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l1 * o.l5;
+            long q0 = 0;
+            t = u0 + l2 * o.l4;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l3 * o.l3;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l4 * o.l2;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l5 * o.l1;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l0, o.l5);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l1, o.l4);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l2, o.l3);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l3, o.l2);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l4, o.l1);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l5, o.l0);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[6] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l2 * o.l5;
+            long q0 = 0;
+            t = u0 + l3 * o.l4;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l4 * o.l3;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l5 * o.l2;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l1, o.l5);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l2, o.l4);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l3, o.l3);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l4, o.l2);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l5, o.l1);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[7] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l3 * o.l5;
+            long q0 = 0;
+            t = u0 + l4 * o.l4;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + l5 * o.l3;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l2, o.l5);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l3, o.l4);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l4, o.l3);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = v0 + Math.unsignedMultiplyHigh(l5, o.l2);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[8] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l4 * o.l5;
+            long q0 = 0;
+            t = u0 + l5 * o.l4;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l3, o.l5);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            long v0 = Math.unsignedMultiplyHigh(l4, o.l4);
+            long p0 = 0;
+            t = v0 + Math.unsignedMultiplyHigh(l5, o.l3);
+            p0 += Long.compareUnsigned(t, v0) < 0 ? 1L : 0L;
+            v0 = t;
+            t = u0 + v0;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            q0 += p0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[9] = t;
+            carry = q0;
+        }
+        {
+            long u0 = l5 * o.l5;
+            long q0 = 0;
+            t = u0 + Math.unsignedMultiplyHigh(l4, o.l5);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + Math.unsignedMultiplyHigh(l5, o.l4);
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            u0 = t;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[10] = t;
+            carry = q0;
+        }
+        {
+            long u0 = Math.unsignedMultiplyHigh(l5, o.l5);
+            long q0 = 0;
+            t = u0 + carry;
+            q0 += Long.compareUnsigned(t, u0) < 0 ? 1L : 0L;
+            r[11] = t;
+            carry = q0;
+        }
+        return carry;
+    }
+
+    /**
+     * Full 2N-limb product of two N-limb values, column-major with delayed carry: every
+     * column is accumulated by its own pair of registers and written exactly once, so the
+     * whole 2N-limb result comes out of a single sweep with no scratch array. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulFullCols* helpers by hand.
+     */
+    public Wide768 mulFull(Wide384 o) {
+        long[] r = new long[12];
+        long carry = 0;
+        carry = mulFullCols0(o, r, carry);
+        return Wide768.of(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]);
     }
 }

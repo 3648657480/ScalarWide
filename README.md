@@ -6,13 +6,13 @@
 > 为"宽域坐标 / 大数 key"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
 版本：见仓库根 `VERSION`（唯一权威）。**1.0.0 结项后处于维护模式**，只接受 bug 修复与
-消费者驱动的性能/纯增量（patch 级）。当前 `1.0.1` 即一批这样的工作：
+消费者驱动的性能/纯增量（patch 级）。当前 `1.0.2` 即一批这样的工作：
 公开 API 冻结语义见 `docs/COMPATIBILITY.md` §6，未竟优化见 `docs/FUTURE-WORK.md`；
 实现矩阵与全部实测（含负结果）见 `CHANGELOG.md`、`docs/DESIGN.md`、`docs/BENCH.md`
 （**账本顶部有单页「当前权威基线」**）。
 
-> **1.0.1 性能快照**（工作站 7950X / JDK 25 / 锁核）：`toBigInteger` **19.3×**、
-> `toHexString` **16.0×**、`hashCode` **14.1×**、字节编解码 **4.6–5.3×**、`bitLength` **3.01×**、
+> **1.0.2 性能快照**（工作站 7950X / JDK 25 / 锁核）：`toBigInteger` **19.3×**、
+> `toHexString` **16.0×**、`hashCode` **14.1×**、字节编解码 **4.6–5.3×**（最小长度版再 **2.5–4.4×**）、`bitLength` **3.01×**、
 > `mulHigh` **1.65–2.66×**、`mul` **1.24–1.92×**、`add`/`sub` **1.09–1.75×**；
 > 六档对象尺寸不变。与同场景库 Long2 0.1.8 全项对拍（1024 档 18 项）：**7 胜 / 8 平 / 3 负**。
 
@@ -46,10 +46,10 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v1.0.1' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v1.0.2' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:1.0.1`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:1.0.2`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512/768/1024`（不可变值类型）、`MutableWide128/256`（零分配 scratch）、

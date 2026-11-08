@@ -154,17 +154,19 @@ public final class Wide128 implements Comparable<Wide128> {
         if (bits == 0) {
             return new byte[] {0};
         }
-        byte[] out = new byte[(bits + 7) >>> 3];
-        int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int rem = n & 7;
+        if (n >= 8) {
+            int pos = n;
+            pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l1); }
         }
-        x = l1;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        if (rem != 0) {
+            long top = limb(n >> 3);
+            for (int j = 0; j < rem; j++) {
+                out[j] = (byte) (top >>> (8 * (rem - 1 - j)));
+            }
         }
         return out;
     }
@@ -178,15 +180,13 @@ public final class Wide128 implements Comparable<Wide128> {
         int n = (bits + 7) >>> 3;
         byte[] out = new byte[n];
         int pos = 0;
-        long x = l0;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l0); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l1); pos += 8; }
+        if (pos < n) {
+            long top = limb(n >> 3);
+            for (int j = 0; pos + j < n; j++) {
+                out[pos + j] = (byte) (top >>> (j << 3));
+            }
         }
         return out;
     }

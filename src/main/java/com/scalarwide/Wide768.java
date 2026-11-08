@@ -209,67 +209,29 @@ public final class Wide768 implements Comparable<Wide768> {
         if (bits == 0) {
             return new byte[] {0};
         }
-        byte[] out = new byte[(bits + 7) >>> 3];
-        int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int rem = n & 7;
+        if (n >= 8) {
+            int pos = n;
+            pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l1); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l2); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l3); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l4); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l5); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l6); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l7); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l8); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l9); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l10); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l11); }
         }
-        x = l1;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l6;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l7;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l8;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l9;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l10;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l11;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        if (rem != 0) {
+            long top = limb(n >> 3);
+            for (int j = 0; j < rem; j++) {
+                out[j] = (byte) (top >>> (8 * (rem - 1 - j)));
+            }
         }
         return out;
     }
@@ -283,65 +245,23 @@ public final class Wide768 implements Comparable<Wide768> {
         int n = (bits + 7) >>> 3;
         byte[] out = new byte[n];
         int pos = 0;
-        long x = l0;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l4;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l5;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l6;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l7;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l8;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l9;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l10;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l11;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l0); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l1); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l2); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l3); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l4); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l5); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l6); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l7); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l8); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l9); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l10); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l11); pos += 8; }
+        if (pos < n) {
+            long top = limb(n >> 3);
+            for (int j = 0; pos + j < n; j++) {
+                out[pos + j] = (byte) (top >>> (j << 3));
+            }
         }
         return out;
     }
