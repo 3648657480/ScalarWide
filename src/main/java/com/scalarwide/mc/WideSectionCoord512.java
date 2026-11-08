@@ -12,6 +12,10 @@ public final class WideSectionCoord512 implements Comparable<WideSectionCoord512
     public static final int BITS = 512;
     public static final int LIMBS = 8;
 
+    /** Big-endian 64-bit view: one limb per access instead of eight byte stores. */
+    private static final java.lang.invoke.VarHandle BE_LONG = java.lang.invoke.MethodHandles
+            .byteArrayViewVarHandle(long[].class, java.nio.ByteOrder.BIG_ENDIAN);
+
     private static final BigInteger TWO_511 = BigInteger.ONE.shiftLeft(511);
     private static final BigInteger MAX_BI = TWO_511.subtract(BigInteger.ONE);
     private static final BigInteger MIN_BI = TWO_511.negate();
@@ -76,11 +80,7 @@ public final class WideSectionCoord512 implements Comparable<WideSectionCoord512
     public byte[] toByteArray() {
         byte[] out = new byte[BITS / 8];
         for (int i = 0; i < LIMBS; i++) {
-            long v = limbs[i];
-            int base = out.length - (i + 1) * 8;
-            for (int j = 0; j < 8; j++) {
-                out[base + 7 - j] = (byte) (v >>> (j * 8));
-            }
+            BE_LONG.set(out, out.length - (i + 1) * 8, limbs[i]);
         }
         return out;
     }
