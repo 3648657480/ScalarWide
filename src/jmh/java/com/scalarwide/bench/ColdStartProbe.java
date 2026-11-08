@@ -2,7 +2,6 @@ package com.scalarwide.bench;
 
 import com.scalarwide.Wide128;
 import com.scalarwide.Wide256;
-import com.scalarwide.mc.McWarmup;
 
 import java.util.Random;
 
@@ -11,7 +10,7 @@ import java.util.Random;
  * state, to bound "JIT not engaged yet" cost. One op per JVM (fork per op) to
  * avoid class-loading/JIT bootstrap contamination between probes.
  *
- * <p>Args: 128mul | 256mul（可选第二参 "warm" 先跑 McWarmup）。
+ * <p>Args: 128mul | 256mul.
  * Run with different JIT modes: default, {@code -XX:TieredStopAtLevel=1},
  * {@code -Xint}. Operands rotate through a fixed table so the JIT cannot fold.
  * BigInteger 对照已移除（比较体系 v2：BigInteger 仅正确性对拍）。
@@ -42,9 +41,6 @@ public final class ColdStartProbe {
             B256[k] = Wide256.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         }
         String op = args.length > 0 ? args[0] : "128mul";
-        if (args.length > 1 && args[1].equals("warm")) {
-            McWarmup.run();
-        }
         switch (op) {
             case "128mul" -> probe("128.mul", () -> sink128 = A128[idx()].mul(B128[idx()]));
             case "256mul" -> probe("256.mul", () -> sink256 = A256[idx()].mul(B256[idx()]));

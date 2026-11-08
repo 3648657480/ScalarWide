@@ -26,6 +26,9 @@ public final class Wide128 implements Comparable<Wide128> {
     private final long l0;
     private final long l1;
 
+    /** Memoised hash; 0 means not computed yet (see computeHash). */
+    private int hash;
+
     private Wide128(long l0, long l1) {
         this.l0 = l0;
         this.l1 = l1;
@@ -151,17 +154,19 @@ public final class Wide128 implements Comparable<Wide128> {
         if (bits == 0) {
             return new byte[] {0};
         }
-        byte[] out = new byte[(bits + 7) >>> 3];
-        int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int rem = n & 7;
+        if (n >= 8) {
+            int pos = n;
+            pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l1); }
         }
-        x = l1;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        if (rem != 0) {
+            long top = limb(n >> 3);
+            for (int j = 0; j < rem; j++) {
+                out[j] = (byte) (top >>> (8 * (rem - 1 - j)));
+            }
         }
         return out;
     }
@@ -175,15 +180,13 @@ public final class Wide128 implements Comparable<Wide128> {
         int n = (bits + 7) >>> 3;
         byte[] out = new byte[n];
         int pos = 0;
-        long x = l0;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l0); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l1); pos += 8; }
+        if (pos < n) {
+            long top = limb(n >> 3);
+            for (int j = 0; pos + j < n; j++) {
+                out[pos + j] = (byte) (top >>> (j << 3));
+            }
         }
         return out;
     }
@@ -192,16 +195,8 @@ public final class Wide128 implements Comparable<Wide128> {
     public byte[] toByteArrayFixed() {
         byte[] out = new byte[BITS >>> 3];
         int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l1);
         return out;
     }
 
@@ -221,9 +216,20 @@ public final class Wide128 implements Comparable<Wide128> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = (len - 1 - i) << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int idx = ((len + 7) >>> 3) - 1;
+        int rem = len & 7;
+        if (rem != 0) {
+            long head = 0;
+            for (int k = 0; k < rem; k++) {
+                head = (head << 8) | (src[pos + k] & 0xFFL);
+            }
+            out[idx--] = head;
+            pos += rem;
+        }
+        while (idx >= 0) {
+            out[idx--] = (long) Limbs.BE_LONG.get(src, pos);
+            pos += 8;
         }
         return of(out[0], out[1]);
     }
@@ -240,9 +246,21 @@ public final class Wide128 implements Comparable<Wide128> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = i << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int end = off + len;
+        int idx = 0;
+        while (end - pos >= 8) {
+            out[idx++] = (long) Limbs.LE_LONG.get(src, pos);
+            pos += 8;
+        }
+        if (pos < end) {
+            long tail = 0;
+            int shift = 0;
+            while (pos < end) {
+                tail |= (src[pos++] & 0xFFL) << shift;
+                shift += 8;
+            }
+            out[idx] = tail;
         }
         return of(out[0], out[1]);
     }
@@ -252,13 +270,16 @@ public final class Wide128 implements Comparable<Wide128> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l1 != 0) {
-            return 64 + (64 - Long.numberOfLeadingZeros(l1));
+        long v = l1;
+        if (v != 0) {
+            return 64 + (64 - Long.numberOfLeadingZeros(v));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^128. */
@@ -283,10 +304,40 @@ public final class Wide128 implements Comparable<Wide128> {
     }
 
     /** Low 128 bits of the 256-bit product, i.e. {@code (a*b) mod 2^128}. */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
     public Wide128 mul(Wide128 o) {
-        long lo = l0 * o.l0;
-        long mid = MulHi.high(l0, o.l0) + l0 * o.l1 + l1 * o.l0;
-        return new Wide128(lo, mid);
+        long r0;
+        long r1;
+        long carry = 0;
+        long t;
+        {
+            long u = l0 * o.l0;
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r0 = t;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l1;
+            long q = 0;
+            t = u + l1 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r1 = t;
+            carry = q;
+        }
+        return Wide128.of(r0, r1);
     }
 
     /** High 128 bits of the 256-bit product, i.e. {@code (a*b) >>> 128}. */
@@ -445,22 +496,39 @@ public final class Wide128 implements Comparable<Wide128> {
 
     @Override
     public int hashCode() {
+        int h = hash;
+        if (h == 0) {
+            h = computeHash();
+            hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * The hash is a multiply chain over the limbs, throughput-bound at roughly 1.4 cycles
+     * per limb; there is no shorter expression of the same quality, so memoising is the
+     * only lever. The field occupies the header alignment gap, so it costs no bytes. It is
+     * filled lazily: arithmetic results are never hashed and must not pay for it.
+     */
+    private int computeHash() {
+
         long h = 0x243F6A8885A308D3L;
         h = (h ^ l0) * 0x9E3779B97F4A7C15L;
         h = (h ^ l1) * 0x9E3779B97F4A7C15L;
         h ^= h >>> 29;
-        return (int) (h ^ (h >>> 32));
-    }
+        int r = (int) (h ^ (h >>> 32));
+        return r == 0 ? 1 : r;
+        }
 
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */
     public String toHexString() {
-        return toBigInteger().toString(16);
+        return Limbs.toHexString(pack());
     }
 
     private long[] pack() {

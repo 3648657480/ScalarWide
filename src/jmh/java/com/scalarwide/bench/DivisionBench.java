@@ -3,6 +3,7 @@ package com.scalarwide.bench;
 import com.scalarwide.Wide128;
 import com.scalarwide.Wide256;
 import com.scalarwide.Wide512;
+import com.scalarwide.Wide1024;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -38,6 +39,8 @@ public class DivisionBench {
     public Wide256 b256;
     public Wide512 a512;
     public Wide512 b512;
+    public Wide1024 a1024;
+    public Wide1024 b1024;
 
     @Setup
     public void setup() {
@@ -50,6 +53,13 @@ public class DivisionBench {
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
         b512 = Wide512.of(rnd.nextLong() | 1L, rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
                 0, 0, 0, 0);
+        a1024 = Wide1024.of(rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong());
+        b1024 = Wide1024.of(rnd.nextLong() | 1L, rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong(),
+                0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     @Benchmark
@@ -80,5 +90,15 @@ public class DivisionBench {
     @Benchmark
     public Wide512 rem512() {
         return a512.rem(b512);
+    }
+
+    @Benchmark
+    public Wide1024 div1024() {
+        return a1024.div(b1024);
+    }
+
+    @Benchmark
+    public Wide1024 rem1024() {
+        return a1024.rem(b1024);
     }
 }

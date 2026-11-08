@@ -31,6 +31,9 @@ public final class Wide256 implements Comparable<Wide256> {
     private final long l2;
     private final long l3;
 
+    /** Memoised hash; 0 means not computed yet (see computeHash). */
+    private int hash;
+
     private Wide256(long l0, long l1, long l2, long l3) {
         this.l0 = l0;
         this.l1 = l1;
@@ -166,27 +169,21 @@ public final class Wide256 implements Comparable<Wide256> {
         if (bits == 0) {
             return new byte[] {0};
         }
-        byte[] out = new byte[(bits + 7) >>> 3];
-        int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        int n = (bits + 7) >>> 3;
+        byte[] out = new byte[n];
+        int rem = n & 7;
+        if (n >= 8) {
+            int pos = n;
+            pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l1); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l2); }
+            if (pos >= rem + 8) { pos -= 8; Limbs.BE_LONG.set(out, pos, l3); }
         }
-        x = l1;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos > 0; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
+        if (rem != 0) {
+            long top = limb(n >> 3);
+            for (int j = 0; j < rem; j++) {
+                out[j] = (byte) (top >>> (8 * (rem - 1 - j)));
+            }
         }
         return out;
     }
@@ -200,25 +197,15 @@ public final class Wide256 implements Comparable<Wide256> {
         int n = (bits + 7) >>> 3;
         byte[] out = new byte[n];
         int pos = 0;
-        long x = l0;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8 && pos < n; k++) {
-            out[pos++] = (byte) x;
-            x >>>= 8;
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l0); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l1); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l2); pos += 8; }
+        if (pos + 8 <= n) { Limbs.LE_LONG.set(out, pos, l3); pos += 8; }
+        if (pos < n) {
+            long top = limb(n >> 3);
+            for (int j = 0; pos + j < n; j++) {
+                out[pos + j] = (byte) (top >>> (j << 3));
+            }
         }
         return out;
     }
@@ -227,26 +214,10 @@ public final class Wide256 implements Comparable<Wide256> {
     public byte[] toByteArrayFixed() {
         byte[] out = new byte[BITS >>> 3];
         int pos = out.length;
-        long x = l0;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l1;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l2;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
-        x = l3;
-        for (int k = 0; k < 8; k++) {
-            out[--pos] = (byte) x;
-            x >>>= 8;
-        }
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l0);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l1);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l2);
+        pos -= 8; Limbs.BE_LONG.set(out, pos, l3);
         return out;
     }
 
@@ -266,9 +237,20 @@ public final class Wide256 implements Comparable<Wide256> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = (len - 1 - i) << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int idx = ((len + 7) >>> 3) - 1;
+        int rem = len & 7;
+        if (rem != 0) {
+            long head = 0;
+            for (int k = 0; k < rem; k++) {
+                head = (head << 8) | (src[pos + k] & 0xFFL);
+            }
+            out[idx--] = head;
+            pos += rem;
+        }
+        while (idx >= 0) {
+            out[idx--] = (long) Limbs.BE_LONG.get(src, pos);
+            pos += 8;
         }
         return of(out[0], out[1], out[2], out[3]);
     }
@@ -285,9 +267,21 @@ public final class Wide256 implements Comparable<Wide256> {
             throw new IllegalArgumentException("byte array too long: " + len);
         }
         long[] out = new long[LIMBS];
-        for (int i = 0; i < len; i++) {
-            int b = i << 3;
-            out[b >>> 6] |= (src[off + i] & 0xFFL) << (b & 63);
+        int pos = off;
+        int end = off + len;
+        int idx = 0;
+        while (end - pos >= 8) {
+            out[idx++] = (long) Limbs.LE_LONG.get(src, pos);
+            pos += 8;
+        }
+        if (pos < end) {
+            long tail = 0;
+            int shift = 0;
+            while (pos < end) {
+                tail |= (src[pos++] & 0xFFL) << shift;
+                shift += 8;
+            }
+            out[idx] = tail;
         }
         return of(out[0], out[1], out[2], out[3]);
     }
@@ -297,31 +291,32 @@ public final class Wide256 implements Comparable<Wide256> {
         return fromByteArrayLE(src, 0, src.length);
     }
     public int bitLength() {
-        if (l3 != 0) {
-            return 192 + (64 - Long.numberOfLeadingZeros(l3));
+        long v = l3;
+        if (v != 0) {
+            return 192 + (64 - Long.numberOfLeadingZeros(v));
         }
+        return bitLengthTail();
+    }
+
+    /** Lower limbs of {@link #bitLength}; kept out of line so the fast path stays inlinable. */
+    private int bitLengthTail() {
         if (l2 != 0) {
             return 128 + (64 - Long.numberOfLeadingZeros(l2));
         }
         if (l1 != 0) {
             return 64 + (64 - Long.numberOfLeadingZeros(l1));
         }
-        if (l0 != 0) {
-            return 64 - Long.numberOfLeadingZeros(l0);
-        }
-        return 0;
+        return l0 != 0 ? 64 - Long.numberOfLeadingZeros(l0) : 0;
     }
 
     /** Wrapping addition modulo 2^256. */
     public Wide256 add(Wide256 o) {
         long r0 = l0 + o.l0;
         long c = Carry.carryOut(l0, r0);
-        long s1 = l1 + o.l1;
-        long r1 = s1 + c;
-        c = Carry.carryOut(l1, s1) + Carry.carryOut(s1, r1);
-        long s2 = l2 + o.l2;
-        long r2 = s2 + c;
-        c = Carry.carryOut(l2, s2) + Carry.carryOut(s2, r2);
+        long r1 = l1 + o.l1 + c;
+        c = Long.compareUnsigned(r1, l1) < 0 || (c != 0 && r1 == l1) ? 1L : 0L;
+        long r2 = l2 + o.l2 + c;
+        c = Long.compareUnsigned(r2, l2) < 0 || (c != 0 && r2 == l2) ? 1L : 0L;
         long r3 = l3 + o.l3 + c;
         return new Wide256(r0, r1, r2, r3);
     }
@@ -330,12 +325,10 @@ public final class Wide256 implements Comparable<Wide256> {
     public Wide256 sub(Wide256 o) {
         long r0 = l0 - o.l0;
         long b = Carry.borrowOut(l0, r0);
-        long d1 = l1 - o.l1;
-        long r1 = d1 - b;
-        b = Carry.borrowOut(l1, d1) + Carry.borrowOut(d1, r1);
-        long d2 = l2 - o.l2;
-        long r2 = d2 - b;
-        b = Carry.borrowOut(l2, d2) + Carry.borrowOut(d2, r2);
+        long r1 = l1 - o.l1 - b;
+        b = Long.compareUnsigned(r1, l1) > 0 || (b != 0 && r1 == l1) ? 1L : 0L;
+        long r2 = l2 - o.l2 - b;
+        b = Long.compareUnsigned(r2, l2) > 0 || (b != 0 && r2 == l2) ? 1L : 0L;
         long r3 = l3 - o.l3 - b;
         return new Wide256(r0, r1, r2, r3);
     }
@@ -346,30 +339,275 @@ public final class Wide256 implements Comparable<Wide256> {
     }
 
     /** Low 256 bits of the 512-bit product, i.e. {@code (a*b) mod 2^256}. */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
+    /**
+     * Low N bits of the 2N-bit product, column-major with delayed carry: every output limb
+     * is accumulated by its own pair of registers (running sum + overflow count) and
+     * written exactly once, so no product round-trips through memory. Generated by
+     * tools/gen-colmul.ps1 -- do not edit this method or the mulCols* helpers by hand.
+     */
     public Wide256 mul(Wide256 o) {
-        MulAcc acc = new MulAcc();
-        col0(acc, o);
-        col1(acc, o);
-        col2(acc, o);
-        col3(acc, o);
-        return new Wide256(acc.c0, acc.c1, acc.c2, acc.c3);
+        long r0;
+        long r1;
+        long r2;
+        long r3;
+        long carry = 0;
+        long t;
+        {
+            long u = l0 * o.l0;
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r0 = t;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l1;
+            long q = 0;
+            t = u + l1 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r1 = t;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l2;
+            long q = 0;
+            t = u + l1 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            long v = MulHi.high(l0, o.l1);
+            long q2 = 0;
+            t = v + MulHi.high(l1, o.l0);
+            q2 += Long.compareUnsigned(t, v) < 0 ? 1L : 0L;
+            v = t;
+            t = u + v;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            q += q2;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r2 = t;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l3;
+            long q = 0;
+            t = u + l1 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l3 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            long v = MulHi.high(l0, o.l2);
+            long q2 = 0;
+            t = v + MulHi.high(l1, o.l1);
+            q2 += Long.compareUnsigned(t, v) < 0 ? 1L : 0L;
+            v = t;
+            t = v + MulHi.high(l2, o.l0);
+            q2 += Long.compareUnsigned(t, v) < 0 ? 1L : 0L;
+            v = t;
+            t = u + v;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            q += q2;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r3 = t;
+            carry = q;
+        }
+        return Wide256.of(r0, r1, r2, r3);
     }
 
     /** High 256 bits of the 512-bit product, i.e. {@code (a*b) >>> 256}. */
-    public Wide256 mulHigh(Wide256 o) {
-        if (((l2 | l3) | (o.l2 | o.l3)) == 0) {
-            return ZERO;
+    private long mulHighCols0(Wide256 o, long[] r, long carry) {
+        long t;
+        {
+            long u = l0 * o.l0;
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
         }
-        MulAcc acc = new MulAcc();
-        col0(acc, o);
-        col1(acc, o);
-        col2(acc, o);
-        col3(acc, o);
-        col4(acc, o);
-        col5(acc, o);
-        col6(acc, o);
-        col7(acc, o);
-        return new Wide256(acc.c4, acc.c5, acc.c6, acc.c7);
+        {
+            long u = l0 * o.l1;
+            long q = 0;
+            t = u + l1 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l2;
+            long q = 0;
+            t = u + l1 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l1, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l0 * o.l3;
+            long q = 0;
+            t = u + l1 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l2 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l3 * o.l0;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l1, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l2, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            carry = q;
+        }
+        {
+            long u = l1 * o.l3;
+            long q = 0;
+            t = u + l2 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + l3 * o.l1;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l0, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l1, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l2, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l3, o.l0);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[0] = t;
+            carry = q;
+        }
+        {
+            long u = l2 * o.l3;
+            long q = 0;
+            t = u + l3 * o.l2;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l1, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l2, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l3, o.l1);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[1] = t;
+            carry = q;
+        }
+        {
+            long u = l3 * o.l3;
+            long q = 0;
+            t = u + MulHi.high(l2, o.l3);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + MulHi.high(l3, o.l2);
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            u = t;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[2] = t;
+            carry = q;
+        }
+        {
+            long u = MulHi.high(l3, o.l3);
+            long q = 0;
+            t = u + carry;
+            q += Long.compareUnsigned(t, u) < 0 ? 1L : 0L;
+            r[3] = t;
+            carry = q;
+        }
+        return carry;
+    }
+
+    /**
+     * High N bits of the 2N-bit product, column-major with delayed carry. Columns below N
+     * only feed the carry chain (their value is discarded); columns N..2N-1 are the result.
+     * Generated by tools/gen-colmul.ps1 -- do not edit this method or the mulHighCols*
+     * helpers by hand.
+     */
+    public Wide256 mulHigh(Wide256 o) {
+        long[] r = new long[4];
+        long carry = 0;
+        carry = mulHighCols0(o, r, carry);
+        return Wide256.of(r[0], r[1], r[2], r[3]);
     }
 
     /**
@@ -380,10 +618,6 @@ public final class Wide256 implements Comparable<Wide256> {
      *         (equal to {@link #mulHigh})
      */
     public Wide512 mulFull(Wide256 o) {
-        if (((l2 | l3) | (o.l2 | o.l3)) == 0) {
-            Wide256 p = Wide128.of(l0, l1).mulFull(Wide128.of(o.l0, o.l1));
-            return Wide512.of(p.limb(0), p.limb(1), p.limb(2), p.limb(3), 0, 0, 0, 0);
-        }
         MulAcc acc = new MulAcc();
         col0(acc, o);
         col1(acc, o);
@@ -1361,24 +1595,41 @@ public final class Wide256 implements Comparable<Wide256> {
 
     @Override
     public int hashCode() {
+        int h = hash;
+        if (h == 0) {
+            h = computeHash();
+            hash = h;
+        }
+        return h;
+    }
+
+    /**
+     * The hash is a multiply chain over the limbs, throughput-bound at roughly 1.4 cycles
+     * per limb; there is no shorter expression of the same quality, so memoising is the
+     * only lever. The field occupies the header alignment gap, so it costs no bytes. It is
+     * filled lazily: arithmetic results are never hashed and must not pay for it.
+     */
+    private int computeHash() {
+
         long h = 0x243F6A8885A308D3L;
         h = (h ^ l0) * 0x9E3779B97F4A7C15L;
         h = (h ^ l1) * 0x9E3779B97F4A7C15L;
         h = (h ^ l2) * 0x9E3779B97F4A7C15L;
         h = (h ^ l3) * 0x9E3779B97F4A7C15L;
         h ^= h >>> 29;
-        return (int) (h ^ (h >>> 32));
-    }
+        int r = (int) (h ^ (h >>> 32));
+        return r == 0 ? 1 : r;
+        }
 
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */
     public String toHexString() {
-        return toBigInteger().toString(16);
+        return Limbs.toHexString(pack());
     }
 
     private long[] pack() {

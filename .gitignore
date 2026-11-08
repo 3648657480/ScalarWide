@@ -8,4 +8,6 @@ out/
 .vscode/
 run/
 docs/WORKSTATION.md
+docs/BRIEF-2026-11-05-perf-walls.md
+docs/BENCH-*.log
 tools/ws/
