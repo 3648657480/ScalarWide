@@ -14,6 +14,10 @@ public final class WideChunkCoord1024 implements Comparable<WideChunkCoord1024> 
     public static final int BITS = 1024;
     public static final int LIMBS = 16;
 
+    /** Big-endian 64-bit view: writes one limb per access instead of eight byte stores. */
+    private static final java.lang.invoke.VarHandle BE_LONG = java.lang.invoke.MethodHandles
+            .byteArrayViewVarHandle(long[].class, java.nio.ByteOrder.BIG_ENDIAN);
+
     private static final BigInteger TWO_1023 = BigInteger.ONE.shiftLeft(1023);
     private static final BigInteger MAX_BI = TWO_1023.subtract(BigInteger.ONE);
     private static final BigInteger MIN_BI = TWO_1023.negate();
@@ -75,7 +79,28 @@ public final class WideChunkCoord1024 implements Comparable<WideChunkCoord1024> 
         if (bits < 0 || bits >= BITS) {
             throw new IllegalArgumentException("shift out of range: " + bits);
         }
-        return of(toBigInteger().shiftRight(bits));
+        if (bits == 0) {
+            return this;
+        }
+        long[] out = new long[LIMBS];
+        int limbShift = bits >>> 6;
+        int bitShift = bits & 63;
+        long fill = limbs[LIMBS - 1] >> 63;
+        if (bitShift == 0) {
+            for (int i = 0; i < LIMBS; i++) {
+                int src = i + limbShift;
+                out[i] = src < LIMBS ? limbs[src] : fill;
+            }
+        } else {
+            int back = 64 - bitShift;
+            for (int i = 0; i < LIMBS; i++) {
+                int src = i + limbShift;
+                long lo = src < LIMBS ? limbs[src] : fill;
+                long hi = src + 1 < LIMBS ? limbs[src + 1] : fill;
+                out[i] = (lo >>> bitShift) | (hi << back);
+            }
+        }
+        return new WideChunkCoord1024(out, false);
     }
 
     public BigInteger toBigInteger() {
@@ -85,11 +110,7 @@ public final class WideChunkCoord1024 implements Comparable<WideChunkCoord1024> 
     public byte[] toByteArray() {
         byte[] out = new byte[BITS / 8];
         for (int i = 0; i < LIMBS; i++) {
-            long v = limbs[i];
-            int base = out.length - (i + 1) * 8;
-            for (int j = 0; j < 8; j++) {
-                out[base + 7 - j] = (byte) (v >>> (j * 8));
-            }
+            BE_LONG.set(out, out.length - (i + 1) * 8, limbs[i]);
         }
         return out;
     }

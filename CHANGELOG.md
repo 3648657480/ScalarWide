@@ -41,10 +41,25 @@
 - mc 独有的 `com.scalarwide.mc.*` 工具包（平表映射、宽断派发、`DivMagic`、
   `WideChunkCoord1024` / `WideSectionKey2560` 等）**不受本次合并影响**。
 
+### MC 侧热点（本次合并后顺手修掉）
+
+| 项目 | 改前 → 改后 | 倍数 |
+|---|---|---|
+| `WideChunkCoord1024.shiftRight(5)` | 301.86 → **15.02 ns** | **20.1×** |
+| `WideChunkCoord1024.shiftRight(9)` | 301.35 → **14.96 ns** | **20.1×** |
+| `WideChunkCoord1024.shiftRight(64)` | 259.97 → **11.44 ns** | **22.7×** |
+| `WideChunkCoord1024.toByteArray()` | 42.11 → **5.05 ns** | **8.35×** |
+
+- `shiftRight` 原来是 `of(toBigInteger().shiftRight(bits))` —— 完整的 BigInteger 往返
+  （编码 128 字节 → 解析 → 移位 → 再抽 16 个肢）。改成直接肢移位后
+  **20–23×**。这是 `WideRegionPos` 的区域分解路径（chunk → region），也是 G2 首屏的真实热点。
+- `toByteArray` 原来是每肢 8 次字节存（128 次），改用 `VarHandle` 整肢存后 **8.35×**。
+
 ### 验证
 
 - mc 侧原有 **137 个测试**（21 套件）全绿，含主线新增的差分门禁。
-- 新增 `MinimalBytesTest` / `DecimalStringTest`（位长与十的幂边界全扫）。
+- 新增 `MinimalBytesTest` / `DecimalStringTest`（位长与十的幂边界全扫）；
+  合并后共 **35 套件 143 个测试**全绿。
 
 ## 1.0.4（mc 线，纯增量）
 

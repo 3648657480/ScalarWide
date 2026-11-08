@@ -2012,3 +2012,29 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 | 16（2 的幂）| 15.37 | **2.54（6.05×）** | — | — |
 
 - 纯增量 API（原路径零改动）；用武之地 = MC 坐标数学按常数除/取模。
+
+## 2026-11-08 · MC 线热点（`mc-v1.0.5`）：`shiftRight` 20–23×、`toByteArray` 8.35×
+
+- 背景：完成 `main` → `mc` 合并后，mc 包里的 `WideChunkCoord1024` 仍是 1.0.0 时代的实现。
+- 环境：7950X / JDK 25 / 锁核 / 夹具 `McCoordBench`；A/B 用同一 jar 的两份源码各自构建。
+
+| 操作 | 改前 | **改后** | 倍数 | 分配 |
+|---|---|---|---|---|
+| `shiftRight(5)` | 301.86 | **15.02** | **20.1×** | 168 B/op |
+| `shiftRight(9)` | 301.35 | **14.96** | **20.1×** | 168 B/op |
+| `shiftRight(64)` | 259.97 | **11.44** | **22.7×** | 168 B/op |
+| `toByteArray()` | 42.11 | **5.05** | **8.35×** | 144 B/op |
+| `neighbor(1)` | 14.37 | 14.40 | 持平 | 168 |
+| `compareTo` | 0.876 | 0.873 | 持平 | 0 |
+| `hashCode` | 0.330 | 0.340 | 持平 | 0（已缓存） |
+
+- 观察：
+  1. `shiftRight` 原实现 `of(toBigInteger().shiftRight(bits))` 是**双份 BigInteger 往返**
+     （`toByteArray` 编码 128 字节 → `new BigInteger` 解析 → 移位 → `of` 再抽 16 个肢）。
+     直接肢移位后 20–23×，且是 `WideRegionPos` 的区域分解路径。
+  2. `shiftRight(64)` 比 `shiftRight(5)` 快 24%：整肢移位没有跨肢合并的 `(lo >>> bs) | (hi << back)`。
+  3. `toByteArray` 每肢 8 次字节存（128 次）→ `VarHandle` 整肢存（16 次），8.35×。
+  4. `neighbor` / `compareTo` / `hashCode` 已接近地板（`hash` 本来就是缓存字段），未动。
+- 顺带修掉一个构建缺陷：`jmhJar` 打进 bcprov 的签名文件，导致 fat-jar `java -jar` 报
+  `Invalid signature file digest for Manifest main attributes`——已在该 CopySpec 上排除
+  `META-INF/*.SF|*.DSA|*.RSA`。

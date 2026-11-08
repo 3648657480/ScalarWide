@@ -101,11 +101,16 @@ tasks.register('jmhJar', Jar) {
     from sourceSets.main.output
     from({
         configurations.jmhRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-    })
+    }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+    }
     into('META-INF/versions/21') {
         from sourceSets.java21.output
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // 依赖 jar（如 bcprov）自带签名，fat-jar 里必须剔除，否则 java -jar 报
+    // Invalid signature file digest for Manifest main attributes。
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
     manifest {
         attributes 'Main-Class': 'org.openjdk.jmh.Main'
         attributes 'Multi-Release': 'true'
