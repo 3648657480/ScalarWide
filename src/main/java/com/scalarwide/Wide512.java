@@ -1505,7 +1505,7 @@ public final class Wide512 implements Comparable<Wide512> {
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */

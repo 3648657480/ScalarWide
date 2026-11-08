@@ -1095,7 +1095,7 @@ public final class Wide384 implements Comparable<Wide384> {
 
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     public String toHexString() {

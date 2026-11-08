@@ -483,6 +483,96 @@ final class Limbs {
     }
 
     /**
+     * Decimal chunk base: nineteen digits — the largest power of ten that fits a {@code long} and is
+     * <em>already normalised</em> (top bit set), which the reciprocal division below requires. That
+     * choice removes the pre-shift of the dividend entirely; shifting once only works for the first
+     * pass, because the quotient returned by each division is back in unshifted space.
+     *
+     * <p>{@code 10^19} is above {@link Long#MAX_VALUE}, so it cannot be written as a decimal literal.
+     */
+    static final long DEC_BASE = -8_446_744_073_709_551_616L;
+
+    /**
+     * Reciprocal of {@link #DEC_BASE}: {@code floor((2^128 - 1) / base) - 2^64}. Computed once at
+     * class-init with {@link BigInteger}; it replaces a hardware 128/64 divide (20-30 cycles) with a
+     * multiply-high plus two fixups.
+     *
+     * <p>Both the base and the reciprocal exceed {@link Long#MAX_VALUE} and therefore read as
+     * negative; they are only used as unsigned operands.
+     */
+    private static final long DEC_RECIP = BigInteger.ONE.shiftLeft(128).subtract(BigInteger.ONE)
+            .divide(BigInteger.valueOf(DEC_BASE & Long.MAX_VALUE).setBit(63))
+            .subtract(BigInteger.ONE.shiftLeft(64))
+            .longValue();
+
+    /** Digits per chunk. */
+    private static final int DEC_DIGITS = 19;
+
+    /**
+     * Unsigned decimal representation of {@code a} (little-endian limbs), {@code "0"} for zero.
+     *
+     * <p>Nineteen-digit chunks are peeled off with a reciprocal 128/64 division (Möller-Granlund),
+     * so the conversion never issues a hardware divide and never touches {@link BigInteger}.
+     */
+    static String toDecimalString(long[] a) {
+        int top = a.length - 1;
+        while (top >= 0 && a[top] == 0) {
+            top--;
+        }
+        if (top < 0) {
+            return "0";
+        }
+        int n = top + 1;
+        long[] mag = new long[n];
+        System.arraycopy(a, 0, mag, 0, n);
+
+        long[] chunks = new long[(n * 64) / 63 + 2];
+        int nc = 0;
+        while (true) {
+            long rem = 0;
+            boolean quotientNonZero = false;
+            for (int i = n - 1; i >= 0; i--) {
+                long nh = rem;
+                long nl = mag[i];
+                // Möller-Granlund 3/2 division: (qh:ql) = nh * recip, then (qh:ql) += (nh+1 : nl).
+                long qh = Math.unsignedMultiplyHigh(nh, DEC_RECIP);
+                long ql = nh * DEC_RECIP;
+                long lo = ql + nl;
+                long hi = qh + nh + 1 + (Long.compareUnsigned(lo, ql) < 0 ? 1 : 0);
+                long r = nl - hi * DEC_BASE;
+                if (Long.compareUnsigned(r, lo) > 0) {
+                    hi--;
+                    r += DEC_BASE;
+                }
+                if (Long.compareUnsigned(r, DEC_BASE) >= 0) {
+                    r -= DEC_BASE;
+                    hi++;
+                }
+                mag[i] = hi;
+                rem = r;
+                if (hi != 0) {
+                    quotientNonZero = true;
+                }
+            }
+            chunks[nc++] = rem;
+            if (!quotientNonZero) {
+                break;
+            }
+        }
+
+        StringBuilder sb = new StringBuilder(nc * DEC_DIGITS);
+        sb.append(Long.toUnsignedString(chunks[nc - 1]));
+        for (int i = nc - 2; i >= 0; i--) {
+            String s = Long.toUnsignedString(chunks[i]);
+            for (int pad = s.length(); pad < DEC_DIGITS; pad++) {
+                sb.append('0');
+            }
+            sb.append(s);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Unsigned value of {@code a} (little-endian limbs) as a non-negative
      * {@link BigInteger}. Single pass: the limb vector is laid out big-endian
      * once and handed to {@link BigInteger#BigInteger(int, byte[])}; signum 1

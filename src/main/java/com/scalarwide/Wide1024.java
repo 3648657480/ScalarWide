@@ -3969,7 +3969,7 @@ public final class Wide1024 implements Comparable<Wide1024> {
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */

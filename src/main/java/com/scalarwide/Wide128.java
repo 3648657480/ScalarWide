@@ -523,7 +523,7 @@ public final class Wide128 implements Comparable<Wide128> {
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */

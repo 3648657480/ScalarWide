@@ -2,6 +2,35 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 1.0.3 — `toString` 去掉 BigInteger 往返
+
+> patch 级（`docs/COMPATIBILITY.md` §6）：纯性能。既有签名、语义与输出格式完全一致
+> （逐字符对照 `BigInteger.toString()` 验证）。
+
+### 性能
+
+| 项目 | 宽度 | 改前 → 改后 | 倍数 |
+|---|---|---|---|
+| `toString` | 1024 | 2773 → **976 ns** | **2.84×** |
+
+- 实现：不再走 `toBigInteger().toString()`，改为 **19 位十进制分组 + 倒数乘法**。
+  除数取 10¹⁹（最大的、仍装得进 `long` 且**天然归一化**的 10 的幂），倒数
+  `⌊(2¹²⁸−1)/10¹⁹⌋ − 2⁶⁴` 在类初始化时算一次；每次 128/64 除法用 Möller–Granlund 3/2 算法，
+  以 `Math.unsignedMultiplyHigh` 替代硬件 `divq`（20–30 cycle）。
+- 同 run 对照：Long2 0.1.8 的 `toString` 为 2829.8 ns ⇒ **由 1.0× 打平变为领先 2.90×**。
+- 已知代价：分配 2568 B/op（对方 1144）。多出的是 `pack()` 的 `long[]`、分组数组与每块一个
+  `String`；换取 2.84× 的时间，若要继续压可把每块拆成 `hi/lo` 后用有符号 `append`。
+
+### 尝试后回退
+
+- 手工 `char[]` 逐位取十进制（省掉每块一个 `Long.toUnsignedString`）：实测 **1069.9 ns**，
+  比 StringBuilder 版慢 9%，**已回退**。
+
+### 测试
+
+- 新增 `DecimalStringTest`：六宽度 × 十的幂边界（p−2 / p−1 / p / p+1 全扫）+ 随机 + 全一 /
+  最高位，与 `BigInteger.toString()` 逐字符对拍。
+
 ## 1.0.2 — 最小长度编码器整肢化 + 全积阶梯补全
 
 > patch 级（`docs/COMPATIBILITY.md` §6）：纯性能 + 一个纯增量 API。既有签名与语义未变。

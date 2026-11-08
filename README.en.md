@@ -9,14 +9,14 @@
 
 Version: see repo-root `VERSION` (single authority). **Closed at `1.0.0` and in maintenance
 mode** - only bugfix and consumer-driven performance / additive work at patch level is
-accepted; `1.0.2` is one such batch. Public-API freeze semantics in `docs/COMPATIBILITY.md`
+accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPATIBILITY.md`
 §6, deferred work in `docs/FUTURE-WORK.md`; implementation matrix and all measurements
 (including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`
 (the ledger opens with a one-page **current authoritative baseline**).
 
-> **1.0.2 performance snapshot** (workstation 7950X / JDK 25 / pinned): `toBigInteger`
+> **1.0.3 performance snapshot** (workstation 7950X / JDK 25 / pinned): `toBigInteger`
 > **19.3x**, `toHexString` **16.0x**, `hashCode` **14.1x**, byte codecs **4.6-5.3x** (minimal-length variants a further **2.5-4.4x**),
-> `bitLength` **3.01x**, `mulHigh` **1.65-2.66x**, `mul` **1.24-1.92x**, `add`/`sub`
+> `bitLength` **3.01x**, `toString` **2.84x**, `mulHigh` **1.65-2.66x**, `mul` **1.24-1.92x**, `add`/`sub`
 > **1.09-1.75x** - with **all six object sizes unchanged**. Full item-by-item comparison
 > against the same-domain library Long2 0.1.8 (18 ops at 1024): **7 ahead / 8 tied / 3 behind**.
 
@@ -57,11 +57,11 @@ accepted; `1.0.2` is one such batch. Public-API freeze semantics in `docs/COMPAT
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v1.0.2' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v1.0.3' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:1.0.2` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:1.0.3` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),

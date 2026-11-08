@@ -2493,7 +2493,7 @@ public final class Wide768 implements Comparable<Wide768> {
     /** Unsigned decimal representation. */
     @Override
     public String toString() {
-        return toBigInteger().toString();
+        return Limbs.toDecimalString(pack());
     }
 
     /** Unsigned hexadecimal representation without prefix ({@code "0"} for zero). */
