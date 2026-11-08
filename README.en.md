@@ -49,11 +49,11 @@ measurements (including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`,
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.0' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.5' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:1.0.0` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:1.0.5` for any local Gradle/Maven project.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512` (immutable value types, mc line <=512),

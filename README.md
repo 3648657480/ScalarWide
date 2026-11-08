@@ -42,10 +42,10 @@
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.0' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:mc-v1.0.5' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:1.0.0`
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:1.0.5`
   （之后本机任何 Gradle/Maven 工程可直接引用）；
 - **手动**：GitHub Releases 下载 `ScalarWide-<版本>.jar`（+ `-sources.jar`）放入 classpath；
 - API 入口：`Wide128/256/384/512`（不可变值类型，mc 版 ≤512）、`MutableWide128/256`（零分配 scratch）、
