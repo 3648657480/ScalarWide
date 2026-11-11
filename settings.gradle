@@ -1,1 +1,4 @@
 rootProject.name = 'ScalarWide'
+
+// 子项目：高精度二进制浮点（P0 起）
+include 'fp'
