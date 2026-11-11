@@ -53,6 +53,11 @@ public final class Binary256 implements Comparable<Binary256> {
         this.l3 = l3;
     }
 
+    /** Package-private raw construction for tests; caller is responsible for the invariants. */
+    static Binary256 raw(int sign, int exp, long l0, long l1, long l2, long l3) {
+        return finite(sign, exp, l0, l1, l2, l3);
+    }
+
     private static Binary256 finite(int sign, int exp, long l0, long l1, long l2, long l3) {
         return new Binary256(FINITE, sign, exp, l0, l1, l2, l3);
     }
@@ -163,6 +168,21 @@ public final class Binary256 implements Comparable<Binary256> {
     /** Exponent of the leading bit; meaning is only defined for finite non-zero values. */
     public int scaleExponent() {
         return exp;
+    }
+
+    // ------------------------------------------------------------------ unary
+
+    /** Sign flip; NaN is unchanged (its sign is not part of the value). */
+    public Binary256 negate() {
+        if (kind == NAN) {
+            return this;
+        }
+        return new Binary256(kind, sign ^ 1, exp, l0, l1, l2, l3);
+    }
+
+    /** Magnitude; {@code abs(-0) == +0}. */
+    public Binary256 abs() {
+        return sign == 0 ? this : negate();
     }
 
     // ------------------------------------------------------------------ comparison
@@ -355,7 +375,7 @@ public final class Binary256 implements Comparable<Binary256> {
         return (acc | (limb(li) & mask)) != 0L;
     }
 
-    private long limb(int i) {
+    long limb(int i) {
         return switch (i) {
             case 0 -> l0;
             case 1 -> l1;
