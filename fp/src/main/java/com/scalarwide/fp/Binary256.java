@@ -1,5 +1,10 @@
 package com.scalarwide.fp;
 
+import com.scalarwide.Wide1024;
+import com.scalarwide.Wide256;
+import com.scalarwide.Wide512;
+
+
 /**
  * 256-bit binary floating point, {@code p = 256}, exponent range {@code [-262142, 262143]}.
  *
@@ -247,6 +252,35 @@ public final class Binary256 implements Comparable<Binary256> {
         }
         Exact e = Exact.div(this, o);
         return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+    }
+    /**
+     * Correctly rounded square root.
+     *
+     * <p>Scales the significand so that {@code floor(sqrt(...))} carries more than {@code p} bits,
+     * then hands that to the same {@link Arithmetic#pack} every other operation uses, with the
+     * non-exactness of the root as the sticky flag. Correct rounding therefore follows from the
+     * shared rounding path rather than from a separate decision here.
+     */
+    public Binary256 sqrt() {
+        if (isNaN() || sign != 0) {
+            return NaN;
+        }
+        if (isZero() || isInfinite()) {
+            return this;
+        }
+        // sqrt(value) lies in [2^(e/2), 2^((e+1)/2)), so its leading bit is at floorDiv(e, 2).
+        // The result grid is that leading bit minus (p-1); sqrt of the smallest value is still
+        // far above EXP_MIN, so a square root is never subnormal.
+        int half = Math.floorDiv(exp, 2);
+        int lsb = half - (PRECISION - 1);
+        // floor(sqrt(value) / 2^lsb) == floor(sqrt(m << sh)) with sh in {255, 256}
+        int sh = (exp - (PRECISION - 1)) - 2 * lsb;
+        Wide1024 n = Wide1024.of(l0, l1, l2, l3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).shl(sh);
+        Wide1024 root = IntegerSqrt.of(n);
+        boolean exact = root.mul(root).equals(n);
+        Wide512 mag = Wide512.of(root.limb(0), root.limb(1), root.limb(2), root.limb(3),
+                root.limb(4), root.limb(5), root.limb(6), root.limb(7));
+        return Arithmetic.pack(0, lsb + (PRECISION - 1), mag, !exact, false);
     }
     // ------------------------------------------------------------------ comparison
 
