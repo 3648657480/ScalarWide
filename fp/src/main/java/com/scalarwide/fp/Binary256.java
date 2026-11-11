@@ -185,6 +185,69 @@ public final class Binary256 implements Comparable<Binary256> {
         return sign == 0 ? this : negate();
     }
 
+    // ------------------------------------------------------------------ arithmetic
+
+    /** Correctly rounded sum. */
+    public Binary256 add(Binary256 o) {
+        if (isNaN() || o.isNaN()) {
+            return NaN;
+        }
+        if (isInfinite() || o.isInfinite()) {
+            if (isInfinite() && o.isInfinite() && sign != o.sign) {
+                return NaN;
+            }
+            return isInfinite() ? this : o;
+        }
+        if (isZero() && o.isZero()) {
+            return sign == o.sign ? this : ZERO;
+        }
+        Exact e = Exact.alignAdd(this, o);
+        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+    }
+
+    public Binary256 subtract(Binary256 o) {
+        return add(o.negate());
+    }
+
+    /** Correctly rounded product. */
+    public Binary256 multiply(Binary256 o) {
+        if (isNaN() || o.isNaN()) {
+            return NaN;
+        }
+        if (isInfinite() || o.isInfinite()) {
+            if (isZero() || o.isZero()) {
+                return NaN;
+            }
+            int s = sign ^ o.sign;
+            return s == 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+        }
+        if (isZero() || o.isZero()) {
+            return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
+        }
+        Exact e = Exact.mul(this, o);
+        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+    }
+
+    /** Correctly rounded quotient. */
+    public Binary256 divide(Binary256 o) {
+        if (isNaN() || o.isNaN()) {
+            return NaN;
+        }
+        if (isInfinite()) {
+            return o.isInfinite() ? NaN : (sign ^ o.sign) == 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+        }
+        if (o.isInfinite()) {
+            return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
+        }
+        if (o.isZero()) {
+            return isZero() ? NaN : (sign ^ o.sign) == 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+        }
+        if (isZero()) {
+            return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
+        }
+        Exact e = Exact.div(this, o);
+        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+    }
     // ------------------------------------------------------------------ comparison
 
     /**

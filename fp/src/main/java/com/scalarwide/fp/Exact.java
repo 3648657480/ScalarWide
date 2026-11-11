@@ -59,44 +59,36 @@ record Exact(int sign, int exp, Wide512 mag, boolean sticky, boolean down) {
         Binary256 big = a.scaleExponent() >= b.scaleExponent() ? a : b;
         Binary256 small = big == a ? b : a;
         int shift = big.scaleExponent() - small.scaleExponent();
-
-        Wide256 sm = m256(small);
-        boolean dropped;
-        Wide256 shifted;
-        if (shift >= PRECISION) {
-            shifted = Wide256.of(0, 0, 0, 0);
-            dropped = !sm.isZero();
-        } else if (shift == 0) {
-            shifted = sm;
-            dropped = false;
-        } else {
-            shifted = sm.ushr(shift);
-            dropped = !shifted.shl(shift).equals(sm);
-        }
-
         boolean sameSign = a.signBit() == b.signBit();
-        Wide512 bigWide = widen(m256(big));
-        Wide512 smallWide = widen(shifted);
         int bigSign = big.signBit() ? 1 : 0;
+        Wide512 ZERO = Wide512.of(0, 0, 0, 0, 0, 0, 0, 0);
 
-        if (sameSign) {
-            return new Exact(bigSign, big.scaleExponent(), bigWide.add(smallWide), dropped, false);
-        }
-        int cmp = bigWide.compareUnsigned(smallWide);
-        if (cmp == 0) {
-            if (!dropped) {
-                return new Exact(0, big.scaleExponent(), Wide512.of(0, 0, 0, 0, 0, 0, 0, 0), false, false);
+        if (shift <= 256) {
+            // Both operands fit exactly in 512 bits when the frame sits at the smaller
+            // exponent, so this branch performs no truncation at all: the sum is exact.
+            Wide512 bigWide = widen(m256(big)).shl(shift);
+            Wide512 smallWide = widen(m256(small));
+            if (sameSign) {
+                return new Exact(bigSign, small.scaleExponent(), bigWide.add(smallWide), false, false);
             }
-            // The truncated operands cancel exactly, so the whole result is the dropped tail,
-            // with the sign of the operand that was truncated (the "small" one).
-            return new Exact(small.signBit() ? 1 : 0, big.scaleExponent(),
-                    Wide512.of(0, 0, 0, 0, 0, 0, 0, 0), true, false);
+            int cmp = bigWide.compareUnsigned(smallWide);
+            if (cmp == 0) {
+                return new Exact(0, small.scaleExponent(), ZERO, false, false);
+            }
+            if (cmp > 0) {
+                return new Exact(bigSign, small.scaleExponent(), bigWide.sub(smallWide), false, false);
+            }
+            return new Exact(small.signBit() ? 1 : 0, small.scaleExponent(),
+                    smallWide.sub(bigWide), false, false);
         }
-        if (cmp > 0) {
-            return new Exact(bigSign, big.scaleExponent(), bigWide.sub(smallWide), dropped, dropped);
+
+        // Beyond 256 bits of separation the smaller operand is below one ULP of big and cannot
+        // cancel it, so the whole operand collapses into a single dropped tail.
+        Wide512 bigWide = widen(m256(big));
+        if (sameSign) {
+            return new Exact(bigSign, big.scaleExponent(), bigWide, true, false);
         }
-        return new Exact(small.signBit() ? 1 : 0, big.scaleExponent(),
-                smallWide.sub(bigWide), dropped, dropped);
+        return new Exact(bigSign, big.scaleExponent(), bigWide, true, true);
     }
 
     /**
