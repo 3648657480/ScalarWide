@@ -207,7 +207,7 @@ public final class Binary256 implements Comparable<Binary256> {
             return sign == o.sign ? this : ZERO;
         }
         Exact e = Exact.alignAdd(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
     }
 
     public Binary256 subtract(Binary256 o) {
@@ -230,9 +230,41 @@ public final class Binary256 implements Comparable<Binary256> {
             return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
         }
         Exact e = Exact.mul(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
     }
 
+    /** Fused multiply-add: {@code this*b + c} with a single rounding. */
+    public Binary256 fma(Binary256 b, Binary256 c) {
+        if (isNaN() || b.isNaN() || c.isNaN()) {
+            return NaN;
+        }
+        if ((isInfinite() && b.isZero()) || (isZero() && b.isInfinite())) {
+            return NaN;
+        }
+        if (isInfinite() || b.isInfinite()) {
+            int s = sign ^ b.sign;
+            if (c.isInfinite() && (c.sign != s)) {
+                return NaN;
+            }
+            return s == 0 ? POSITIVE_INFINITY : NEGATIVE_INFINITY;
+        }
+        if (c.isInfinite()) {
+            return c;
+        }
+        if (isZero() || b.isZero()) {
+            // product is a signed zero; adding c goes through the exact path unless c is zero
+            if (c.isZero()) {
+                boolean s = (sign ^ b.sign) != 0;
+                return s && c.sign != 0 ? NEGATIVE_ZERO : ZERO;
+            }
+            return c;
+        }
+        if (c.isZero()) {
+            Exact p = Exact.mul(this, b);
+            return Arithmetic.pack(p.sign(), p.exp(), Arithmetic.widen(p.mag()), p.sticky(), p.down());
+        }
+        return Arithmetic.fma(this, b, c);
+    }
     /** Correctly rounded quotient. */
     public Binary256 divide(Binary256 o) {
         if (isNaN() || o.isNaN()) {
@@ -251,7 +283,7 @@ public final class Binary256 implements Comparable<Binary256> {
             return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
         }
         Exact e = Exact.div(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), e.mag(), e.sticky(), e.down());
+        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
     }
     /**
      * Correctly rounded square root.
@@ -280,7 +312,7 @@ public final class Binary256 implements Comparable<Binary256> {
         boolean exact = root.mul(root).equals(n);
         Wide512 mag = Wide512.of(root.limb(0), root.limb(1), root.limb(2), root.limb(3),
                 root.limb(4), root.limb(5), root.limb(6), root.limb(7));
-        return Arithmetic.pack(0, lsb + (PRECISION - 1), mag, !exact, false);
+        return Arithmetic.pack(0, lsb + (PRECISION - 1), Arithmetic.widen(mag), !exact, false);
     }
     // ------------------------------------------------------------------ comparison
 
