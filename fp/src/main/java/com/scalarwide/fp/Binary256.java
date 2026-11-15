@@ -1,5 +1,6 @@
 package com.scalarwide.fp;
 
+import java.math.BigInteger;
 import com.scalarwide.Wide1024;
 import com.scalarwide.Wide256;
 import com.scalarwide.Wide512;
@@ -314,6 +315,55 @@ public final class Binary256 implements Comparable<Binary256> {
                 root.limb(4), root.limb(5), root.limb(6), root.limb(7));
         return Arithmetic.pack(0, lsb + (PRECISION - 1), Arithmetic.widen(mag), !exact, false);
     }
+    // ------------------------------------------------------------------ decimal I/O
+
+    /** Correctly rounded decimal with the given number of significant digits ({@code digits >= 1}). */
+    public String toString(int digits) {
+        if (digits < 1) {
+            throw new IllegalArgumentException("digits must be >= 1");
+        }
+        if (isNaN()) {
+            return "NaN";
+        }
+        if (isInfinite()) {
+            return sign == 0 ? "Infinity" : "-Infinity";
+        }
+        if (isZero()) {
+            return sign == 0 ? "0" : "-0";
+        }
+        BigInteger m = BigInteger.ZERO;
+        for (int i = 3; i >= 0; i--) {
+            BigInteger w = BigInteger.valueOf(limb(i) & Long.MAX_VALUE);
+            if (limb(i) < 0) {
+                w = w.setBit(63);
+            }
+            m = m.shiftLeft(64).or(w);
+        }
+        return Decimal.toDecimal(m, exp - (PRECISION - 1), digits, sign != 0);
+    }
+
+    @Override
+    public String toString() {
+        // Enough digits to round-trip a p-bit significand, with trailing zeros trimmed.
+        String s = toString(80);
+        int dot = s.indexOf('.');
+        if (dot < 0) {
+            return s;
+        }
+        int end = s.length();
+        while (end > dot + 1 && s.charAt(end - 1) == '0') {
+            end--;
+        }
+        if (end == dot + 1) {
+            end = dot;
+        }
+        return s.substring(0, end);
+    }
+
+    /** Correctly rounded parse of a decimal literal. */
+    public static Binary256 of(String s) {
+        return Decimal.parse(s);
+    }
     // ------------------------------------------------------------------ comparison
 
     /**
@@ -514,21 +564,4 @@ public final class Binary256 implements Comparable<Binary256> {
         };
     }
 
-    // ------------------------------------------------------------------ diagnostics
-
-    @Override
-    public String toString() {
-        if (kind == NAN) {
-            return "NaN";
-        }
-        if (kind == INFINITE) {
-            return sign == 0 ? "+Inf" : "-Inf";
-        }
-        if (isZero()) {
-            return sign == 0 ? "+0" : "-0";
-        }
-        return (sign == 0 ? "+" : "-") + "m=" + Long.toHexString(l3) + ":"
-                + Long.toHexString(l2) + ":" + Long.toHexString(l1) + ":" + Long.toHexString(l0)
-                + " exp=" + exp;
-    }
 }
