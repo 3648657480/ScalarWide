@@ -231,7 +231,7 @@ final class Arithmetic {
         } else {
             shr8(m, shift, q);
             guard = (int) bitAt8(m, shift - 1);
-            low = sticky || anyBelow8(m, shift - 2);
+            low = sticky || anyBelow8(m, shift - 1);
         }
         if (guard != 0 && (low || (q[0] & 1L) != 0L)) {
             for (int i = 0; i < 8; i++) {
