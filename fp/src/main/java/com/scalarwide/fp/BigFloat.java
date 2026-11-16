@@ -260,6 +260,46 @@ public final class BigFloat {
         return pack(fmt, (sign ^ o.sign) != 0 ? 1 : 0, exp + o.exp - fmt.topBit(), frame, false, false);
     }
 
+    public BigFloat divide(BigFloat o) {
+        if (isNaN() || o.isNaN()) {
+            return nan(fmt);
+        }
+        if (isInfinite()) {
+            return o.isInfinite() ? nan(fmt) : infinity(fmt, (sign ^ o.sign) != 0);
+        }
+        if (o.isInfinite()) {
+            return (sign ^ o.sign) == 0 ? zero(fmt) : negativeZero(fmt);
+        }
+        if (o.isZero()) {
+            return isZero() ? nan(fmt) : infinity(fmt, (sign ^ o.sign) != 0);
+        }
+        if (isZero()) {
+            return (sign ^ o.sign) == 0 ? zero(fmt) : negativeZero(fmt);
+        }
+        int p = fmt.precision();
+        int t = fmt.topBit();
+        int ba = magBitLength(mag);
+        int bb = magBitLength(o.mag);
+        int k = p + 128 - (ba - bb);
+        if (k < 0) {
+            k = 0;
+        }
+        long[] num = new long[fmt.limbs() + (k >> 6) + 2];
+        System.arraycopy(mag, 0, num, 0, fmt.limbs());
+        Limbs.shl(num, k, num);
+        long[] q = new long[num.length];
+        long[] r = new long[num.length];
+        // Limbs treats every array as width-delimited, so the divisor must be padded to match.
+        long[] den = new long[num.length];
+        System.arraycopy(o.mag, 0, den, 0, o.mag.length);
+        Limbs.divmod(num, den, q, r);
+        boolean sticky = !isZeroMag(r);
+        return pack(fmt, (sign ^ o.sign) != 0 ? 1 : 0, exp - o.exp - k + t, q, sticky, false);
+    }
+
+    private static int magBitLength(long[] m) {
+        return Limbs.bitLength(m);
+    }
     // ---------------------------------------------------------------- rounding
 
     /**

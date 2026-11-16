@@ -14,6 +14,12 @@ public final class FpFormat {
     /** Long2 {@code Binary640}: 1+24+615 = 640 bits. */
     public static final FpFormat BINARY640 = new FpFormat(616, -8388606, 8388607);
 
+    /**
+     * 1280-bit format: 1 + 28 + 1251. Derived from the published progression
+     * ({@code 256 -> e=19, 640 -> e=24}, {@code expMax = 2^(e-1)-1}); one constant to change if
+     * the reference implementation picks a different exponent width.
+     */
+    public static final FpFormat BINARY1280 = new FpFormat(1252, -134217726, 134217727);
     private final int precision;
     private final int expMin;
     private final int expMax;

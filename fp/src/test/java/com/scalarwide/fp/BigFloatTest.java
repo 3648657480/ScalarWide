@@ -104,6 +104,88 @@ class BigFloatTest {
         }
         return Binary256.raw(v.signBit() ? 1 : 0, v.scaleExponent(), l[0], l[1], l[2], l[3]);
     }
+    @Test
+    void worksAt1280Bits() {
+        FpFormat f = FpFormat.BINARY1280;
+        assertEquals(1252, f.precision());
+        assertEquals(20, f.limbs());
+        Random rnd = new Random(SEED + 3);
+        for (int i = 0; i < 400; i++) {
+            BigFloat a = randomValue(f, rnd);
+            BigFloat b = randomValue(f, rnd);
+            assertRef("1280 add", refAdd(f, a, b), a.add(b));
+            assertRef("1280 mul", refMul(f, a, b), a.multiply(b));
+            if (!b.isZero()) {
+                assertRef("1280 div", refDiv(f, a, b), a.divide(b));
+            }
+        }
+        BigFloat max = BigFloat.maxValue(f);
+        assertEquals(f.expMax(), max.scaleExponent());
+        assertTrue(max.multiply(BigFloat.of(f, 2L)).isInfinite());
+        BigFloat third = BigFloat.one(f).divide(BigFloat.of(f, 3L));
+        assertTrue(third.multiply(BigFloat.of(f, 3L)).subtract(BigFloat.one(f)).abs()
+                .compareTo(BigFloat.of(f, 1e-300)) < 0);
+    }
+
+    /** Rounds {@code a/b} from the exact quotient plus its remainder. */
+    private static BigFloat refDiv(FpFormat f, BigFloat a, BigFloat b) {
+        BigInteger ma = a.magnitude();
+        BigInteger mb = b.magnitude();
+        int ea = a.lsbExponent();
+        int eb = b.lsbExponent();
+        int p = f.precision();
+        int k = p + 80 + mb.bitLength() - ma.bitLength();
+        BigInteger num = ma.shiftLeft(k);
+        BigInteger q = num.divide(mb);
+        BigInteger r = num.subtract(q.multiply(mb));
+        return refRoundSticky(f, (a.signBit() ^ b.signBit()), q, ea - eb - k, r.signum() != 0);
+    }
+
+    /** Rounds {@code sign * mag * 2^exp2} with an extra sticky bit, nearest-even. */
+    private static BigFloat refRoundSticky(FpFormat f, boolean negative, BigInteger mag, int exp2,
+                                           boolean sticky) {
+        if (mag.signum() == 0) {
+            return negative ? BigFloat.negativeZero(f) : BigFloat.zero(f);
+        }
+        int p = f.precision();
+        int lead = exp2 + mag.bitLength() - 1;
+        int lsb = Math.max(lead - (p - 1), f.expMin() - (p - 1));
+        int shift = lsb - exp2;
+        BigInteger q;
+        boolean guard = false;
+        boolean low = sticky;
+        if (shift <= 0) {
+            q = mag.shiftLeft(-shift);
+        } else {
+            q = mag.shiftRight(shift);
+            guard = mag.testBit(shift - 1);
+            low = sticky || mag.and(BigInteger.ONE.shiftLeft(shift - 1).subtract(BigInteger.ONE))
+                    .signum() != 0;
+        }
+        if (guard && (low || q.testBit(0))) {
+            q = q.add(BigInteger.ONE);
+        }
+        if (q.signum() == 0) {
+            return negative ? BigFloat.negativeZero(f) : BigFloat.zero(f);
+        }
+        int leadAfter = lsb + q.bitLength() - 1;
+        if (leadAfter > f.expMax()) {
+            return BigFloat.infinity(f, negative);
+        }
+        if (leadAfter < f.expMin() - (p - 1)) {
+            return negative ? BigFloat.negativeZero(f) : BigFloat.zero(f);
+        }
+        BigInteger norm = q.shiftLeft(p - q.bitLength());
+        int limbs = f.limbs();
+        long[] out = new long[limbs];
+        BigInteger work = norm;
+        BigInteger mask = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE);
+        for (int i = 0; i < limbs; i++) {
+            out[i] = work.and(mask).longValue();
+            work = work.shiftRight(64);
+        }
+        return BigFloat.raw(f, negative ? 1 : 0, leadAfter, out);
+    }
     // ---------------------------------------------------------------- helpers
 
     private static double randomDouble(Random r) {
