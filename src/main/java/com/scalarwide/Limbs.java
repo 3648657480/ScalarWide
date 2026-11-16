@@ -5,7 +5,7 @@ import java.lang.invoke.VarHandle;
 import java.math.BigInteger;
 import java.nio.ByteOrder;
 
-final class Limbs {
+public final class Limbs {
 
     /**
      * Big-endian 64-bit view over a {@code byte[]}: one accessor call decodes a whole
@@ -30,7 +30,7 @@ final class Limbs {
         return Carry.borrowOut(a, r);
     }
 
-    static void add(long[] a, long[] b, long[] out) {
+    public static void add(long[] a, long[] b, long[] out) {
         long c = 0;
         for (int i = 0; i < a.length; i++) {
             long s = a[i] + b[i];
@@ -42,7 +42,7 @@ final class Limbs {
         }
     }
 
-    static void sub(long[] a, long[] b, long[] out) {
+    public static void sub(long[] a, long[] b, long[] out) {
         long br = 0;
         for (int i = 0; i < a.length; i++) {
             long d = a[i] - b[i];
@@ -54,7 +54,7 @@ final class Limbs {
         }
     }
 
-    static void neg(long[] a, long[] out) {
+    public static void neg(long[] a, long[] out) {
         long c = 1;
         for (int i = 0; i < a.length; i++) {
             long r = ~a[i] + c;
@@ -63,25 +63,25 @@ final class Limbs {
         }
     }
 
-    static void and(long[] a, long[] b, long[] out) {
+    public static void and(long[] a, long[] b, long[] out) {
         for (int i = 0; i < a.length; i++) {
             out[i] = a[i] & b[i];
         }
     }
 
-    static void or(long[] a, long[] b, long[] out) {
+    public static void or(long[] a, long[] b, long[] out) {
         for (int i = 0; i < a.length; i++) {
             out[i] = a[i] | b[i];
         }
     }
 
-    static void xor(long[] a, long[] b, long[] out) {
+    public static void xor(long[] a, long[] b, long[] out) {
         for (int i = 0; i < a.length; i++) {
             out[i] = a[i] ^ b[i];
         }
     }
 
-    static void not(long[] a, long[] out) {
+    public static void not(long[] a, long[] out) {
         for (int i = 0; i < a.length; i++) {
             out[i] = ~a[i];
         }
@@ -93,7 +93,7 @@ final class Limbs {
         }
     }
 
-    static void shl(long[] a, int k, long[] out) {
+    public static void shl(long[] a, int k, long[] out) {
         int limbShift = k >>> 6;
         int bitShift = k & 63;
         for (int i = a.length - 1; i >= 0; i--) {
@@ -109,7 +109,7 @@ final class Limbs {
         }
     }
 
-    static void ushr(long[] a, int k, long[] out) {
+    public static void ushr(long[] a, int k, long[] out) {
         int limbShift = k >>> 6;
         int bitShift = k & 63;
         for (int i = 0; i < a.length; i++) {
@@ -125,7 +125,7 @@ final class Limbs {
         }
     }
 
-    static void shr(long[] a, int k, long[] out) {
+    public static void shr(long[] a, int k, long[] out) {
         int limbShift = k >>> 6;
         int bitShift = k & 63;
         long fill = a[a.length - 1] >> 63;
@@ -141,7 +141,7 @@ final class Limbs {
         }
     }
 
-    static int compareUnsigned(long[] a, long[] b) {
+    public static int compareUnsigned(long[] a, long[] b) {
         for (int i = a.length - 1; i >= 0; i--) {
             if (a[i] != b[i]) {
                 return Long.compareUnsigned(a[i], b[i]);
@@ -163,7 +163,7 @@ final class Limbs {
         return 0;
     }
 
-    static int bitLength(long[] a) {
+    public static int bitLength(long[] a) {
         for (int i = a.length - 1; i >= 0; i--) {
             if (a[i] != 0) {
                 return i * 64 + (64 - Long.numberOfLeadingZeros(a[i]));
@@ -172,7 +172,7 @@ final class Limbs {
         return 0;
     }
 
-    static long[] mul(long[] a, long[] b) {
+    public static long[] mul(long[] a, long[] b) {
         int n = a.length;
         int m = b.length;
         long[] acc = new long[n + m];
@@ -196,7 +196,7 @@ final class Limbs {
      *
      * @throws ArithmeticException if {@code v} is zero
      */
-    static void divmod(long[] u, long[] v, long[] q, long[] r) {
+    public static void divmod(long[] u, long[] v, long[] q, long[] r) {
         int n = v.length;
         while (n > 0 && v[n - 1] == 0) {
             n--;
@@ -514,7 +514,7 @@ final class Limbs {
      * <p>Nineteen-digit chunks are peeled off with a reciprocal 128/64 division (Möller-Granlund),
      * so the conversion never issues a hardware divide and never touches {@link BigInteger}.
      */
-    static String toDecimalString(long[] a) {
+    public static String toDecimalString(long[] a) {
         int top = a.length - 1;
         while (top >= 0 && a[top] == 0) {
             top--;
@@ -578,7 +578,7 @@ final class Limbs {
      * once and handed to {@link BigInteger#BigInteger(int, byte[])}; signum 1
      * keeps leading zero bytes out of the magnitude.
      */
-    static BigInteger toBigInteger(long[] a) {
+    public static BigInteger toBigInteger(long[] a) {
         byte[] be = new byte[a.length * 8];
         int pos = 0;
         for (int i = a.length - 1; i >= 0; i--) {
