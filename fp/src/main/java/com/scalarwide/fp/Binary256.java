@@ -212,8 +212,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (isZero() && o.isZero()) {
             return sign == o.sign ? this : ZERO;
         }
-        Exact e = Exact.alignAdd(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
+        return Arithmetic.addFramed(this, o);
     }
 
     public Binary256 subtract(Binary256 o) {
