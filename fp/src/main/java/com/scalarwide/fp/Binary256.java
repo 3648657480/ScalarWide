@@ -304,21 +304,29 @@ public final class Binary256 implements Comparable<Binary256> {
         if (isZero() || isInfinite()) {
             return this;
         }
-        // sqrt(value) lies in [2^(e/2), 2^((e+1)/2)), so its leading bit is at floorDiv(e, 2).
-        // The result grid is that leading bit minus (p-1); sqrt of the smallest value is still
-        // far above EXP_MIN, so a square root is never subnormal.
-        int half = Math.floorDiv(exp, 2);
-        int lsb = half - (PRECISION - 1);
-        // floor(sqrt(value) / 2^lsb) == floor(sqrt(m << sh)) with sh in {255, 256}
-        int sh = (exp - (PRECISION - 1)) - 2 * lsb;
-        Wide1024 n = Wide1024.of(l0, l1, l2, l3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).shl(sh);
-        Wide1024 root = IntegerSqrt.of(n);
-        boolean exact = root.mul(root).equals(n);
-        Wide512 mag = Wide512.of(root.limb(0), root.limb(1), root.limb(2), root.limb(3),
-                root.limb(4), root.limb(5), root.limb(6), root.limb(7));
-        return Arithmetic.pack(0, lsb + (PRECISION - 1), Arithmetic.widen(mag), !exact, false);
-    }
-    // ------------------------------------------------------------------ decimal I/O
+        int t = PRECISION - 1;
+        int e = exp - t;
+        BigInteger m = BigInteger.ZERO;
+        for (int i = 3; i >= 0; i--) {
+            BigInteger w = BigInteger.valueOf(limb(i) & Long.MAX_VALUE);
+            if (limb(i) < 0) {
+                w = w.setBit(63);
+            }
+            m = m.shiftLeft(64).or(w);
+        }
+        int lead = e + m.bitLength() - 1;
+        int lsb = Math.floorDiv(lead, 2) - t;
+        BigInteger n = m.shiftLeft(e - 2 * lsb);
+        BigInteger root = n.sqrt();
+        boolean exact = root.multiply(root).equals(n);
+        long[] f = new long[8];
+        BigInteger work = root;
+        for (int i = 0; i < 8; i++) {
+            f[i] = work.longValue();
+            work = work.shiftRight(64);
+        }
+        return Arithmetic.pack512(0, lsb + t, f, !exact, false);
+    }    // ------------------------------------------------------------------ decimal I/O
 
     /** Correctly rounded decimal with the given number of significant digits ({@code digits >= 1}). */
     public String toString(int digits) {
