@@ -438,6 +438,7 @@ public final class BigFloat {
         BigInteger n = m.shiftLeft(sh);
         BigInteger root = n.sqrt();
         boolean exact = root.multiply(root).equals(n);
+
         return packBig(fmt, 0, lsb + t, root, !exact, false);
     }
 

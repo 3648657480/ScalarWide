@@ -207,7 +207,7 @@ class BigFloatTest {
             BigFloat b = randomValue(f, rnd);
             BigFloat c = randomValue(f, rnd);
             assertRef("1280 fma", refFma(f, a, b, c), a.fma(b, c));
-            // OPEN: same sqrt defect as at 640.
+            assertRef("1280 sqrt", refSqrt(f, a), a.sqrt());
         }
     }
 
@@ -226,6 +226,9 @@ class BigFloatTest {
 
     /** Exact sqrt reference: floor(sqrt(value)/2^lsb) then one rounding. */
     private static BigFloat refSqrt(FpFormat f, BigFloat v) {
+        if (v.signBit()) {
+            return BigFloat.nan(f);
+        }
         int p = f.precision();
         BigInteger m = v.magnitude();
         int e = v.lsbExponent();
@@ -262,9 +265,7 @@ class BigFloatTest {
                 assertRef("640 div", refDiv(f, a, b), a.divide(b));
             }
             assertRef("640 fma", refFma(f, a, b, c), a.fma(b, c));
-            // OPEN (shared with 1280): sqrt at wide formats comes back with exponent 0 because
-            // pack sees a magnitude `half` bits shorter than the root it was handed.
-            // p=237 is correct and covered by sqrtAndFmaAt237MatchTheFlatImplementation.
+            assertRef("640 sqrt", refSqrt(f, a), a.sqrt());
         }
         BigFloat max = BigFloat.maxValue(f);
         assertEquals(f.expMax(), max.scaleExponent());
