@@ -110,8 +110,12 @@ final class Decimal {
     }
     // ---------------------------------------------------------------- input
 
-    /** Parses a decimal literal and rounds it to the binary format (nearest-even). */
-    static Binary256 parse(String s) {
+    /** A scanned decimal literal: {@code sign * unscaled * 10^exp10}, exact. */
+    record Scanned(BigInteger unscaled, int exp10, boolean negative) {
+    }
+
+    /** Parses the literal without any rounding; the caller decides the target format. */
+    static Scanned scan(String s) {
         int i = 0;
         int n = s.length();
         boolean negative = false;
@@ -165,12 +169,56 @@ final class Decimal {
             exp10 -= digits.length() - pointAt;
         }
         BigInteger unscaled = digits.length() == 0 ? BigInteger.ZERO : new BigInteger(digits.toString());
-        if (unscaled.signum() == 0) {
-            return negative ? Binary256.NEGATIVE_ZERO : Binary256.ZERO;
-        }
-        return toBinary(unscaled, exp10, negative);
+        return new Scanned(unscaled, exp10, negative);
     }
 
+    /** Parses a decimal literal into the given format, correctly rounded. */
+    static BigFloat parseBig(FpFormat f, String s) {
+        Scanned sc = scan(s);
+        if (sc.unscaled().signum() == 0) {
+            return sc.negative() ? BigFloat.negativeZero(f) : BigFloat.zero(f);
+        }
+        BigInteger num = sc.unscaled();
+        BigInteger den = BigInteger.ONE;
+        if (sc.exp10() >= 0) {
+            num = num.multiply(TEN.pow(sc.exp10()));
+        } else {
+            den = den.multiply(TEN.pow(-sc.exp10()));
+        }
+        int p = f.precision();
+        int lead = exactLead(num, den);
+        // One extra bit: the dropped bit then acts as the guard and the remainder as sticky.
+        int shift = p - lead;
+        if (shift >= 0) {
+            num = num.shiftLeft(shift);
+        } else {
+            den = den.shiftLeft(-shift);
+        }
+        BigInteger[] qr = num.divideAndRemainder(den);
+        // q carries p+1 bits, so its leading bit sits one place above the target leading bit.
+        return BigFloat.packBig(f, sc.negative() ? 1 : 0, lead - 1, qr[0], qr[1].signum() != 0, false);
+    }
+
+    /** Exact {@code floor(log2(num/den))}. */
+    private static int exactLead(BigInteger num, BigInteger den) {
+        int lead = num.bitLength() - den.bitLength();
+        if (lead >= 0) {
+            if (num.compareTo(den.shiftLeft(lead)) < 0) {
+                lead--;
+            }
+        } else if (num.shiftLeft(-lead).compareTo(den) < 0) {
+            lead--;
+        }
+        return lead;
+    }
+    /** Parses a decimal literal into {@link Binary256}. */
+    static Binary256 parse(String s) {
+        Scanned sc = scan(s);
+        if (sc.unscaled().signum() == 0) {
+            return sc.negative() ? Binary256.NEGATIVE_ZERO : Binary256.ZERO;
+        }
+        return toBinary(sc.unscaled(), sc.exp10(), sc.negative());
+    }
     /** Rounds {@code sign * unscaled * 10^exp10} to the binary format, nearest-even. */
     private static Binary256 toBinary(BigInteger unscaled, int exp10, boolean negative) {
         BigInteger num = unscaled;

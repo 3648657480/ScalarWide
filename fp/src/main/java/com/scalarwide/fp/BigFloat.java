@@ -331,7 +331,10 @@ public final class BigFloat {
         long[] q = new long[work.length];
         boolean low;
         int guard = 0;
-        if (shift <= 0) {
+        if (shift == 0) {
+            System.arraycopy(work, 0, q, 0, q.length);
+            low = sticky;
+        } else if (shift < 0) {
             Limbs.shl(work, -shift, q);
             low = sticky;
         } else {
@@ -354,7 +357,9 @@ public final class BigFloat {
         }
         if (qb < p) {
             int grow = p - qb;
-            Limbs.shl(q, grow, q);
+            if (grow > 0) {
+                Limbs.shl(q, grow, q);
+            }
             e -= grow;
         }
         if (e > f.expMax()) {
@@ -369,6 +374,19 @@ public final class BigFloat {
         return new BigFloat(f, FINITE, sign, e, out);
     }
 
+    /** Rounds an exact {@code sign * mag * 2^(exp - (p-1))} given as a BigInteger. */
+    static BigFloat packBig(FpFormat f, int sign, int exp, BigInteger mag, boolean sticky,
+                            boolean down) {
+        int limbs = Math.max(f.limbs(), (mag.bitLength() + 63) / 64 + 2);
+        long[] frame = new long[limbs];
+        BigInteger work = mag;
+        BigInteger mask = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE);
+        for (int i = 0; i < limbs; i++) {
+            frame[i] = work.and(mask).longValue();
+            work = work.shiftRight(64);
+        }
+        return pack(f, sign, exp, frame, sticky, down);
+    }
     private static long bitAt(long[] m, int i) {
         if (i < 0 || i >= m.length * 64) {
             return 0L;
@@ -393,6 +411,137 @@ public final class BigFloat {
         return acc != 0L;
     }
 
+    // ---------------------------------------------------------------- sqrt / fma
+
+    /**
+     * Correctly rounded square root.
+     *
+     * <p>Computes {@code floor(sqrt(value)/2^lsb)} exactly through {@link BigInteger#sqrt()}, then
+     * lets the shared rounding path decide. Correctness first: a Newton iteration on limb arrays
+     * can replace the body later without touching the contract.
+     */
+    public BigFloat sqrt() {
+        if (isNaN() || sign != 0) {
+            return nan(fmt);
+        }
+        if (isZero() || isInfinite()) {
+            return this;
+        }
+        int p = fmt.precision();
+        int t = fmt.topBit();
+        BigInteger m = magnitude();
+        int e = lsbExponent();
+        int lead = e + m.bitLength() - 1;
+        int half = Math.floorDiv(lead, 2);
+        int lsb = half - (p - 1);
+        int sh = e - 2 * lsb;
+        BigInteger n = m.shiftLeft(sh);
+        BigInteger root = n.sqrt();
+        boolean exact = root.multiply(root).equals(n);
+        return packBig(fmt, 0, lsb + t, root, !exact, false);
+    }
+
+    /** Fused multiply-add: {@code this*b + c} with a single rounding. */
+    public BigFloat fma(BigFloat b, BigFloat c) {
+        if (isNaN() || b.isNaN() || c.isNaN()) {
+            return nan(fmt);
+        }
+        if ((isInfinite() && b.isZero()) || (isZero() && b.isInfinite())) {
+            return nan(fmt);
+        }
+        if (isInfinite() || b.isInfinite()) {
+            boolean negative = (sign ^ b.sign) != 0;
+            if (c.isInfinite() && c.sign != (negative ? 1 : 0)) {
+                return nan(fmt);
+            }
+            return infinity(fmt, negative);
+        }
+        if (c.isInfinite()) {
+            return c;
+        }
+        if (isZero() || b.isZero()) {
+            if (c.isZero()) {
+                boolean negative = (sign ^ b.sign) != 0;
+                return negative && c.sign != 0 ? negativeZero(fmt) : zero(fmt);
+            }
+            return c;
+        }
+        if (c.isZero()) {
+            return multiply(b);
+        }
+        // Exact product plus exact addend, one rounding.
+        BigInteger prod = magnitude().multiply(b.magnitude());
+        int e = lsbExponent() + b.lsbExponent();
+        boolean prodNegative = (sign ^ b.sign) != 0;
+        BigInteger add = c.magnitude();
+        if (prodNegative == c.signBit()) {
+            int frame = Math.min(e, c.lsbExponent());
+            BigInteger sum = (prodNegative ? prod.negate() : prod).shiftLeft(e - frame)
+                    .add((c.signBit() ? add.negate() : add).shiftLeft(c.lsbExponent() - frame));
+            return packBig(fmt, sum.signum() < 0 ? 1 : 0, frame + fmt.topBit(), sum.abs(), false, false);
+        }
+        // Opposite signs: subtract the smaller magnitude from the larger in a common frame.
+        int frame = Math.min(e, c.lsbExponent());
+        BigInteger a1 = prod.shiftLeft(e - frame);
+        BigInteger b1 = add.shiftLeft(c.lsbExponent() - frame);
+        int cmp = a1.compareTo(b1);
+        BigInteger diff = cmp >= 0 ? a1.subtract(b1) : b1.subtract(a1);
+        boolean negative = cmp >= 0 ? prodNegative : c.signBit();
+        if (diff.signum() == 0) {
+            return zero(fmt);
+        }
+        return packBig(fmt, negative ? 1 : 0, frame + fmt.topBit(), diff, false, false);
+    }
+
+    // ---------------------------------------------------------------- decimal
+
+    /** Correctly rounded decimal with the given number of significant digits. */
+    public String toString(int digits) {
+        if (digits < 1) {
+            throw new IllegalArgumentException("digits must be >= 1");
+        }
+        if (isNaN()) {
+            return "NaN";
+        }
+        if (isInfinite()) {
+            return sign == 0 ? "Infinity" : "-Infinity";
+        }
+        if (isZero()) {
+            return sign == 0 ? "0" : "-0";
+        }
+        return Decimal.toDecimal(magnitude(), lsbExponent(), digits, sign != 0);
+    }
+
+    @Override
+    public String toString() {
+        if (kind != FINITE || isZero()) {
+            return isNaN() ? "NaN" : isInfinite() ? (sign == 0 ? "Infinity" : "-Infinity")
+                    : (sign == 0 ? "0" : "-0");
+        }
+        int digits = (int) Math.ceil(fmt.precision() * 0.30102999566398120) + 2;
+        String s = toString(digits);
+        int e = s.indexOf('E');
+        if (e >= 0) {
+            return s;
+        }
+        int dot = s.indexOf('.');
+        if (dot < 0) {
+            return s;
+        }
+        int end = s.length();
+        while (end > dot + 1 && s.charAt(end - 1) == '0') {
+            end--;
+        }
+        if (end == dot + 1) {
+            end = dot;
+        }
+        return s.substring(0, end);
+    }
+
+    /** Correctly rounded parse of a decimal literal into this format. */
+    public static BigFloat parse(FpFormat f, String s) {
+        return Decimal.parseBig(f, s);
+    }
     // ---------------------------------------------------------------- comparison
 
     public int compareTo(BigFloat o) {
@@ -463,8 +612,8 @@ public final class BigFloat {
         return exp - fmt.topBit();
     }
 
-    @Override
-    public String toString() {
+    /** Diagnostic form: the exact significand and its binary exponent. */
+    public String toDebugString() {
         if (kind == NAN) {
             return "NaN";
         }
