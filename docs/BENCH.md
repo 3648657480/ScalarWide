@@ -1887,3 +1887,58 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
   `hi(<10¹⁰) / lo(<10⁹)` 后用有符号 `append`（省掉中间 String），未做。
 - 正确性：新增 `DecimalStringTest`（六宽度 × 十的幂边界 p−2/p−1/p/p+1 全扫 + 随机 + 全一/最高位），
   与 `BigInteger.toString()` 逐字符对拍；全量 69 个测试绿。
+
+---
+
+## 浮点层基线（2026-11-16，笔记本）
+
+**基准口径**：笔记本 `Intel Core Ultra 7 155H`（工作站离线），
+`cmd /c start /affinity 1` 绑定 core 0（P-core），JDK 25.0.3，
+`-prof gc`，5 预热 + 5 测量 × 1 s，3 fork，种子 12345。
+**绝对时间只在本机同口径内可比**；分配量是硬指标，跨机可比。
+
+命令：
+
+```
+./gradlew :fp:jmhJar
+java -jar fp/build/libs/fp-1.0.3-jmh.jar -prof gc -wi 5 -i 5 -w 1 -r 1 -f 3
+```
+
+每个基准方法内含 1024 次运算，下表已折算到**单次运算**。
+
+| benchmark | ns/op | B/op |
+|---|---:|---:|
+| `b256Add` | 165.68 | 1072 |
+| `b256Subtract` | 194.48 | 1137 |
+| `b256Multiply` | 145.69 | 776 |
+| `b256Divide` | 880.02 | 2173 |
+| **`b256Sqrt`** | **47534** | **239668** |
+| `b256Fma` | 246.64 | 1208 |
+| `b256CompareTo` | 5.76 | 0 |
+| `b256HashCode` | 6.21 | 0 |
+| `b256OfLong` | 17.89 | 104 |
+| `b256OfDouble` | 5.79 | 56 |
+| `b256ToDouble` | 5.07 | 0 |
+| **`b256ToString`** | **3026.04** | **7021** |
+| `b256Parse` | 2565.68 | 3376 |
+| `bf237Add` | 199.01 | 520 |
+| `bf237Multiply` | 193.02 | 424 |
+| `bf237Divide` | 688.42 | 910 |
+| `bf237Sqrt` | 2206.03 | 2672 |
+| `bf616Add` | 291.34 | 1048 |
+| `bf616Multiply` | 670.39 | 856 |
+| `bf616Divide` | 1313.40 | 1720 |
+| `bf616Sqrt` | 4039.09 | 5633 |
+| `bf616Fma` | 3632.24 | 8303 |
+
+读数要点：
+
+1. **`b256Sqrt` 是唯一的异常项**：47.5 µs、239 KB/op。逐位法跑约 260 轮，
+   每轮若干 `Wide1024` 临时对象；而数组版 `bf237Sqrt` 只 2.2 µs（21×），
+   因为后者直接调 `BigInteger.sqrt()`。**这条把 B1 的收益预期钉死了**。
+2. **`add` 比 `multiply` 还慢**（165.7 vs 145.7），且分配更多（1072 vs 776）：
+   加法的对齐路径造的对象比乘法还多。
+3. 整数版 `add` 是 48 B/op，浮点版 1072 B/op——**22× 的差距**都在中间对象上。
+4. `b256OfLong` 104 B/op 而 `b256OfDouble` 56 B/op：前者走 `place()` 的临时 `long[4]`。
+5. `ToString` 7021 B/op，与其 3 µs 的耗时相称；这条对应斗蛐蛐里对
+   `Refactor256` 的 1.6× 劣势。

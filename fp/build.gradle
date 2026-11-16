@@ -2,8 +2,8 @@ plugins {
     id 'java-library'
 }
 
-// ScalarWide-FP：高精度二进制浮点（正确舍入）。
-// 以源码依赖根项目（核心整数库），改核心立刻可在 FP 侧验证，无需 publish 往返。
+// ScalarWide-FP: high-precision binary floating point (correctly rounded).
+// Depends on the root project by source, so core changes are immediately visible here.
 group = 'com.scalarwide'
 version = rootProject.file('VERSION').text.trim()
 
@@ -12,10 +12,25 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    jmh {
+        java.srcDirs = ['src/jmh/java']
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    jmhImplementation.extendsFrom implementation
+    jmhRuntimeOnly.extendsFrom runtimeOnly
+}
+
 dependencies {
     implementation project(':')
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -25,4 +40,16 @@ tasks.withType(JavaCompile).configureEach {
 
 test {
     useJUnitPlatform()
+}
+
+tasks.register('jmhJar', Jar) {
+    archiveClassifier = 'jmh'
+    from sourceSets.jmh.output
+    from sourceSets.main.output
+    from { configurations.jmhRuntimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'org.openjdk.jmh.Main'
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
 }
