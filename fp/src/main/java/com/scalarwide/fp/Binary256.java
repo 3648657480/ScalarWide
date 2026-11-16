@@ -234,8 +234,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (isZero() || o.isZero()) {
             return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
         }
-        Exact e = Exact.mul(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
+        return Arithmetic.mulFramed(this, o);
     }
 
     /** Fused multiply-add: {@code this*b + c} with a single rounding. */

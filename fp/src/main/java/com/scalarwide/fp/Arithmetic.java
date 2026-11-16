@@ -199,6 +199,55 @@ final class Arithmetic {
             br = nbr;
         }
     }
+    /** Adds {@code v} at limb {@code i}, propagating the carry. */
+    private static void addAt(long[] acc, int i, long v) {
+        while (v != 0L && i < 8) {
+            long old = acc[i];
+            acc[i] = old + v;
+            v = Long.compareUnsigned(acc[i], old) < 0 ? 1L : 0L;
+            i++;
+        }
+    }
+
+    /** Accumulates the 128-bit product {@code x*y} at limb {@code i}. */
+    private static void mulAdd(long[] acc, int i, long x, long y) {
+        if (x == 0L || y == 0L) {
+            return;
+        }
+        addAt(acc, i, x * y);
+        addAt(acc, i + 1, Math.unsignedMultiplyHigh(x, y));
+    }
+
+    /** {@code a * b} through the 512-bit frame: a 4x4 limb product, then one rounding. */
+    static Binary256 mulFramed(Binary256 a, Binary256 b) {
+        long a0 = a.limb(0);
+        long a1 = a.limb(1);
+        long a2 = a.limb(2);
+        long a3 = a.limb(3);
+        long b0 = b.limb(0);
+        long b1 = b.limb(1);
+        long b2 = b.limb(2);
+        long b3 = b.limb(3);
+        long[] f = new long[FRAME512];
+        mulAdd(f, 0, a0, b0);
+        mulAdd(f, 1, a0, b1);
+        mulAdd(f, 1, a1, b0);
+        mulAdd(f, 2, a0, b2);
+        mulAdd(f, 2, a1, b1);
+        mulAdd(f, 2, a2, b0);
+        mulAdd(f, 3, a0, b3);
+        mulAdd(f, 3, a1, b2);
+        mulAdd(f, 3, a2, b1);
+        mulAdd(f, 3, a3, b0);
+        mulAdd(f, 4, a1, b3);
+        mulAdd(f, 4, a2, b2);
+        mulAdd(f, 4, a3, b1);
+        mulAdd(f, 5, a2, b3);
+        mulAdd(f, 5, a3, b2);
+        mulAdd(f, 6, a3, b3);
+        int exp = a.scaleExponent() + b.scaleExponent() - (P - 1);
+        return pack512((a.signBit() ^ b.signBit()) ? 1 : 0, exp, f, false, false);
+    }
     /** Rounds a 512-bit frame {@code sign * v * 2^(exp-(P-1))}, nearest-even. Mutates {@code m}. */
     static Binary256 pack512(int sign, int exp, long[] m, boolean sticky, boolean down) {
         if (down && sticky) {
