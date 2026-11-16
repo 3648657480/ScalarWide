@@ -1942,3 +1942,31 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar -prof gc -wi 5 -i 5 -w 1 -r 1 -f 3
 4. `b256OfLong` 104 B/op 而 `b256OfDouble` 56 B/op：前者走 `place()` 的临时 `long[4]`。
 5. `ToString` 7021 B/op，与其 3 µs 的耗时相称；这条对应斗蛐蛐里对
    `Refactor256` 的 1.6× 劣势。
+
+### A1：add 改走 8 肢 512 位帧
+
+同口径（笔记本、绑 core 0、3 fork、5+5 迭代、`-prof gc`）：
+
+| benchmark | 基线 ns | 现 ns | 基线 B/op | 现 B/op |
+|---|---:|---:|---:|---:|
+| `b256Add` | 165.68 | **50.54** | 1072 | **216** |
+| `b256Subtract` | 194.48 | **82.52** | 1137 | **272** |
+
+**3.3× / 2.4× 的时间，5.0× / 4.2× 的分配。**
+
+做法：`add` 不再构造 `Exact` / `Wide256` / `Wide512` / `Wide1024` 任何中间对象，
+对齐、加减、舍入全部在 `long[8]` 上完成，最后只 `new` 一个 `Binary256`。
+
+剩余 216 B/op 的构成：`long[8]` 帧 80 + `pack512` 内 `q` 80 + 结果 56。
+两者都不逃逸，但 `pack512` 很可能超过 `MaxFreqInlineSize`（325 B）而未被内联，
+逃逸分析因此失效——**这是 A1 的下一步**（拆小或强制内联）。
+
+调试中修掉两个错误，都值得记：
+
+1. `subFrom4` 的借位链写成 `compareUnsigned(d, br)`，语义含糊且错。
+   改成逐肢显式 carry/borrow 循环后正确。
+2. `anyBelow8` 实现为开区间 `[0, i-1]`，调用处却沿用旧 `anyBelow` 的闭区间语义，
+   sticky 少算一位 → 平局判错 → **差 1 ulp**。调用改为 `anyBelow8(m, shift - 1)`。
+
+> 这已经是本项目第三次被「差 1 ulp」打回。三次的根因都是 guard/sticky 的取位边界，
+> 且都只有在「精确平局」的输入上才暴露——随机 double 测试全过。
