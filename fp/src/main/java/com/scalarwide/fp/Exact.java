@@ -40,12 +40,12 @@ record Exact(int sign, int exp, Wide512 mag, boolean sticky, boolean down) {
 
     /**
      * Exact product: {@code 2p} bits, nothing truncated.
-     * {@code exp = ea + eb - 255} since {@code (ma*mb) * 2^(ea+eb-510) = M * 2^(exp-255)}.
+     * {@code exp = ea + eb - 255} since {@code (ma*mb) * 2^(ea+eb-510) = M * 2^(exp-(P-1))}.
      */
     static Exact mul(Binary256 a, Binary256 b) {
         int sign = (a.signBit() ^ b.signBit()) ? 1 : 0;
         Wide512 m = m256(a).mulFull(m256(b));
-        return new Exact(sign, a.scaleExponent() + b.scaleExponent() - 255, m, false, false);
+        return new Exact(sign, a.scaleExponent() + b.scaleExponent() - (PRECISION - 1), m, false, false);
     }
 
     /**

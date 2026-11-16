@@ -115,7 +115,7 @@ class Binary256P1Test {
         assertTrue(Double.isNaN(Binary256.NaN.toDouble()));
 
         assertEquals(Binary256.EXP_MIN, Binary256.MIN_NORMAL.scaleExponent());
-        assertEquals(Binary256.EXP_MIN - 255, Binary256.MIN_VALUE.scaleExponent());
+        assertEquals(Binary256.EXP_MIN - (Binary256.PRECISION - 1), Binary256.MIN_VALUE.scaleExponent());
         assertEquals(Binary256.EXP_MAX, Binary256.MAX_VALUE.scaleExponent());
     }
 

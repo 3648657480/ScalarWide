@@ -181,6 +181,6 @@ inc = guard && (round || sticky || (结果最低位 == 1))
 - [x] 精确中间宽度表（含 p 的五个实例化，并导出两条硬结论）
 - [x] 舍入规则表（含 `effectivePrecision` 预留）
 - [x] 验收矩阵（每个运算都有参考实现与门禁）
-- [ ] **待你确认 `p` 与 `(eMin, eMax)`** ← 唯一未决项
+- [x] **`p = 237`、`e = 19`、总位数 256**（2026-11-16 定案：与 Long2 `Binary256` 和 MinecraftTools `FloatRefactor256` 完全一致）
 
 `p` 一旦确定，本文件把该列实例化即冻结，P1 开始。

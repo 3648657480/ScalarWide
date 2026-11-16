@@ -99,7 +99,7 @@ class DecimalP6Test {
 
     private static BigDecimal toBigDecimal(Binary256 v) {
         BigInteger mag = v.signBit() ? magOf(v).negate() : magOf(v);
-        int s = v.scaleExponent() - 255;
+        int s = v.scaleExponent() - (Binary256.PRECISION - 1);
         BigDecimal base = new BigDecimal(mag);
         return s >= 0 ? base.multiply(new BigDecimal(BigInteger.ONE.shiftLeft(s)))
                 : base.divide(new BigDecimal(BigInteger.ONE.shiftLeft(-s)));
@@ -138,7 +138,7 @@ class DecimalP6Test {
     /** Exact decimal of the value; representable because the exponent is small here. */
     private static BigDecimal exact(Binary256 v) {
         BigInteger m = magOf(v);
-        int e = v.scaleExponent() - 255;
+        int e = v.scaleExponent() - (Binary256.PRECISION - 1);
         BigDecimal bd = new BigDecimal(v.signBit() ? m.negate() : m);
         return e >= 0 ? bd.multiply(new BigDecimal(BigInteger.ONE.shiftLeft(e)))
                 : bd.divide(new BigDecimal(BigInteger.ONE.shiftLeft(-e)));
@@ -201,7 +201,7 @@ class DecimalP6Test {
     }
 
     private static String strip(String s) {
-        if (s.indexOf('E') >= 0) {
+        if (s.indexOf('E') >= 0 || s.indexOf('e') >= 0) {
             s = new BigDecimal(s).toPlainString();
         }
         if (s.contains(".")) {
@@ -230,6 +230,12 @@ class DecimalP6Test {
     private static Binary256 random(Random rnd) {
         int exp = rnd.nextInt(120) - 60;
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, exp,
-                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | Long.MIN_VALUE);
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
+    }
+    /** Top limb of a normalised significand: leading bit set, nothing above it. */
+    private static long topLimb(Random r) {
+        int used = Binary256.PRECISION - 64 * 3;
+        long mask = (1L << used) - 1L;
+        return (r.nextLong() & mask) | (1L << (used - 1));
     }
 }

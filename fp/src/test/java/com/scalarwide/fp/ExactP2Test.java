@@ -38,7 +38,7 @@ class ExactP2Test {
             int exp2 = va[1].intValue() + vb[1].intValue();
             assertFalse(e.sticky(), "mul must be exact");
             assertFalse(e.down(), "mul has no truncation direction");
-            assertEquals(0, cmp(num.abs(), exp2, magOf(e), e.exp() - 255), "mul must be bit-exact");
+            assertEquals(0, cmp(num.abs(), exp2, magOf(e), e.exp() - (Binary256.PRECISION - 1)), "mul must be bit-exact");
             checkBracket(e, num, exp2, "mul");
         }
     }
@@ -95,7 +95,7 @@ class ExactP2Test {
             BigInteger numAbs = va[0].abs();
             BigInteger denAbs = vb[0].abs();
             int exp2 = va[1].intValue() - vb[1].intValue();
-            int e2 = e.exp() - 255;
+            int e2 = e.exp() - (Binary256.PRECISION - 1);
             int d = exp2 - e2;
             BigInteger left = d >= 0 ? numAbs.shiftLeft(d) : numAbs;
             BigInteger right = d >= 0 ? denAbs : denAbs.shiftLeft(-d);
@@ -114,7 +114,7 @@ class ExactP2Test {
 
     private static void checkBracket(Exact e, BigInteger num, int exp2, String label) {
         assertTrue(num.signum() != 0, label + ": exact value must be non-zero");
-        int e2 = e.exp() - 255;
+        int e2 = e.exp() - (Binary256.PRECISION - 1);
         assertEquals(num.signum() < 0 ? 1 : 0, e.sign(), label + ": sign");
 
         BigInteger abs = num.abs();
@@ -145,7 +145,7 @@ class ExactP2Test {
 
     private static BigInteger[] value(Binary256 v) {
         return new BigInteger[] {v.signBit() ? magOf(v).negate() : magOf(v),
-                BigInteger.valueOf(v.scaleExponent() - 255)};
+                BigInteger.valueOf(v.scaleExponent() - (Binary256.PRECISION - 1))};
     }
 
     private static BigInteger magOf(Binary256 v) {
@@ -173,6 +173,12 @@ class ExactP2Test {
     private static Binary256 random(Random rnd) {
         int exp = rnd.nextInt(200) - 100;
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, exp,
-                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | Long.MIN_VALUE);
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
+    }
+    /** Top limb of a normalised significand: leading bit set, nothing above it. */
+    private static long topLimb(Random r) {
+        int used = Binary256.PRECISION - 64 * 3;
+        long mask = (1L << used) - 1L;
+        return (r.nextLong() & mask) | (1L << (used - 1));
     }
 }

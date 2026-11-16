@@ -181,7 +181,7 @@ class ArithP4Test {
             m = m.shiftLeft(64).or(unsigned(v.limb(i)));
         }
         return new BigInteger[] {v.signBit() ? m.negate() : m,
-                BigInteger.valueOf(v.scaleExponent() - 255)};
+                BigInteger.valueOf(v.scaleExponent() - (Binary256.PRECISION - 1))};
     }
 
     private static BigInteger unsigned(long v) {
@@ -193,12 +193,18 @@ class ArithP4Test {
     private static Binary256 tiny(Random rnd) {
         // Half of EXP_MIN: the product lands on and around the subnormal boundary.
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, (Binary256.EXP_MIN / 2) - 50 + rnd.nextInt(150),
-                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | Long.MIN_VALUE);
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
     }
 
     /** Magnitude around 2^262000, i.e. products overflow. */
     private static Binary256 huge(Random rnd) {
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, Binary256.EXP_MAX - 100 - rnd.nextInt(100),
-                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | Long.MIN_VALUE);
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
+    }
+    /** Top limb of a normalised significand: leading bit set, nothing above it. */
+    private static long topLimb(Random r) {
+        int used = Binary256.PRECISION - 64 * 3;
+        long mask = (1L << used) - 1L;
+        return (r.nextLong() & mask) | (1L << (used - 1));
     }
 }

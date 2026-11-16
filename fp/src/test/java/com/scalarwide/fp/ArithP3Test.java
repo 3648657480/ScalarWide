@@ -85,7 +85,7 @@ class ArithP3Test {
     /** Exact value as {@code num * 2^exp2}. */
     private static BigInteger[] exact(Binary256 v) {
         return new BigInteger[] {v.signBit() ? magOf(v).negate() : magOf(v),
-                BigInteger.valueOf(v.scaleExponent() - 255)};
+                BigInteger.valueOf(v.scaleExponent() - (Binary256.PRECISION - 1))};
     }
 
     private static BigInteger magOf(Binary256 v) {
@@ -172,6 +172,12 @@ class ArithP3Test {
     private static Binary256 random(Random rnd) {
         int exp = rnd.nextInt(200) - 100;
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, exp,
-                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), rnd.nextLong() | Long.MIN_VALUE);
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
+    }
+    /** Top limb of a normalised significand: leading bit set, nothing above it. */
+    private static long topLimb(Random r) {
+        int used = Binary256.PRECISION - 64 * 3;
+        long mask = (1L << used) - 1L;
+        return (r.nextLong() & mask) | (1L << (used - 1));
     }
 }

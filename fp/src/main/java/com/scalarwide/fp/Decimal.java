@@ -84,11 +84,21 @@ final class Decimal {
 
     private static String format(String digits, int p, boolean negative) {
         int n = digits.length();
+        int pointPos = n + p;
         StringBuilder sb = new StringBuilder();
         if (negative) {
             sb.append('-');
         }
-        int pointPos = n + p;
+        // Use scientific notation outside a readable plain range, otherwise a value like
+        // MAX_VALUE would expand to tens of thousands of characters.
+        if (pointPos > 21 || pointPos < -6) {
+            sb.append(digits.charAt(0));
+            if (n > 1) {
+                sb.append('.').append(digits, 1, n);
+            }
+            sb.append('E').append(pointPos - 1);
+            return sb.toString();
+        }
         if (p >= 0) {
             sb.append(digits).append("0".repeat(p));
         } else if (pointPos > 0) {
@@ -98,7 +108,6 @@ final class Decimal {
         }
         return sb.toString();
     }
-
     // ---------------------------------------------------------------- input
 
     /** Parses a decimal literal and rounds it to the binary format (nearest-even). */

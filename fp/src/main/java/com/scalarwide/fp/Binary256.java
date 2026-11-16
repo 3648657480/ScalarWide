@@ -21,13 +21,18 @@ import com.scalarwide.Wide512;
 public final class Binary256 implements Comparable<Binary256> {
 
     /** Significant bits (including the implicit leading one). */
-    public static final int PRECISION = 256;
+    public static final int PRECISION = 237;
     /** Smallest exponent of a normal value. */
     public static final int EXP_MIN = -262142;
     /** Largest exponent of a normal value. */
     public static final int EXP_MAX = 262143;
 
     private static final int LIMBS = 4;
+    /** Bit position of the implicit leading one: {@code PRECISION - 1}. */
+    private static final int TOP_BIT = PRECISION - 1;
+    private static final long TOP_BIT_MASK = 1L << TOP_BIT;
+    /** All {@code PRECISION} significand bits set, as the top limb. */
+    private static final long TOP_LIMB_MAX = (1L << (PRECISION - 64 * (LIMBS - 1))) - 1L;
     private static final int BIAS = PRECISION - 1;
     /** Exponent of the smallest representable magnitude: {@code 1 * 2^(EXP_MIN - BIAS - 255 + 255)}. */
     private static final int MIN_MAG_EXP = EXP_MIN - BIAS;
@@ -72,19 +77,19 @@ public final class Binary256 implements Comparable<Binary256> {
 
     public static final Binary256 ZERO = finite(0, MIN_MAG_EXP, 0L, 0L, 0L, 0L);
     public static final Binary256 NEGATIVE_ZERO = finite(1, MIN_MAG_EXP, 0L, 0L, 0L, 0L);
-    public static final Binary256 ONE = finite(0, 0, 0L, 0L, 0L, Long.MIN_VALUE);
-    public static final Binary256 NEGATIVE_ONE = finite(1, 0, 0L, 0L, 0L, Long.MIN_VALUE);
+    public static final Binary256 ONE = finite(0, 0, 0L, 0L, 0L, TOP_BIT_MASK);
+    public static final Binary256 NEGATIVE_ONE = finite(1, 0, 0L, 0L, 0L, TOP_BIT_MASK);
     public static final Binary256 POSITIVE_INFINITY = new Binary256(INFINITE, 0, 0, 0L, 0L, 0L, 0L);
     public static final Binary256 NEGATIVE_INFINITY = new Binary256(INFINITE, 1, 0, 0L, 0L, 0L, 0L);
     public static final Binary256 NaN = new Binary256(NAN, 0, 0, 0L, 0L, 0L, 0L);
 
     /** {@code (2^256 - 1) * 2^(EXP_MAX - 255)}. */
     public static final Binary256 MAX_VALUE =
-            finite(0, EXP_MAX, -1L, -1L, -1L, -1L);
+            finite(0, EXP_MAX, -1L, -1L, -1L, TOP_LIMB_MAX);
     /** {@code 1 * 2^EXP_MIN}. */
-    public static final Binary256 MIN_NORMAL = finite(0, EXP_MIN, 0L, 0L, 0L, Long.MIN_VALUE);
+    public static final Binary256 MIN_NORMAL = finite(0, EXP_MIN, 0L, 0L, 0L, TOP_BIT_MASK);
     /** Smallest positive value, the least subnormal: {@code 1 * 2^(EXP_MIN - 255)}. */
-    public static final Binary256 MIN_VALUE = finite(0, MIN_MAG_EXP, 0L, 0L, 0L, Long.MIN_VALUE);
+    public static final Binary256 MIN_VALUE = finite(0, MIN_MAG_EXP, 0L, 0L, 0L, TOP_BIT_MASK);
 
     // ------------------------------------------------------------------ construction
 
@@ -516,7 +521,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (k < 0) {
             return limb(0);
         }
-        if (k >= 256) {
+        if (k >= PRECISION) {
             return 0L;
         }
         int li = k >> 6;
@@ -528,9 +533,9 @@ public final class Binary256 implements Comparable<Binary256> {
         return lo;
     }
 
-    /** Bit {@code i} of the 256-bit significand; 0 outside {@code [0, 255]}. */
+    /** Bit {@code i} of the significand; 0 outside {@code [0, PRECISION-1]}. */
     private long bitAt(int i) {
-        if (i < 0 || i > 255) {
+        if (i < 0 || i > TOP_BIT) {
             return 0L;
         }
         return (limb(i >> 6) >>> (i & 63)) & 1L;
@@ -541,7 +546,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (i < 0) {
             return false;
         }
-        if (i >= 255) {
+        if (i >= TOP_BIT) {
             return (l0 | l1 | l2 | l3) != 0L;
         }
         int li = i >> 6;
