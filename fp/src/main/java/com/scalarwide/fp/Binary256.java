@@ -99,13 +99,17 @@ public final class Binary256 implements Comparable<Binary256> {
             return ZERO;
         }
         int s = v < 0 ? 1 : 0;
-        long mag = v < 0 ? -v : v; // Long.MIN_VALUE maps to itself, correct as an unsigned magnitude
+        long mag = v < 0 ? -v : v;
         int lead = 63 - Long.numberOfLeadingZeros(mag);
-        long[] m = place(mag, BIAS - lead);
-        return finite(s, lead, m[0], m[1], m[2], m[3]);
-    }
-
-    /** Exact conversion; every finite {@code double} is representable. */
+        int shift = BIAS - lead;
+        int li = shift >> 6;
+        int bs = shift & 63;
+        if (li == 2) {
+            long hi = bs == 0 ? 0L : mag >>> (64 - bs);
+            return finite(s, lead, 0L, 0L, mag << bs, hi);
+        }
+        return finite(s, lead, 0L, 0L, 0L, mag << bs);
+    }    /** Exact conversion; every finite {@code double} is representable. */
     public static Binary256 of(double v) {
         long bits = Double.doubleToRawLongBits(v);
         int s = bits < 0 ? 1 : 0;
@@ -286,8 +290,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (isZero()) {
             return (sign ^ o.sign) == 0 ? ZERO : NEGATIVE_ZERO;
         }
-        Exact e = Exact.div(this, o);
-        return Arithmetic.pack(e.sign(), e.exp(), Arithmetic.widen(e.mag()), e.sticky(), e.down());
+        return Arithmetic.divFramed(this, o);
     }
     /**
      * Correctly rounded square root.

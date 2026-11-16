@@ -1,5 +1,6 @@
 package com.scalarwide.fp;
 
+import com.scalarwide.Limbs;
 import com.scalarwide.Wide1024;
 import com.scalarwide.Wide512;
 
@@ -311,6 +312,33 @@ final class Arithmetic {
         return Binary256.raw(sign, e, m[0], m[1], m[2], m[3]);
     }
 
+    /** {@code a / b} through the 512-bit frame: one scaled division, then one rounding. */
+    static Binary256 divFramed(Binary256 a, Binary256 b) {
+        int k = P + 32;
+        long[] num = new long[FRAME512];
+        num[0] = a.limb(0);
+        num[1] = a.limb(1);
+        num[2] = a.limb(2);
+        num[3] = a.limb(3);
+        shl8(num, k);
+        long[] den = new long[FRAME512];
+        den[0] = b.limb(0);
+        den[1] = b.limb(1);
+        den[2] = b.limb(2);
+        den[3] = b.limb(3);
+        long[] q = new long[FRAME512];
+        long[] r = new long[FRAME512];
+        Limbs.divmod(num, den, q, r);
+        boolean sticky = false;
+        for (int i = 0; i < FRAME512; i++) {
+            if (r[i] != 0L) {
+                sticky = true;
+                break;
+            }
+        }
+        int exp = a.scaleExponent() - b.scaleExponent() - k + (P - 1);
+        return pack512((a.signBit() ^ b.signBit()) ? 1 : 0, exp, q, sticky, false);
+    }
     private static void subOne8(long[] m) {
         for (int i = 0; i < 8; i++) {
             long old = m[i];
