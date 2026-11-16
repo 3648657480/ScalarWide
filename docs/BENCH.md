@@ -1987,3 +1987,36 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar -prof gc -wi 5 -i 5 -w 1 -r 1 -f 3
 
 剩余 216 B/op 仍是同样的三块：帧 80 + `pack512` 内 `q` 80 + 结果 56。
 **下一步 A1b 依然是让 `pack512` 被内联**，使两个数组被标量替换掉。
+
+### A1b：`pack512` 原地化 + 热冷拆分
+
+先用 `-XX:+PrintInlining` 拿到证据：
+
+```
+addFramed (369 bytes)  failed to inline: callee is too large
+pack512   (393 bytes)  failed to inline: callee is too large
+```
+
+两个都超过 `MaxFreqInlineSize`（325 B），所以 `long[8]` 帧逃逸、无法被标量替换。
+
+两步改动：
+
+1. **`pack512` 改原地**：不再分配 `q`（原来是右移的输出去处），
+   改为先取 guard/sticky 再原地右移。字节码 393 → 286，分配 216 → **136 B**。
+2. **`addFramed` 拆热冷**：只保留「同号 + 指数差 ≤ p」的热路径，
+   异号与超大指数差的冷路径移到 `addFramedSlow`。
+
+结果（同口径）：
+
+| benchmark | 基线 ns | A2 后 ns | **A1b 后 ns** | 基线 B/op | **现 B/op** |
+|---|---:|---:|---:|---:|---:|
+| `b256Add` | 165.68 | 51.49 | **39.11** | 1072 | **136** |
+| `b256Subtract` | 194.48 | 82.52 | **74.92** | 1137 | **192** |
+| `b256Multiply` | 145.69 | 79.89 | **56.02** | 776 | **136** |
+
+**累计：add 4.2×、mul 2.6×、sub 2.6× 的时间；分配 7.9× / 5.7× / 5.9×。**
+
+还剩 136 B = 帧 80 + 结果 56。帧依然逃逸，因为 `pack512`（286 B）在
+冷启动阶段受 `MaxInlineSize`（35 B）限制、热身后也未稳定内联。
+**要把最后 80 B 拿掉，需要让 `addFramed → addInto → pack512` 整条链都内联**，
+这是在和 JIT 的启发式较劲，收益/风险比明显下降，暂止步于此。

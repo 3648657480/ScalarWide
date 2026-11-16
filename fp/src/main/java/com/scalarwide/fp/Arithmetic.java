@@ -81,43 +81,59 @@ final class Arithmetic {
 
     /** {@code a + b} through the 512-bit frame, without the Exact/Wide object pipeline. */
     static Binary256 addFramed(Binary256 a, Binary256 b) {
-        boolean aNeg = a.signBit();
-        boolean bNeg = b.signBit();
-        int ea = a.scaleExponent();
-        int eb = b.scaleExponent();
-        Binary256 big = ea >= eb ? a : b;
+        Binary256 big = a.scaleExponent() >= b.scaleExponent() ? a : b;
         Binary256 small = big == a ? b : a;
         int diff = big.scaleExponent() - small.scaleExponent();
+        if (diff > P || big.signBit() != small.signBit()) {
+            return addFramedSlow(a, b, big, small, diff);
+        }
         long[] f = new long[FRAME512];
         f[0] = big.limb(0);
         f[1] = big.limb(1);
         f[2] = big.limb(2);
         f[3] = big.limb(3);
-        if (diff <= P) {
+        if (diff != 0) {
             shl8(f, diff);
-            long b0 = small.limb(0);
-            long b1 = small.limb(1);
-            long b2 = small.limb(2);
-            long b3 = small.limb(3);
-            boolean same = (big.signBit() == small.signBit());
-            if (same) {
-                addInto(f, b0, b1, b2, b3);
-                return pack512(big.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
-            }
-            int cmp = cmpShifted(f, b0, b1, b2, b3);
-            if (cmp == 0) {
-                return Binary256.ZERO;
-            }
-            if (cmp > 0) {
-                subFrom(f, b0, b1, b2, b3);
-                return pack512(big.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
-            }
-            subFromFrame(f, b0, b1, b2, b3);
-            return pack512(small.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
         }
-        return pack512(big.signBit() ? 1 : 0, big.scaleExponent(), f, true, big.signBit() != small.signBit());
+        addInto(f, small.limb(0), small.limb(1), small.limb(2), small.limb(3));
+        return pack512(big.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
     }
 
+    /** Cold half of {@link #addFramed}: opposite signs or an exponent gap wider than the format. */
+    private static Binary256 addFramedSlow(Binary256 a, Binary256 b, Binary256 big, Binary256 small,
+                                           int diff) {
+        if (diff > P) {
+            long[] f = new long[FRAME512];
+            f[0] = big.limb(0);
+            f[1] = big.limb(1);
+            f[2] = big.limb(2);
+            f[3] = big.limb(3);
+            return pack512(big.signBit() ? 1 : 0, big.scaleExponent(), f, true,
+                    big.signBit() != small.signBit());
+        }
+        long[] f = new long[FRAME512];
+        f[0] = big.limb(0);
+        f[1] = big.limb(1);
+        f[2] = big.limb(2);
+        f[3] = big.limb(3);
+        if (diff != 0) {
+            shl8(f, diff);
+        }
+        long b0 = small.limb(0);
+        long b1 = small.limb(1);
+        long b2 = small.limb(2);
+        long b3 = small.limb(3);
+        int cmp = cmpShifted(f, b0, b1, b2, b3);
+        if (cmp == 0) {
+            return Binary256.ZERO;
+        }
+        if (cmp > 0) {
+            subFrom4(f, b0, b1, b2, b3);
+            return pack512(big.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
+        }
+        subFromFrame(f, b0, b1, b2, b3);
+        return pack512(small.signBit() ? 1 : 0, small.scaleExponent(), f, false, false);
+    }
     private static void addInto(long[] f, long b0, long b1, long b2, long b3) {
         long c = 0L;
         long s = f[0] + b0;
@@ -251,13 +267,7 @@ final class Arithmetic {
     /** Rounds a 512-bit frame {@code sign * v * 2^(exp-(P-1))}, nearest-even. Mutates {@code m}. */
     static Binary256 pack512(int sign, int exp, long[] m, boolean sticky, boolean down) {
         if (down && sticky) {
-            for (int i = 0; i < 8; i++) {
-                long old = m[i];
-                m[i] = old - 1L;
-                if (old != 0L) {
-                    break;
-                }
-            }
+            subOne8(m);
         }
         int bits = bitLength8(m);
         if (bits == 0) {
@@ -268,39 +278,28 @@ final class Arithmetic {
         if (target < Binary256.EXP_MIN) {
             shift += Binary256.EXP_MIN - target;
         }
-        long[] q = new long[8];
         int guard = 0;
-        boolean low;
+        boolean low = sticky;
         if (shift <= 0) {
-            System.arraycopy(m, 0, q, 0, 8);
             if (shift < 0) {
-                shl8(q, -shift);
+                shl8(m, -shift);
             }
-            low = sticky;
         } else {
-            shr8(m, shift, q);
             guard = (int) bitAt8(m, shift - 1);
             low = sticky || anyBelow8(m, shift - 1);
+            shr8InPlace(m, shift);
         }
-        if (guard != 0 && (low || (q[0] & 1L) != 0L)) {
-            for (int i = 0; i < 8; i++) {
-                long old = q[i];
-                q[i] = old + 1L;
-                if (old != -1L) {
-                    break;
-                }
-            }
+        if (guard != 0 && (low || (m[0] & 1L) != 0L)) {
+            inc8(m);
         }
         int e = exp + shift;
-        int qb = bitLength8(q);
+        int qb = bitLength8(m);
         if (qb > P) {
-            shr8(q, 1, q);
+            shr8InPlace(m, 1);
             e++;
-            qb = P;
-        }
-        if (qb < P && qb > 0) {
+        } else if (qb < P && qb > 0) {
             int grow = P - qb;
-            shl8(q, grow);
+            shl8(m, grow);
             e -= grow;
         }
         if (e > Binary256.EXP_MAX) {
@@ -309,7 +308,43 @@ final class Arithmetic {
         if (e < Binary256.EXP_MIN - (P - 1)) {
             return sign == 0 ? Binary256.ZERO : Binary256.NEGATIVE_ZERO;
         }
-        return Binary256.raw(sign, e, q[0], q[1], q[2], q[3]);
+        return Binary256.raw(sign, e, m[0], m[1], m[2], m[3]);
+    }
+
+    private static void subOne8(long[] m) {
+        for (int i = 0; i < 8; i++) {
+            long old = m[i];
+            m[i] = old - 1L;
+            if (old != 0L) {
+                break;
+            }
+        }
+    }
+
+    private static void inc8(long[] m) {
+        for (int i = 0; i < 8; i++) {
+            long old = m[i];
+            m[i] = old + 1L;
+            if (old != -1L) {
+                break;
+            }
+        }
+    }
+
+    private static void shr8InPlace(long[] a, int k) {
+        int ls = k >>> 6;
+        int bs = k & 63;
+        for (int i = 0; i < 8; i++) {
+            int src = i + ls;
+            long v = 0L;
+            if (src < 8) {
+                v = a[src] >>> bs;
+                if (bs != 0 && src + 1 < 8) {
+                    v |= a[src + 1] << (64 - bs);
+                }
+            }
+            a[i] = v;
+        }
     }
     private static final int P = Binary256.PRECISION;
 
