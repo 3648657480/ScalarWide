@@ -4,6 +4,19 @@
 > **等长契约**（与 `Limbs` 相同）：所有操作数、输出、模数必须同长度；越界长度会算错或越界。
 > 本轮目标：**把指令铺全、把语义钉死**；性能优化（Montgomery、无分配、常数时间）在下一轮。
 
+## 0. 三个用途，三套要求（别只按 RSA 设计）
+
+| 用途 | 位宽 | 需要的指令 | 现状 |
+|---|---|---|---|
+| RSA | 1024–4096 | 模幂、Montgomery、严格 CT 模幂 | mulMod 走除法（慢）、无 Montgomery、无严格 CT |
+| ECC | 256/384/521 素数域 | ddMod/subMod/mulMod/modInverse、**CT 标量乘**（ctSelect/ctSwap/ctAddMod） | 有基础模运算；CT 域运算与 Montgomery 缺 |
+| SHA | 512 位状态 = 8×64（或 8×32） | **逐 lane 旋转/右移**、按 word 的大端存取、模 2^N 加 | otlEach/rotrEach/rotrEach32/shrEach32 已补；BE 存取用核心 romByteArray |
+
+**ECC 的 521 位是 9 肢**（不是 2 的幂），这也说明引擎必须宽度无关——ModArith 正是按
+「数组长度 = 宽度」写的，521 位直接可用。
+
+SHA 的旋转和整宽度旋转是**两个操作**：SHA 的状态是独立字向量，旋转不能跨肢进位。
+otl/rotr 是整宽度；otlEach/rotrEach/rotrEach32 是逐 lane。
 ## 1. 已有的（核心 `Wide*` 类型，不必再用 ModArith）
 
 `and or xor not andNot`、`shl ushr shr`、`toByteArray(LE/fixed)`、`fromByteArray(LE)`、
