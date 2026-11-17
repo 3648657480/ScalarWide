@@ -27,25 +27,34 @@ final class Decimal {
         }
         long approx = (long) Math.floor((m.bitLength() + (long) e) * 0.30102999566398120);
         int p = (int) approx + 1 - digits;
-        BigInteger low = TEN.pow(digits - 1);
-        BigInteger high = TEN.pow(digits);
-        // Decide the scale from the *truncated* quotient: rounding can carry (0.83 -> 1) and would
-        // then look like a correctly-sized result at the wrong scale.
-        BigInteger t = scaleTrunc(m, e, p);
-        while (t.compareTo(high) >= 0) {
-            p++;
-            t = scaleTrunc(m, e, p);
+        // The scale is set from the *truncated* quotient: rounding can carry (0.919 -> 1) and
+        // would then look like a correctly sized result at the wrong scale.
+        while (true) {
+            BigInteger[] parts = scaledParts(m, e, p);
+            BigInteger[] qr = parts[0].divideAndRemainder(parts[1]);
+            BigInteger q = qr[0];
+            String ds = q.toString();
+            int size = q.signum() == 0 ? 0 : ds.length();
+            if (size > digits) {
+                p++;
+                continue;
+            }
+            if (size < digits) {
+                p--;
+                continue;
+            }
+            int cmp = qr[1].shiftLeft(1).compareTo(parts[1]);
+            if (cmp > 0 || (cmp == 0 && q.testBit(0))) {
+                q = q.add(BigInteger.ONE);
+                ds = q.toString();
+                if (ds.length() > digits) {
+                    // Rounding carried out of the window, so the value sits just below 10^digits
+                    // at this scale: at the next scale it is exactly 10^(digits-1).
+                    return format(oneFollowedByZeros(digits - 1), p + 1, negative);
+                }
+            }
+            return format(ds, p, negative);
         }
-        while (t.compareTo(low) < 0) {
-            p--;
-            t = scaleTrunc(m, e, p);
-        }
-        BigInteger scaled = scaleRound(m, e, p);
-        if (scaled.compareTo(high) >= 0) {
-            p++;
-            scaled = scaleRound(m, e, p);
-        }
-        return format(scaled.toString(), p, negative);
     }
 
     /** Numerator and denominator of {@code m * 2^e / 10^p}. */
@@ -66,32 +75,27 @@ final class Decimal {
         return new BigInteger[] {num, den};
     }
 
-    private static BigInteger scaleTrunc(BigInteger m, int e, int p) {
-        BigInteger[] parts = scaledParts(m, e, p);
-        return parts[0].divide(parts[1]);
-    }
-
-    private static BigInteger scaleRound(BigInteger m, int e, int p) {
-        BigInteger[] parts = scaledParts(m, e, p);
-        BigInteger[] qr = parts[0].divideAndRemainder(parts[1]);
-        BigInteger q = qr[0];
-        int cmp = qr[1].shiftLeft(1).compareTo(parts[1]);
-        if (cmp > 0 || (cmp == 0 && q.testBit(0))) {
-            q = q.add(BigInteger.ONE);
-        }
-        return q;
-    }
-
     private static String format(String digits, int p, boolean negative) {
         int n = digits.length();
         int pointPos = n + p;
-        StringBuilder sb = new StringBuilder();
+        // Use scientific notation outside a readable plain range, otherwise a value like
+        // MAX_VALUE would expand to tens of thousands of characters.
+        boolean scientific = pointPos > 21 || pointPos < -6;
+        int capacity;
+        if (scientific) {
+            capacity = n + 16;
+        } else if (p >= 0) {
+            capacity = n + p + 2;
+        } else if (pointPos > 0) {
+            capacity = n + 2;
+        } else {
+            capacity = n - pointPos + 3;
+        }
+        StringBuilder sb = new StringBuilder(capacity);
         if (negative) {
             sb.append('-');
         }
-        // Use scientific notation outside a readable plain range, otherwise a value like
-        // MAX_VALUE would expand to tens of thousands of characters.
-        if (pointPos > 21 || pointPos < -6) {
+        if (scientific) {
             sb.append(digits.charAt(0));
             if (n > 1) {
                 sb.append('.').append(digits, 1, n);
@@ -100,12 +104,28 @@ final class Decimal {
             return sb.toString();
         }
         if (p >= 0) {
-            sb.append(digits).append("0".repeat(p));
+            sb.append(digits);
+            zeros(sb, p);
         } else if (pointPos > 0) {
             sb.append(digits, 0, pointPos).append('.').append(digits, pointPos, n);
         } else {
-            sb.append("0.").append("0".repeat(-pointPos)).append(digits);
+            sb.append("0.");
+            zeros(sb, -pointPos);
+            sb.append(digits);
         }
+        return sb.toString();
+    }
+
+    private static void zeros(StringBuilder sb, int count) {
+        for (int i = 0; i < count; i++) {
+            sb.append('0');
+        }
+    }
+
+    /** The digit string {@code 1} followed by {@code zeros} zeros, i.e. {@code 10^zeros}. */
+    private static String oneFollowedByZeros(int zeros) {
+        StringBuilder sb = new StringBuilder(zeros + 1).append('1');
+        zeros(sb, zeros);
         return sb.toString();
     }
     // ---------------------------------------------------------------- input

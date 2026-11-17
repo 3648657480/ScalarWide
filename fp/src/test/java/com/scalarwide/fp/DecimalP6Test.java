@@ -45,6 +45,18 @@ class DecimalP6Test {
     }
 
     @Test
+    void roundingCarryMovesTheScale() {
+        // 999.6 at three digits carries into a new decade: the scale must move with it instead of
+        // bouncing between the two scales.
+        assertEquals("1000", Binary256.of(999.6).toString(3));
+        assertEquals("10", Binary256.of(9.6).toString(1));
+        assertEquals("0.0000001", Binary256.of(9.99e-8).toString(1));
+        // The other direction: a value that truncates one digit short must not stay there
+        // (-7 is outside the plain range, so this one prints in scientific notation).
+        assertEquals("9E-8", Binary256.of(9.19e-8).toString(1));
+    }
+
+    @Test
     void roundTripThroughDecimal() {
         Random rnd = new Random(SEED + 1);
         for (int i = 0; i < N; i++) {

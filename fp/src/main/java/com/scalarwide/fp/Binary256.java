@@ -309,14 +309,7 @@ public final class Binary256 implements Comparable<Binary256> {
         }
         int t = PRECISION - 1;
         int e = exp - t;
-        BigInteger m = BigInteger.ZERO;
-        for (int i = 3; i >= 0; i--) {
-            BigInteger w = BigInteger.valueOf(limb(i) & Long.MAX_VALUE);
-            if (limb(i) < 0) {
-                w = w.setBit(63);
-            }
-            m = m.shiftLeft(64).or(w);
-        }
+        BigInteger m = magnitude(l0, l1, l2, l3);
         int lead = e + m.bitLength() - 1;
         int lsb = Math.floorDiv(lead, 2) - t;
         BigInteger n = m.shiftLeft(e - 2 * lsb);
@@ -345,15 +338,7 @@ public final class Binary256 implements Comparable<Binary256> {
         if (isZero()) {
             return sign == 0 ? "0" : "-0";
         }
-        BigInteger m = BigInteger.ZERO;
-        for (int i = 3; i >= 0; i--) {
-            BigInteger w = BigInteger.valueOf(limb(i) & Long.MAX_VALUE);
-            if (limb(i) < 0) {
-                w = w.setBit(63);
-            }
-            m = m.shiftLeft(64).or(w);
-        }
-        return Decimal.toDecimal(m, exp - (PRECISION - 1), digits, sign != 0);
+        return Decimal.toDecimal(magnitude(l0, l1, l2, l3), exp - (PRECISION - 1), digits, sign != 0);
     }
 
     @Override
@@ -576,6 +561,27 @@ public final class Binary256 implements Comparable<Binary256> {
             case 3 -> l3;
             default -> 0L;
         };
+    }
+
+    /** The significand as a non-negative {@link BigInteger}, in one pass over the limbs. */
+    private static BigInteger magnitude(long l0, long l1, long l2, long l3) {
+        byte[] be = new byte[LIMBS * 8];
+        put(be, 0, l3);
+        put(be, 8, l2);
+        put(be, 16, l1);
+        put(be, 24, l0);
+        return new BigInteger(1, be);
+    }
+
+    private static void put(byte[] be, int pos, long v) {
+        be[pos] = (byte) (v >>> 56);
+        be[pos + 1] = (byte) (v >>> 48);
+        be[pos + 2] = (byte) (v >>> 40);
+        be[pos + 3] = (byte) (v >>> 32);
+        be[pos + 4] = (byte) (v >>> 24);
+        be[pos + 5] = (byte) (v >>> 16);
+        be[pos + 6] = (byte) (v >>> 8);
+        be[pos + 7] = (byte) v;
     }
 
 }
