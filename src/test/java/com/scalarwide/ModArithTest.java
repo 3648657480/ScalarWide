@@ -226,6 +226,27 @@ class ModArithTest {
     }
 
     @Test
+    void bytesRoundTripBigEndianWords() {
+        Random rnd = new Random(SEED + 9);
+        for (int len : WIDTHS) {
+            long[] v = new long[len];
+            for (int i = 0; i < len; i++) {
+                v[i] = rnd.nextLong();
+            }
+            byte[] bytes = new byte[len * 8];
+            ModArith.toBytesBE(v, bytes, 0);
+            long first = 0L;
+            for (int b = 0; b < 8; b++) {
+                first = (first << 8) | (bytes[b] & 0xFFL);
+            }
+            assertEquals(v[0], first, "first word byte order");
+            long[] back = new long[len];
+            ModArith.fromBytesBE(bytes, 0, back);
+            assertArrayEquals(v, back, "round trip");
+        }
+    }
+
+    @Test
     void modulusZeroIsRejected() {
         long[] m = new long[2];
         assertThrows(ArithmeticException.class,

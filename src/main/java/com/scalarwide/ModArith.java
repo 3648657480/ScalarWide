@@ -112,6 +112,41 @@ public final class ModArith {
         }
     }
 
+    // ---------------------------------------------------------------- bytes <-> words
+
+    /**
+     * Loads {@code out.length * 8} bytes as <b>big-endian 64-bit words</b>; the SHA message
+     * schedule shape ({@code out[0]} is the first word of the stream).
+     */
+    public static void fromBytesBE(byte[] src, int off, long[] out) {
+        for (int i = 0; i < out.length; i++) {
+            int p = off + i * 8;
+            out[i] = ((long) (src[p] & 0xFF) << 56)
+                    | ((long) (src[p + 1] & 0xFF) << 48)
+                    | ((long) (src[p + 2] & 0xFF) << 40)
+                    | ((long) (src[p + 3] & 0xFF) << 32)
+                    | ((long) (src[p + 4] & 0xFF) << 24)
+                    | ((long) (src[p + 5] & 0xFF) << 16)
+                    | ((long) (src[p + 6] & 0xFF) << 8)
+                    | (src[p + 7] & 0xFFL);
+        }
+    }
+
+    /** Stores the limbs as big-endian 64-bit words, {@code out.length * 8} bytes. */
+    public static void toBytesBE(long[] a, byte[] dst, int off) {
+        for (int i = 0; i < a.length; i++) {
+            long v = a[i];
+            int p = off + i * 8;
+            dst[p] = (byte) (v >>> 56);
+            dst[p + 1] = (byte) (v >>> 48);
+            dst[p + 2] = (byte) (v >>> 40);
+            dst[p + 3] = (byte) (v >>> 32);
+            dst[p + 4] = (byte) (v >>> 24);
+            dst[p + 5] = (byte) (v >>> 16);
+            dst[p + 6] = (byte) (v >>> 8);
+            dst[p + 7] = (byte) v;
+        }
+    }
     // ---------------------------------------------------------------- lane-wise (SHA)
 
     /**
