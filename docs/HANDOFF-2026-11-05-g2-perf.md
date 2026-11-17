@@ -11,7 +11,7 @@
 | 层 | 仓库 | 版本 | 内容 |
 |---|---|---|---|
 | 核心库 | `C:\Project-ScalarWide`（本仓库） | 1.0.0 | `Wide128/256/384/512/768/1024`、`Mutable*`、`Limbs` 等 limb 原语，无 `mc` 包 |
-| mc 线 | `C:\Project-ScalarWide-2560` | 1.0.4 | 在核心之上提供 `com.scalarwide.mc.fp.*`：`WideChunkCoord1024`、`WideSectionKey2560`、`WideSectionCoord512`、各种宽 map |
+| mc 线 | `C:\Project-ScalarWide-2560` | 1.0.4 | 在核心之上提供 `com.scalarwide.mc.integer.*`：`WideChunkCoord1024`、`WideSectionKey2560`、`WideSectionCoord512`、各种宽 map |
 | 使用方 | `C:\Project-G2` | 0.1.0 | `mod/build.gradle` 里 `implementation` + `include "com.scalarwide:scalarwide:1.0.4"`；fork 补丁层也直接引用 mc 线的类 |
 
 **关键**：G2 实际热路径上的类是 mc 线的包装类（`WideChunkCoord1024` / `WideSectionKey2560`），
@@ -79,9 +79,9 @@ ChunkAccess.getSection(int)
 
 G2 的 mod 与 fork 补丁层直接引用以下符号；改名/改签名会让 weave 在加载期失败：
 
-- mod：`com.scalarwide.Wide`、`com.scalarwide.mc.fp.WideChunkPos`（`of`、`neighbor`）、
-  `com.scalarwide.mc.fp.WideSectionCoord`、`com.scalarwide.mc.fp.WideSectionKey`
-- fork 补丁层：`com.scalarwide.mc.fp.WideChunkCoord`、`WideChunkPosByteMap`、
+- mod：`com.scalarwide.Wide`、`com.scalarwide.mc.integer.WideChunkPos`（`of`、`neighbor`）、
+  `com.scalarwide.mc.integer.WideSectionCoord`、`com.scalarwide.mc.integer.WideSectionKey`
+- fork 补丁层：`com.scalarwide.mc.integer.WideChunkCoord`、`WideChunkPosByteMap`、
   `WideChunkPosFlatMap`、`WideChunkPosOrderedSet`、`WideSectionCoord`、`WideSectionKey`、
   `WideSectionKey2560`、`WideSectionCoord512`、`WideChunkCoord1024`
 
