@@ -2175,3 +2175,40 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar b256Fma -prof gc -f 2 -wi 5 -i 5 -w 1s 
 剩余：3850 B 里主要是 `FIVE.pow(|p|)`（平方-乘，每次约 600–800 B）与一次大数除法。
 再往下压有两条路，都会改变 `Decimal` 的算术基础，单独一轮做：
 把整个十进制转换搬到 `long[]`（`Limbs.divmod`）上，或预置 5 的幂表。
+
+### E1：Binary1280 容器（G1.1 需求单，2026-11-17）
+
+需求与语义见 `docs/B1280-CONTAINER.md`；这里是性能记录。命令：
+
+```bash
+./gradlew :fp:jmhJar
+java -jar fp/build/libs/fp-1.0.3-jmh.jar B1280Bench -prof gc -f 3 -wi 6 -i 8 -w 1s -r 1s
+```
+
+口径：笔记本、未绑核、JDK 25.0.3；每个 benchmark 方法内做 1024 次调用，
+下表已折算到**单次调用**；`@Param lead` 给出被操作数的量级（2^53 / 2^1027）。
+
+| op | @2^53 | @2^1027 | 50 ms 档目标 | 30 ms 档目标 |
+|---|---:|---:|---:|---:|
+| `scalePow2` | **0.32 ns** | **0.30 ns** | 11 ns | 6.7 ns |
+| `floorLow64Frac` | **1.88 ns** | **1.78 ns** | 19 ns | 11.8 ns |
+| `mulSmall` | **73.9 ns** | **77.9 ns** | 540 ns | 340 ns |
+| `compare` | 5.72 ns | 5.83 ns | 5 ns | 3 ns |
+| 分配 | ≤0.001 B/次 | ≤0.001 B/次 | 0 | 0 |
+
+按需求单的调用次数折算，**每 chunk 宽容器 0.69 ms**（预算 8 ms）。
+
+两次"别扫不该扫的 limb"：
+
+1. `isZero()` 从 20 肢 OR 改为只看顶肢（归一化不变量：非零值最高位在 limb 19），
+   `compare` 少 40 次 limb 读。
+2. `floorLow64Frac` 的**正数路径去掉 sticky 扫描**：截断不需要知道被丢位是否非零，
+   只有负数路径算 `2^s - rem` 时才要。@2^53 从 **6.2 → 1.9 ns**（那次扫描原本要走 17 个肢）。
+
+`compare` 仍在 5.7–5.8 ns（目标 5 ns）：benchmark 里两个容器**完全相同**，
+20 肢全比较是它的最坏情形；真实坐标通常首个肢就分出胜负。
+它每 chunk 只调 1225 次（合计 7 µs），且需求单的验收条款只把
+`scalePow2` / `floorLow64Frac` 超 2× 与"每次调用有分配"判为不达标，故记录而不返工。
+
+门禁：`Binary1280Test` 6 例——`set`/`mulSmall`/`floorLow64Frac` 各 5000 组 BigInteger
+精确对拍，外加 2^53 / 2^600 / 2^1016 / 2^1027 的 ±0.5 定点与正负号。

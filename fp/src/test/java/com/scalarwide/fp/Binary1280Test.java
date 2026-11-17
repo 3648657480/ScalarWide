@@ -1,0 +1,237 @@
+package com.scalarwide.fp;
+
+import org.junit.jupiter.api.Test;
+
+import java.math.BigInteger;
+import java.util.Random;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Differential gate for the 1280-bit container.
+ *
+ * <p>Expectations are derived from the container's own {@code (M, lsbExp, sign)} triple with an
+ * exact {@link BigInteger} reference, so the test checks the split at the binary point instead of
+ * re-deriving the normalisation rule. Landmarks are the magnitudes the G1.1 budget names:
+ * 2^53, 2^600, 2^1016 and 2^1027, both signs.
+ */
+class Binary1280Test {
+
+    private static final long SEED = 12345L;
+    private static final int N = 5000;
+    private static final BigInteger ONE = BigInteger.ONE;
+    private static final BigInteger ZERO = BigInteger.ZERO;
+
+    @Test
+    void setLongIsExact() {
+        long[] values = {0L, 1L, -1L, 2L, -2L, 1L << 53, (1L << 53) + 1, Long.MAX_VALUE, Long.MIN_VALUE};
+        Binary1280 v = new Binary1280();
+        for (long x : values) {
+            v.set(x);
+            assertEquals(BigInteger.valueOf(x), exact(v), "set(" + x + ")");
+        }
+        Random rnd = new Random(SEED);
+        for (int i = 0; i < N; i++) {
+            long x = rnd.nextLong();
+            v.set(x);
+            assertEquals(BigInteger.valueOf(x), exact(v), "set(" + x + ")");
+            v.set(-x);
+            assertEquals(BigInteger.valueOf(-x), exact(v), "set(" + -x + ")");
+        }
+    }
+
+    @Test
+    void scalePow2OnlyMovesTheExponent() {
+        Random rnd = new Random(SEED + 1);
+        Binary1280 v = new Binary1280();
+        for (int i = 0; i < N; i++) {
+            v.set(rnd.nextLong() | 1L);
+            long[] before = limbs(v);
+            int e = v.lsbExponent();
+            int k = rnd.nextInt(2000) - 1000;
+            v.scalePow2(k);
+            assertEquals(e + k, v.lsbExponent(), "exponent");
+            assertLimbs(before, limbs(v), "limbs must not move");
+        }
+        v.set(1L);
+        v.scalePow2(Integer.MAX_VALUE);
+        v.scalePow2(1251);
+        assertEquals(Integer.MAX_VALUE, v.lsbExponent());
+        assertThrows(ArithmeticException.class, () -> v.scalePow2(1));
+    }
+
+    @Test
+    void mulSmallMatchesTheExactProduct() {
+        Random rnd = new Random(SEED + 2);
+        Binary1280 v = new Binary1280();
+        for (int i = 0; i < N; i++) {
+            v.set(rnd.nextLong());
+            long[] before = limbs(v);
+            int e0 = v.lsbExponent();
+            boolean s0 = v.signBit();
+            long w = rnd.nextBoolean() ? (rnd.nextLong() >>> 12) : rnd.nextLong();
+            BigInteger prod = magnitudeOf(before).multiply(BigInteger.valueOf(w < 0 ? -w : w));
+            int drop = Math.max(0, prod.bitLength() - Binary1280.PRECISION);
+            BigInteger wantMag = prod.shiftRight(drop);
+            v.mulSmall(w);
+            assertEquals(wantMag, magnitudeOf(limbs(v)), "magnitude x=" + i + " w=" + w);
+            assertEquals(e0 + drop, v.lsbExponent(), "exponent x=" + i);
+            assertEquals(s0 ^ (w < 0), v.signBit(), "sign x=" + i);
+        }
+        v.set(7L);
+        v.mulSmall(0L);
+        assertTrue(v.isZero());
+    }
+
+    @Test
+    void floorLow64FracMatchesTheExactSplit() {
+        Random rnd = new Random(SEED + 3);
+        Binary1280 v = new Binary1280();
+        long[] out = new long[1];
+        for (int i = 0; i < N; i++) {
+            long[] mag = new long[Binary1280.LIMBS];
+            for (int k = 0; k < mag.length; k++) {
+                mag[k] = rnd.nextLong();
+            }
+            mag[Binary1280.LIMBS - 1] |= 1L << 44;
+            int exp = rnd.nextInt(1500) - 1300;
+            boolean neg = rnd.nextBoolean();
+            v.setMagnitude(mag, exp, neg);
+            double frac = v.floorLow64Frac(out);
+            BigInteger m = magnitudeOf(mag);
+            assertEquals(refLow64(m, exp, neg), out[0], "low64 e=" + exp + " neg=" + neg);
+            assertEquals(refFrac(m, exp, neg), frac, 0.0, "frac e=" + exp + " neg=" + neg);
+        }
+    }
+
+    @Test
+    void landmarkMagnitudes() {
+        Binary1280 v = new Binary1280();
+        long[] out = new long[1];
+        for (int lead : new int[] {53, 600, 1016, 1027}) {
+            for (boolean neg : new boolean[] {false, true}) {
+                // 2^lead, 2^lead - 0.5 and 2^lead + 0.5 at the magnitudes the budget names.
+                BigInteger[] magnitudes = {
+                        ONE.shiftLeft(1251),
+                        ONE.shiftLeft(1251).subtract(ONE.shiftLeft(1250 - lead)),
+                        ONE.shiftLeft(1251).add(ONE.shiftLeft(1250 - lead)),
+                };
+                for (BigInteger m : magnitudes) {
+                    int exp = lead - 1251;
+                    v.setMagnitude(limbsOf(m), exp, neg);
+                    double frac = v.floorLow64Frac(out);
+                    String label = "2^" + lead + " m=" + m.bitLength() + " neg=" + neg;
+                    assertEquals(refLow64(m, exp, neg), out[0], label + " low64");
+                    assertEquals(refFrac(m, exp, neg), frac, 0.0, label + " frac");
+                }
+            }
+        }
+        // The two halves at 2^53 specifically: floor stays integral below the point.
+        v.setMagnitude(limbsOf(ONE.shiftLeft(1251).subtract(ONE.shiftLeft(1197))), 53 - 1251, false);
+        assertEquals(0.5, v.floorLow64Frac(out), 0.0, "2^53 - 0.5 fraction");
+        assertEquals((1L << 53) - 1, out[0], "2^53 - 0.5 floor");
+    }
+
+    @Test
+    void compareFollowsNumericOrder() {
+        Binary1280 a = new Binary1280();
+        Binary1280 b = new Binary1280();
+        a.set(1L);
+        b.set(2L);
+        assertTrue(a.compareTo(b) < 0);
+        assertTrue(b.compareTo(a) > 0);
+        assertEquals(0, a.compareTo(b.set(1L)));
+        a.set(-1L);
+        assertTrue(a.compareTo(b) < 0);
+        a.setZero();
+        assertTrue(a.compareTo(b) < 0);
+        b.setZero();
+        assertEquals(0, a.compareTo(b));
+        a.set(-5L);
+        b.set(-7L);
+        assertTrue(a.compareTo(b) > 0);
+    }
+
+    // ---------------------------------------------------------------- reference
+
+    private static BigInteger exact(Binary1280 v) {
+        BigInteger m = BigInteger.ZERO;
+        for (int i = Binary1280.LIMBS - 1; i >= 0; i--) {
+            m = m.shiftLeft(64).or(unsigned(v.limb(i)));
+        }
+        int e = v.lsbExponent();
+        BigInteger mag = e >= 0 ? m.shiftLeft(e) : m.shiftRight(-e);
+        return v.signBit() ? mag.negate() : mag;
+    }
+
+    private static long refLow64(BigInteger m, int e, boolean negative) {
+        BigInteger floor;
+        BigInteger rem;
+        if (e >= 0) {
+            floor = m.shiftLeft(e);
+            rem = ZERO;
+        } else {
+            floor = m.shiftRight(-e);
+            rem = m.and(ONE.shiftLeft(-e).subtract(ONE));
+        }
+        if (negative) {
+            floor = rem.signum() == 0 ? floor.negate() : floor.add(ONE).negate();
+        }
+        return floor.longValue();
+    }
+
+    private static double refFrac(BigInteger m, int e, boolean negative) {
+        if (e >= 0) {
+            return 0.0;
+        }
+        int s = -e;
+        BigInteger rem = m.and(ONE.shiftLeft(s).subtract(ONE));
+        if (rem.signum() == 0) {
+            return 0.0;
+        }
+        if (negative) {
+            rem = ONE.shiftLeft(s).subtract(rem);
+        }
+        BigInteger f53 = s >= 53 ? rem.shiftRight(s - 53) : rem.shiftLeft(53 - s);
+        return f53.longValue() * 0x1.0p-53;
+    }
+
+    private static BigInteger magnitudeOf(long[] limbs) {
+        BigInteger m = BigInteger.ZERO;
+        for (int i = limbs.length - 1; i >= 0; i--) {
+            m = m.shiftLeft(64).or(unsigned(limbs[i]));
+        }
+        return m;
+    }
+
+    private static long[] limbsOf(BigInteger m) {
+        long[] r = new long[Binary1280.LIMBS];
+        BigInteger work = m;
+        for (int i = 0; i < r.length; i++) {
+            r[i] = work.longValue();
+            work = work.shiftRight(64);
+        }
+        return r;
+    }
+
+    private static BigInteger unsigned(long v) {
+        BigInteger b = BigInteger.valueOf(v & Long.MAX_VALUE);
+        return v < 0 ? b.setBit(63) : b;
+    }
+
+    private static long[] limbs(Binary1280 v) {
+        long[] r = new long[Binary1280.LIMBS];
+        for (int i = 0; i < r.length; i++) {
+            r[i] = v.limb(i);
+        }
+        return r;
+    }
+
+    private static void assertLimbs(long[] a, long[] b, String label) {
+        for (int i = 0; i < a.length; i++) {
+            assertEquals(a[i], b[i], label + " limb " + i);
+        }
+    }
+}
