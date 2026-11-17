@@ -82,8 +82,10 @@ a.compareTo(b);                               // 全序（-0 < +0，NaN 最大�
 | 分配 | 每次运算分配结果 | **每次调用零分配** |
 | 四则 | 全 | 只 `mulSmall`（20×1），禁止 1280×1280 加减 |
 
-两者同属 `com.scalarwide.fp` 且同名 `Binary1280`，靠**分支隔离**：主线只有通用浮点，
-`mc` 线只有容器。不要把两者放进同一个 classpath。
+两者的**包与类型都不同**，不再是同一套通用 API：通用浮点是 `com.scalarwide.fp.Binary1280`，
+容器在 mc 线是 `com.scalarwide.mc.Binary1280`。即使把两条线放进同一个 classpath 也不会撞车，
+但**不能混用**：容器的 `scalePow2/floorLow64Frac` 等是可变 scratch 语义，浮点的 `add/multiply`
+是不可变值语义。
 
 ## 7. 性能现状
 

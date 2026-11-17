@@ -1,8 +1,14 @@
 # Binary1280 容器：实测回单（2026-11-17）
 
 > 对应需求单：`C:\Project-G1.1\docs\SCALARWIDE-B1280-BUDGET.md` **v1.1**（含 §9 对账）
-> 实现：`fp/src/main/java/com/scalarwide/fp/Binary1280.java`
-> 基准：`fp/src/jmh/java/com/scalarwide/fp/bench/B1280Bench.java`
+> 实现：**mc 线** `C:\Project-ScalarWide-2560\src\main\java\com\scalarwide\mc\Binary1280.java`
+> 门禁：mc 线 `src/test/java/com/scalarwide/mc/Binary1280Test.java`（8 例）
+> 基准：迁移前在主线 `fp` 的 `B1280Bench` 上测得；mc 线没有 jmh 模块，脚本未随行，
+> 数字与命令保留在 `docs/BENCH.md` 的 E1 节。
+>
+> **两条线已彻底分开**：主线只有通用浮点 `com.scalarwide.fp.Binary1280`（不可变值语义），
+> mc 线只有容器 `com.scalarwide.mc.Binary1280`（可变 scratch，零分配）。两者同名不同物，
+> 即使同 classpath 也不撞车，但**不能混用**。
 > 门禁：`fp/src/test/java/com/scalarwide/fp/Binary1280Test.java`（8 例，5000 组差分 + 四个指定量级）
 > 本文件是 ScalarWide 侧记录；发给 G1.1 的回单是 `C:\Project-G1.1\docs\SCALARWIDE-B1280-REPLY.md`。
 
