@@ -2190,25 +2190,32 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar B1280Bench -prof gc -f 3 -wi 6 -i 8 -w 
 
 | op | @2^53 | @2^1027 | 50 ms 档目标 | 30 ms 档目标 |
 |---|---:|---:|---:|---:|
-| `scalePow2` | **0.32 ns** | **0.30 ns** | 11 ns | 6.7 ns |
-| `floorLow64Frac` | **1.88 ns** | **1.78 ns** | 19 ns | 11.8 ns |
-| `mulSmall` | **73.9 ns** | **77.9 ns** | 540 ns | 340 ns |
-| `compare` | 5.72 ns | 5.83 ns | 5 ns | 3 ns |
+| `scalePow2` | **0.31 ns** | **0.32 ns** | 11 ns | 6.7 ns |
+| `floorLow64Frac` | **1.73 ns** | **1.45 ns** | 19 ns | 11.8 ns |
+| `mulSmall` | **78.8 ns** | **70.4 ns** | 540 ns | 340 ns |
+| `addSmall` | **5.4 ns** | **12.8 ns** | 需求单估 10–20 | — |
+| `compare` | 5.2 ns | 7.4 ns | 10 ns（需求单 v1.1 放宽） | — |
 | 分配 | ≤0.001 B/次 | ≤0.001 B/次 | 0 | 0 |
 
-按需求单的调用次数折算，**每 chunk 宽容器 0.69 ms**（预算 8 ms）。
+按需求单 **v1.1** 的调用次数折算（`mulSmall` 13,475、`addSmall` 13,475、
+`scalePow2` / `floorLow64Frac` 各 186,200、`compare` 1,225），**每 chunk 宽容器 ≈ 1.63 ms**
+（预算 8 ms，余量 4.9×）。
 
-两次"别扫不该扫的 limb"：
+`addSmall` 两档差别来自 delta 落在哪个肢：@2^53 → li=18（只动 2 个肢），@2^1027 → li=3（动 17 个）。
+
+三处"别扫不该扫的 limb"：
 
 1. `isZero()` 从 20 肢 OR 改为只看顶肢（归一化不变量：非零值最高位在 limb 19），
    `compare` 少 40 次 limb 读。
 2. `floorLow64Frac` 的**正数路径去掉 sticky 扫描**：截断不需要知道被丢位是否非零，
    只有负数路径算 `2^s - rem` 时才要。@2^53 从 **6.2 → 1.9 ns**（那次扫描原本要走 17 个肢）。
+3. `addSmall` 的加减循环**从 delta 所在的肢起步**（低于它的肢本来就不动）。
+   @2^53（li=18）从 **19.9 → 5.4 ns**。
 
-`compare` 仍在 5.7–5.8 ns（目标 5 ns）：benchmark 里两个容器**完全相同**，
-20 肢全比较是它的最坏情形；真实坐标通常首个肢就分出胜负。
-它每 chunk 只调 1225 次（合计 7 µs），且需求单的验收条款只把
-`scalePow2` / `floorLow64Frac` 超 2× 与"每次调用有分配"判为不达标，故记录而不返工。
+`compare` 5.2–7.4 ns 对需求单 v1.1 放宽后的 10 ns：过。
+它的 benchmark 是最坏情形（两个容器完全相同 → 20 肢全比较），真实坐标通常首个肢就分出胜负；
+每 chunk 1,225 次，折算 0.009 ms。
 
-门禁：`Binary1280Test` 6 例——`set`/`mulSmall`/`floorLow64Frac` 各 5000 组 BigInteger
-精确对拍，外加 2^53 / 2^600 / 2^1016 / 2^1027 的 ±0.5 定点与正负号。
+门禁：`Binary1280Test` 8 例——`set`/`setFrom`/`mulSmall`/`floorLow64Frac` 各 5000 组 BigInteger
+精确对拍、`addSmall` 5000 组 + 交叉零/重归一化定点，外加 2^53 / 2^600 / 2^1016 / 2^1027 的
+±0.5 定点与正负号。

@@ -82,6 +82,16 @@ public class B1280Bench {
     }
 
     @Benchmark
+    public void b1280AddSmall(Blackhole bh) {
+        Binary1280 x = v;
+        for (int i = 0; i < N; i++) {
+            x.addSmall(1L);
+        }
+        x.addSmall(-(long) N);
+        bh.consume(x.lsbExponent());
+    }
+
+    @Benchmark
     public void b1280Compare(Blackhole bh) {
         Binary1280 x = v;
         Binary1280 y = other;

@@ -125,6 +125,187 @@ public final class Binary1280 {
     }
 
     /**
+     * Replaces the value with the unsigned integer held in {@code limbs} (little-endian, any
+     * length), exactly. Cold path: once per chunk per axis, never inside an octave loop.
+     *
+     * @throws ArithmeticException if the magnitude needs more than {@link #PRECISION} bits
+     */
+    public Binary1280 setFrom(long[] limbs) {
+        int top = limbs.length - 1;
+        while (top >= 0 && limbs[top] == 0L) {
+            top--;
+        }
+        if (top < 0) {
+            setZero();
+            return this;
+        }
+        int bits = top >= LIMBS ? Integer.MAX_VALUE
+                : top * 64 + 64 - Long.numberOfLeadingZeros(limbs[top]);
+        if (bits > PRECISION) {
+            throw new ArithmeticException("Binary1280: magnitude exceeds " + PRECISION + " bits");
+        }
+        Arrays.fill(m, 0L);
+        int copy = Math.min(top + 1, LIMBS);
+        System.arraycopy(limbs, 0, m, 0, copy);
+        int shift = PRECISION - bits;
+        if (shift > 0) {
+            shlInPlace(m, shift);
+        }
+        lsbExp = -shift;
+        negative = false;
+        return this;
+    }
+
+    /**
+     * Adds a signed 64-bit integer at the value's binary point. The caller guarantees
+     * {@code |v| >= 2^53} (far field), so no renormalisation happens in the hot path; the
+     * crossing case is still handled exactly.
+     *
+     * @throws IllegalStateException if the current LSB sits above 2^0, where a unit offset would
+     *         not be representable
+     */
+    public void addSmall(long delta) {
+        if (delta == 0L) {
+            return;
+        }
+        if (isZero()) {
+            set(delta);
+            return;
+        }
+        if (lsbExp > 0) {
+            throw new IllegalStateException("Binary1280: magnitude is coarser than 1");
+        }
+        long mag = delta < 0L ? -delta : delta;
+        boolean deltaNegative = delta < 0L;
+        int shift = -lsbExp;
+        int li = shift >>> 6;
+        int bs = shift & 63;
+        staged[li] = mag << bs;
+        int hi = bs != 0 ? li + 1 : -1;
+        if (hi >= 0) {
+            staged[hi] = mag >>> (64 - bs);
+        }
+        if (negative == deltaNegative) {
+            addStaged(li);
+        } else {
+            int cmp = cmpStaged();
+            if (cmp > 0) {
+                subStaged(li);
+            } else if (cmp < 0) {
+                // |delta| > |v|: the result flips sign and needs renormalisation.
+                stagedMinusM();
+                negative = deltaNegative;
+                normalize();
+            } else {
+                setZero();
+            }
+        }
+        staged[li] = 0L;
+        if (hi >= 0) {
+            staged[hi] = 0L;
+        }
+    }
+
+    private static void shlInPlace(long[] a, int k) {
+        int ls = k >>> 6;
+        int bs = k & 63;
+        for (int i = a.length - 1; i >= 0; i--) {
+            int src = i - ls;
+            long v = 0L;
+            if (src >= 0) {
+                v = a[src] << bs;
+                if (bs != 0 && src - 1 >= 0) {
+                    v |= a[src - 1] >>> (64 - bs);
+                }
+            }
+            a[i] = v;
+        }
+    }
+
+    private void addStaged(int from) {
+        long carry = 0L;
+        for (int i = from; i < LIMBS; i++) {
+            long t = m[i] + staged[i];
+            long c = Long.compareUnsigned(t, m[i]) < 0 ? 1L : 0L;
+            long s = t + carry;
+            if (carry != 0L && Long.compareUnsigned(s, t) < 0) {
+                c = 1L;
+            }
+            m[i] = s;
+            carry = c;
+        }
+        int bits = bitLength(m);
+        if (bits > PRECISION) {
+            int drop = bits - PRECISION;
+            shiftRightInto(m, drop, m);
+            lsbExp += drop;
+        }
+    }
+
+    private void subStaged(int from) {
+        long borrow = 0L;
+        for (int i = from; i < LIMBS; i++) {
+            long d = m[i] - staged[i];
+            long b = Long.compareUnsigned(m[i], staged[i]) < 0 ? 1L : 0L;
+            long r = d - borrow;
+            if (borrow != 0L && Long.compareUnsigned(r, d) > 0) {
+                b = 1L;
+            }
+            m[i] = r;
+            borrow = b;
+        }
+    }
+
+    private int cmpStaged() {
+        for (int i = staged.length - 1; i >= LIMBS; i--) {
+            if (staged[i] != 0L) {
+                return -1;
+            }
+        }
+        for (int i = LIMBS - 1; i >= 0; i--) {
+            int c = Long.compareUnsigned(m[i], staged[i]);
+            if (c != 0) {
+                return c;
+            }
+        }
+        return 0;
+    }
+
+    private void stagedMinusM() {
+        long borrow = 0L;
+        for (int i = 0; i < LIMBS; i++) {
+            long d = staged[i] - m[i];
+            long b = Long.compareUnsigned(staged[i], m[i]) < 0 ? 1L : 0L;
+            long r = d - borrow;
+            if (borrow != 0L && Long.compareUnsigned(r, d) > 0) {
+                b = 1L;
+            }
+            m[i] = r;
+            borrow = b;
+        }
+    }
+
+    /**
+     * Restores the normalisation invariant. A left shift is always exact; a right shift can drop
+     * low bits, which only happens when the result outgrew the window (truncation contract).
+     */
+    private void normalize() {
+        int bits = bitLength(m);
+        if (bits == 0) {
+            setZero();
+            return;
+        }
+        if (bits > PRECISION) {
+            int drop = bits - PRECISION;
+            shiftRightInto(m, drop, m);
+            lsbExp += drop;
+        } else if (bits < PRECISION) {
+            int grow = PRECISION - bits;
+            shlInPlace(m, grow);
+            lsbExp -= grow;
+        }
+    }
+    /**
      * Multiplies the magnitude by {@code w}, exactly while the product stays under
      * {@code 2^1252}; beyond that the low bits are shifted out (truncation, one rounding-free
      * step) so the container keeps its full precision window. A negative {@code w} flips the sign.
@@ -151,10 +332,11 @@ public final class Binary1280 {
         int drop = bits - PRECISION;
         if (drop <= 0) {
             System.arraycopy(staged, 0, m, 0, LIMBS);
-            return;
+        } else {
+            shiftRightInto(staged, drop, m);
+            lsbExp += drop;
         }
-        shiftRightInto(staged, drop, m);
-        lsbExp += drop;
+        Arrays.fill(staged, 0L);
     }
 
     /**

@@ -135,6 +135,72 @@ class Binary1280Test {
     }
 
     @Test
+    void setFromLoadsAWideIntegerExactly() {
+        Random rnd = new Random(SEED + 4);
+        Binary1280 v = new Binary1280();
+        for (int i = 0; i < N; i++) {
+            int len = 1 + rnd.nextInt(20);
+            long[] limbs = new long[len];
+            for (int k = 0; k < len; k++) {
+                limbs[k] = rnd.nextLong();
+            }
+            limbs[len - 1] &= 0x0FFFL;
+            if (limbs[len - 1] == 0L) {
+                limbs[len - 1] = 1L;
+            }
+            v.setFrom(limbs);
+            assertEquals(magnitudeOf(limbs), exact(v), "setFrom len=" + len);
+        }
+        // A 1024-bit chunk coordinate, the cold-path payload the requirement names.
+        long[] chunk = new long[16];
+        chunk[15] = 1L << 40;
+        chunk[7] = 0x0123_4567_89AB_CDEFL;
+        v.setFrom(chunk);
+        assertEquals(magnitudeOf(chunk), exact(v), "1024-bit chunk coordinate");
+
+        long[] oversized = new long[20];
+        java.util.Arrays.fill(oversized, -1L);
+        assertThrows(ArithmeticException.class, () -> v.setFrom(oversized));
+    }
+
+    @Test
+    void addSmallStaysExact() {
+        Random rnd = new Random(SEED + 5);
+        Binary1280 v = new Binary1280();
+        for (int i = 0; i < N; i++) {
+            long[] limbs = new long[16];
+            for (int k = 0; k < limbs.length; k++) {
+                limbs[k] = rnd.nextLong();
+            }
+            limbs[15] |= 1L << 40;
+            v.setFrom(limbs);
+            if (rnd.nextBoolean()) {
+                v.mulSmall(-1L);
+            }
+            long delta = rnd.nextInt(31) - 15;
+            BigInteger before = exact(v);
+            v.addSmall(delta);
+            assertEquals(before.add(BigInteger.valueOf(delta)), exact(v), "addSmall delta=" + delta);
+        }
+        // The far-field pattern the requirement describes: 2^1027 + local offset 0..15.
+        v.set(1L);
+        v.scalePow2(1027);
+        v.addSmall(15L);
+        assertEquals(ONE.shiftLeft(1027).add(BigInteger.valueOf(15)), exact(v), "2^1027 + 15");
+
+        // Crossing zero and the renormalisation that follows.
+        v.set(3L);
+        v.addSmall(-10L);
+        assertEquals(BigInteger.valueOf(-7), exact(v), "3 - 10");
+        v.set(5L);
+        v.addSmall(-5L);
+        assertTrue(v.isZero(), "5 - 5");
+        v.setZero();
+        v.addSmall(-9L);
+        assertEquals(BigInteger.valueOf(-9), exact(v), "zero - 9");
+    }
+
+    @Test
     void compareFollowsNumericOrder() {
         Binary1280 a = new Binary1280();
         Binary1280 b = new Binary1280();
