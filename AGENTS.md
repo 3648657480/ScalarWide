@@ -6,9 +6,10 @@ Working rules for any agent or contributor on ScalarWide. Binding.
 
 ## Line boundary
 
-Main 组与 MC 组（`C:\Project-ScalarWide-2560`）是**有意分叉**的两组 INT+FP，
-不是同一份源码的两个视图：两边的 `Wide*` 已经是不同的类，**两个 jar 永不同 classpath**。
-加密代码只进 `ModArith`，不得改动 `Wide*`/`Limbs` 热路径。详见 `docs/TWO-LINES.md`。
+仓库是**一个模块、四个包**：`com.scalarwide.main.integer`（核心 + 加密）、`main.fp`（通用浮点）、
+`mc.integer`（MC 组整数副本 + 宽键）、`mc.fp`（MC 组容器 256/640/1280）。
+两组的同名类**不是同一个类**，各自独立优化；加密只进 `main.integer.ModArith`，
+不得为它改 `Wide*`/`Limbs` 热路径。正确性缺陷必须双组同修。详见 `docs/TWO-LINES.md`。
 
 ## Correctness discipline
 

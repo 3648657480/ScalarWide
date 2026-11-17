@@ -1,57 +1,43 @@
-# 两条线：Main 组与 MC 组
+# 两组四包：main 与 mc
 
-> 本文定义 `Project-ScalarWide`（Main 组）与 `Project-ScalarWide-2560`（MC 组）的边界。
-> 变更这条边界需要改本文 + 两个仓库的 `AGENTS.md`，不是随手 merge 的事。
+> 2026-11-17 重构后，两条线合并为**一个仓库、一个模块、四个包**。
+> 本文替代旧的「两个仓库/分支」边界说明。
 
-## 1. 为什么分两组
+## 1. 结构
 
-加密计算会引入一整套**MC 用不到**的东西（模运算、Montgomery、常数时间原语），
-而 MC（Minecraft 宽键 / 远域地形）只关心浮点容器与整数键的性能。
-所以两边按「INT + FP 成组」切开，各自演进。
+```
+src/main/java/com/scalarwide/
+├─ main/integer/    核心整数：Wide128…1024、MutableWide*、Limbs、Carry、ModArith（加密）
+├─ main/fp/         通用浮点：Binary256/640/1280（值语义）、BigFloat、WideOps、Decimal
+├─ mc/integer/      MC 组整数：核心副本（含 MulHi/DivMagic）+ 宽键、平表族
+└─ mc/fp/           MC 组浮点：容器 Binary256/640/1280（可变 scratch，零分配）
+```
 
-### 好处：同名类型可以各自取最优
+`int` 是 Java 保留字，故包名用 `integer`。
 
-分叉之后，同一个 `com.scalarwide.Wide512` 在两组里可以有**不同的代码**，各自追求各自的目标：
+## 2. 为什么还是两组
 
-| 类型 | Main 组优化目标 | MC 组优化目标 |
+加密计算（`ModArith`）只服务 main 组，MC 组不需要；而 MC 组的容器与宽键要求
+「每次调用零分配、只暴露少数操作」，与通用浮点的值语义相反。两组的取舍不同，
+所以源码各自独立：
+
+| 类型 | main 组 | mc 组 |
 |---|---|---|
-| `Wide*` 整数 | 为加密让路：Montgomery、常数时间、模运算 | 为键/哈希让路：分配、缓存行、哈希吞吐 |
-| FP | `Binary1280` 通用浮点：四则/根/十进制 | `Binary1280` 容器：每调用零分配、O(1) 指数与取位 |
-| 允许的取舍 | 可以为加密加类、加分支 | **不允许**任何为加密服务的改动进热路径 |
+| `Wide*` 整数 | 为加密让路（可加类、可加分支） | 为键/哈希让路（分配、缓存行、吞吐） |
+| 浮点 | `Binary256/640/1280` 值语义 | `Binary256/640/1280` 容器（scratch、零分配） |
+| 加密 | 有 `ModArith` | **没有** |
 
-代价是**同一个缺陷要修两次**，所以配套一条纪律：
-**任一条线发现 `Wide*` / `Limbs` 的正确性缺陷，修复必须同一轮同步到另一条线**
-（性能改动不必同步）。行为不一致比速度不一致危险得多。
+## 3. 规则
 
-## 2. 两组的构成
+1. **两组的同名类不是同一个类**：`com.scalarwide.main.integer.Wide512` 与
+   `com.scalarwide.mc.integer.Wide512` 是两份代码，行为可以不同（性能取舍不同）。
+2. **加密代码只进 `main/integer/ModArith`**，不得为它改 `Wide*`/`Limbs` 热路径。
+3. **正确性缺陷必须双组同修**：任一组发现 `Wide*`/`Limbs`/容器语义缺陷，修复要在
+   同一轮同步到另一组（性能改动不必同步）。行为不一致比速度不一致危险。
+4. MC 组的 `addSmall` 有远场前提 `|v| >= 2^53`；门禁按该前提构造用例。
 
-| | Main 组 | MC 组 |
-|---|---|---|
-| INT | `com.scalarwide`：`Wide128…1024`、`Limbs`、`MutableWide*`、**`ModArith`（加密）** | `com.scalarwide`：`Wide*`、`Limbs`、`MutableWide*`、宽键类型（`WideChunkPos` 等）；**无 `ModArith`** |
-| FP | `com.scalarwide.fp`：`Binary256/640/1280`（不可变值语义） | `com.scalarwide.mc`：`Binary1280` 容器（可变 scratch，零分配） |
-| 构建 | release 21 | release 17 |
+## 4. 历史
 
-## 3. 边界规则
-
-1. **两组的 INT 是有意分叉，不是同一份源码的两个视图。**
-   分叉之后 10 个同名文件已经不同（`Carry`、`Limbs`、`Wide*`…），
-   两边的 `com.scalarwide.Wide512` 是**不同的类**。因此：
-   **两个 jar 永不放进同一个 classpath**——同名不同物会让其中一个静默失效。
-2. **MC 组冻结在分叉点**：不再 merge Main 的演进，只 cherry-pick 纯性能修复。
-   这样 MC 的产物里永远没有 `ModArith`。
-3. **加密代码只在 `ModArith` 里**，不得为它改动 `Wide*` / `Limbs` 的热路径。
-   加密是 Main 组的新功能，不是给所有人加的开销。
-4. **FP 层的包已分开**（`fp` vs `mc`），FP 之间不共享任何类型；
-   同名 `Binary1280` 在两组里语义不同（值语义 vs scratch），不可混用。
-
-## 4. 分叉点
-
-MC 组的 INT 来自 Main 的历史提交（`mc-v1.0.5` 合并批次）。分叉后新增的
-`ModArith` 只存在于 Main。需要回溯某个 MC 文件的来源时，用
-`git log --follow` 在两个工作树里对照，不要假设两边一致。
-
-## 5. 将来的选项（目前不做）
-
-若某天需要 MC 吃到 Main 的新整数优化，正确的做法是：MC 依赖已发布的
-`com.scalarwide:scalarwide` jar、删掉本地源码副本，而不是再 merge 一次。
-代价是要先合流那 10 个漂移文件，并确认 MC 没有用到包私有 API。
+重构前是「同一仓库的两个分支/工作树」：`main` 分支 + `mc` 分支
+（`C:\Project-ScalarWide-2560`）。两者靠分支隔离，同名类同名不同物。
+2026-11-17 合并为单仓库四包，mc 分支随后删除，内容全部迁入 `mc/*` 包并通过门禁。
