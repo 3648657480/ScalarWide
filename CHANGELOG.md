@@ -32,16 +32,14 @@
 - `mc.fp.Binary256` / `Binary640` 坐标容器（p=237 / 616），与 1280 容器同一 API，
   共用参数化基类 `mc.fp.Container`；均零分配。
 - `main.integer.Montgomery`：Montgomery 上下文（缓存 `n0inv` 与 `R² mod m`），
-  批量模乘从每次一次除法降到纯 CIOS。
+  批量模乘从每次一次除法降到纯 CIOS；另有 4/6 肢的展开核（9 肢实测更慢，走循环版）。
 - `main.integer.ModArith` 的 SHA lane 原语（`rotlEach/rotrEach/rotrEach32/shrEach32`、
   大端 64 位字存取）。
 
 ### 兼容性
 
-- `java.util`/`java.math` 之外无新依赖；仍为 Java 21 字节码（工具链 25）。
-- 两个文件的旧版本历史条目因编码损坏不可读，保留原样；新条目自本版起为 UTF-8。
-
-## 2.0.0 之前的历史条目（文件编码在 1.0.x 期间损坏，保留原样）
+- 除 `java.util`/`java.math` 外无新依赖；仍为 Java 21 字节码（工具链 25）。
+- 性能数字见 `docs/BENCH.md`（E4 容器基线、E5 Montgomery 上下文、E6 展开核 A/B）。
 
 ## 1.0.3 — `toString` 去掉 BigInteger 往返
 
