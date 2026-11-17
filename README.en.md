@@ -57,11 +57,12 @@ accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPAT
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v1.0.3' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v2.0.0' }
   ```
 
 - **Local install**: `.\gradlew.bat publishToMavenLocal` publishes
-  `com.scalarwide:scalarwide:1.0.3` for any local Gradle/Maven project.
+  `com.scalarwide:scalarwide:2.0.0` for any local Gradle/Maven project.
+   **2.0.0 is a breaking restructure** (package names changed); migration table in `CHANGELOG.md`.
 - **Manual**: download `ScalarWide-<version>.jar` (+ `-sources.jar`) from
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
@@ -82,9 +83,10 @@ accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPAT
 - Breaking changes only enter a new minor line with a migration note; the
   protected public API surface and the consumer regression contract are in
   `docs/COMPATIBILITY.md` (test: `ConsumerApiTest`).
-- Two branches: `main` = full library (all widths/tools); `mc` = MC-facing fork
-  pruned to <=512 with zero known regressions (tags `mc-v*`). Policy:
-  `docs/BRANCHES.md`.
+- One branch (`main`) with four packages: `main.integer` (core integers + `ModArith` +
+  `Montgomery`), `main.fp` (general floats), `mc.integer` (MC integer copy + wide keys),
+  `mc.fp` (coordinate containers 256/640/1280). Same-named classes across the two groups are
+  **different classes**; the boundary is in `docs/TWO-LINES.md`.
 
 ## Quick use
 
