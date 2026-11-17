@@ -1,6 +1,6 @@
 package com.scalarwide.bench;
 
-import com.scalarwide.Wide768;
+import com.scalarwide.main.integer.Wide768;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;

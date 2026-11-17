@@ -1,8 +1,8 @@
 package com.scalarwide.bench;
 
-import com.scalarwide.Wide1024;
-import com.scalarwide.Wide256;
-import com.scalarwide.Wide512;
+import com.scalarwide.main.integer.Wide1024;
+import com.scalarwide.main.integer.Wide256;
+import com.scalarwide.main.integer.Wide512;
 
 import com.inf.long2.ints.Int1024;
 import com.inf.long2.ints.Int256;

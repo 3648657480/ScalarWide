@@ -1,7 +1,7 @@
 package com.scalarwide.bench;
 
-import com.scalarwide.MutableWide256;
-import com.scalarwide.Wide256;
+import com.scalarwide.main.integer.MutableWide256;
+import com.scalarwide.main.integer.Wide256;
 
 import java.util.concurrent.CountDownLatch;
 

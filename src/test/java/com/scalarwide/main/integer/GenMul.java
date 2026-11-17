@@ -1,0 +1,337 @@
+package com.scalarwide.main.integer;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Generates fully unrolled schoolbook {@code mul} / {@code mulHigh} method
+ * bodies for the wide classes (one flat method per operation, no calls to the
+ * atom products). Output goes to {@code build/gen/}; splice with
+ * {@code tools/splice-mul.ps1}.
+ */
+public final class GenMul {
+
+    private static final int[] WIDTHS = {512, 768, 1024};
+
+    private static final boolean COMPARE_CARRIES = true;
+
+    private static String carryExpr(String a, String b, String r) {
+        if (COMPARE_CARRIES) {
+            return "(Long.compareUnsigned(" + r + ", " + a + ") < 0 ? 1 : 0)";
+        }
+        return "Carry.addCarryOut(" + a + ", " + b + ", " + r + ")";
+    }
+
+    private GenMul() {
+    }
+
+    public static void main(String[] args) throws Exception {
+        Path dir = Path.of("build", "gen");
+        Files.createDirectories(dir);
+        for (int w : WIDTHS) {
+            int limbs = w / 64;
+            Files.writeString(dir.resolve("Wide" + w + ".mul.gen.java"), generateMul(w, limbs));
+            Files.writeString(dir.resolve("Wide" + w + ".mulHigh.gen.java"), generateMulHigh(w, limbs));
+            System.out.println("generated Wide" + w + " (" + limbs + " limbs)");
+        }
+        Files.writeString(dir.resolve("Wide256.mulFullDeferred.method.java"), generateAtomBlock());
+        System.out.println("generated Wide256 atom block");
+    }
+
+    private static String generateAtomBlock() {
+        StringBuilder b = new StringBuilder();
+        b.append("    // GEN-ATOM-BEGIN\n");
+        b.append("    /** Full 512-bit product via the raw-limb entry (zero block temporaries). */\n");
+        b.append("    public Wide512 mulFullDeferred(Wide256 o) {\n");
+        b.append("        return mulFullDeferred8(l0, l1, l2, l3, o.limb(0), o.limb(1), o.limb(2), o.limb(3));\n");
+        b.append("    }\n\n");
+        b.append(atomBody("mulFullDeferred8", "Wide512", 4, true));
+
+        b.append('\n');
+        b.append(atomBody("mulLow8", "Wide256", 4, false));
+        b.append('\n');
+        b.append(atomIntoBody("mulFullInto8", 4, true));
+        b.append('\n');
+        b.append(atomIntoBody("mulLowInto8", 4, false));
+        b.append("    // GEN-ATOM-END\n");
+        return b.toString();
+    }
+
+    private static String atomIntoBody(String name, int limbs, boolean full) {
+        StringBuilder b = new StringBuilder();
+        b.append("    /**\n");
+        b.append("     * ").append(full ? "Full 512-bit product" : "Low 256 bits of the product")
+                .append(" written into {@code out[off..]} (zero-object variant).\n");
+        b.append("     */\n");
+        b.append("    static void ").append(name).append("(long[] out, int off, ");
+        for (int i = 0; i < limbs * 2; i++) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append("long ").append(i < limbs ? "a" : "b").append(i < limbs ? i : i - limbs);
+        }
+        b.append(") {\n");
+        int lastColumn = full ? 2 * limbs - 1 : limbs - 1;
+        for (int i = 0; i < limbs; i++) {
+            for (int j = 0; j < limbs; j++) {
+                if (i + j <= lastColumn) {
+                    b.append("        long p").append(i).append('_').append(j)
+                            .append(" = a").append(i).append(" * b").append(j).append(";\n");
+                }
+                if (i + j + 1 <= lastColumn) {
+                    b.append("        long h").append(i).append('_').append(j)
+                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(", b").append(j).append(");\n");
+                }
+            }
+        }
+        for (int t = 0; t <= lastColumn; t++) {
+            List<String> terms = new ArrayList<>();
+            for (int u = 0; u < limbs; u++) {
+                int v = t - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("p" + u + "_" + v);
+                }
+            }
+            for (int u = 0; u < limbs; u++) {
+                int v = t - 1 - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("h" + u + "_" + v);
+                }
+            }
+            b.append("        long lo").append(t).append(" = ").append(terms.get(0)).append(";\n");
+            b.append("        long hi").append(t).append(" = 0;\n");
+            for (int k = 1; k < terms.size(); k++) {
+                b.append("        {\n");
+                b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
+            b.append("            hi").append(t).append(" += ")
+                    .append(carryExpr("lo" + t, terms.get(k), "s")).append(";\n");
+                b.append("            lo").append(t).append(" = s;\n");
+                b.append("        }\n");
+            }
+        }
+        b.append("        long r0 = lo0;\n");
+        b.append("        long carry = 0;\n");
+        for (int t = 1; t <= lastColumn; t++) {
+            b.append("        long s").append(t).append(" = lo").append(t)
+                    .append(" + hi").append(t - 1).append(";\n");
+            b.append("        long c").append(t).append(" = ")
+                    .append(carryExpr("lo" + t, "hi" + (t - 1), "s" + t)).append(";\n");
+            b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
+            b.append("        carry = c").append(t).append(" + ")
+                    .append(carryExpr("s" + t, "carry", "r" + t)).append(";\n");
+        }
+        for (int t = 0; t <= lastColumn; t++) {
+            b.append("        out[off + ").append(t).append("] = r").append(t).append(";\n");
+        }
+        b.append("    }\n");
+        return b.toString();
+    }
+
+    private static String atomBody(String name, String returnType, int limbs, boolean full) {
+        StringBuilder b = new StringBuilder();
+        b.append("    /**\n");
+        b.append("     * ").append(full ? "Full 512-bit product" : "Low 256 bits of the product")
+                .append(" from raw limbs (per-column 128-bit accumulators, deferred carries).\n");
+        b.append("     */\n");
+        b.append("    static ").append(returnType).append(' ').append(name).append('(');
+        for (int i = 0; i < limbs * 2; i++) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append("long ").append(i < limbs ? "a" : "b").append(i < limbs ? i : i - limbs);
+        }
+        b.append(") {\n");
+        int lastColumn = full ? 2 * limbs - 1 : limbs - 1;
+        for (int i = 0; i < limbs; i++) {
+            for (int j = 0; j < limbs; j++) {
+                if (i + j <= lastColumn) {
+                    b.append("        long p").append(i).append('_').append(j)
+                            .append(" = a").append(i).append(" * b").append(j).append(";\n");
+                }
+                if (i + j + 1 <= lastColumn) {
+                    b.append("        long h").append(i).append('_').append(j)
+                            .append(" = Math.unsignedMultiplyHigh(a").append(i)
+                            .append(", b").append(j).append(");\n");
+                }
+            }
+        }
+        for (int t = 0; t <= lastColumn; t++) {
+            List<String> terms = new ArrayList<>();
+            for (int u = 0; u < limbs; u++) {
+                int v = t - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("p" + u + "_" + v);
+                }
+            }
+            for (int u = 0; u < limbs; u++) {
+                int v = t - 1 - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("h" + u + "_" + v);
+                }
+            }
+            b.append("        long lo").append(t).append(" = ").append(terms.get(0)).append(";\n");
+            b.append("        long hi").append(t).append(" = 0;\n");
+            for (int k = 1; k < terms.size(); k++) {
+                b.append("        {\n");
+                b.append("            long s = lo").append(t).append(" + ").append(terms.get(k)).append(";\n");
+            b.append("            hi").append(t).append(" += ")
+                    .append(carryExpr("lo" + t, terms.get(k), "s")).append(";\n");
+                b.append("            lo").append(t).append(" = s;\n");
+                b.append("        }\n");
+            }
+        }
+        b.append("        long r0 = lo0;\n");
+        b.append("        long carry = 0;\n");
+        for (int t = 1; t <= lastColumn; t++) {
+            b.append("        long s").append(t).append(" = lo").append(t)
+                    .append(" + hi").append(t - 1).append(";\n");
+            b.append("        long c").append(t).append(" = ")
+                    .append(carryExpr("lo" + t, "hi" + (t - 1), "s" + t)).append(";\n");
+            b.append("        long r").append(t).append(" = s").append(t).append(" + carry;\n");
+            b.append("        carry = c").append(t).append(" + ")
+                    .append(carryExpr("s" + t, "carry", "r" + t)).append(";\n");
+        }
+        b.append("        return ").append(returnType).append(".of(");
+        for (int t = 0; t <= lastColumn; t++) {
+            if (t > 0) {
+                b.append(", ");
+            }
+            b.append('r').append(t);
+        }
+        b.append(");\n");
+        b.append("    }\n");
+        return b.toString();
+    }
+
+    private static String generateMul(int width, int limbs) {
+        List<String> products = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        build(width, limbs, limbs - 1, columns, products);
+        return wrap(width, "mul", "Low " + width + " bits of the " + (2 * width)
+                + "-bit product, i.e. {@code (a*b) mod 2^" + width + "}."
+                + " Fully unrolled schoolbook (no atom calls).", limbs,
+                range(0, limbs - 1), products, columns);
+    }
+
+    private static String generateMulHigh(int width, int limbs) {
+        List<String> products = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        build(width, limbs, 2 * limbs - 1, columns, products);
+        return wrap(width, "mulHigh", "High " + width + " bits of the " + (2 * width)
+                + "-bit product, i.e. {@code (a*b) >>> " + width + "}."
+                + " Fully unrolled schoolbook (no atom calls).", limbs,
+                range(limbs, 2 * limbs - 1), products, columns);
+    }
+
+    private static int[] range(int lo, int hi) {
+        int[] r = new int[hi - lo + 1];
+        for (int i = 0; i < r.length; i++) {
+            r[i] = lo + i;
+        }
+        return r;
+    }
+
+    private static void build(int width, int limbs, int lastColumn,
+                              List<String> columns, List<String> products) {
+        for (int t = 0; t <= lastColumn; t++) {
+            StringBuilder c = new StringBuilder();
+            c.append("        {\n");
+            c.append("            long s;\n");
+            c.append("            long k = 0;\n");
+            List<String> terms = new ArrayList<>();
+            for (int u = 0; u < limbs; u++) {
+                int v = t - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("p" + u + "_" + v);
+                }
+            }
+            for (int u = 0; u < limbs; u++) {
+                int v = t - 1 - u;
+                if (v >= 0 && v < limbs) {
+                    terms.add("h" + u + "_" + v);
+                }
+            }
+            boolean first = true;
+            for (String term : terms) {
+                if (first) {
+                    c.append("            s = ").append(term).append(";\n");
+                    first = false;
+                } else {
+                    c.append("            {\n");
+                    c.append("                long r = s + ").append(term).append(";\n");
+                    c.append("                k += ").append(carryExpr("s", term, "r")).append(";\n");
+                    c.append("                s = r;\n");
+                    c.append("            }\n");
+                }
+            }
+            c.append("            {\n");
+            c.append("                long r = s + carry;\n");
+                c.append("                k += ").append(carryExpr("s", "carry", "r")).append(";\n");
+            c.append("                c").append(t).append(" = r;\n");
+            c.append("                carry = k;\n");
+            c.append("            }\n");
+            c.append("        }\n");
+            columns.add(c.toString());
+            addProductsFor(products, limbs, t);
+        }
+    }
+
+    private static void addProductsFor(List<String> products, int limbs, int t) {
+        for (int u = 0; u < limbs; u++) {
+            int v = t - u;
+            if (v >= 0 && v < limbs) {
+                products.add("        long p" + u + "_" + v + " = a" + u + " * b" + v + ";\n");
+            }
+        }
+        for (int u = 0; u < limbs; u++) {
+            int v = t - 1 - u;
+            if (v >= 0 && v < limbs) {
+                products.add("        long h" + u + "_" + v
+                        + " = Math.unsignedMultiplyHigh(a" + u + ", b" + v + ");\n");
+            }
+        }
+    }
+
+    private static String wrap(int width, String name, String doc, int limbs,
+                               int[] returnColumns, List<String> products, List<String> columns) {
+        StringBuilder b = new StringBuilder();
+        b.append("    /**\n");
+        b.append("     * ").append(doc).append("\n");
+        b.append("     */\n");
+        b.append("    public Wide").append(width).append(' ').append(name)
+                .append("(Wide").append(width).append(" o) {\n");
+        for (int i = 0; i < limbs; i++) {
+            b.append("        long a").append(i).append(" = l").append(i).append(";\n");
+        }
+        for (int i = 0; i < limbs; i++) {
+            b.append("        long b").append(i).append(" = o.limb(").append(i).append(");\n");
+        }
+        b.append("        long carry = 0;\n");
+        for (int i = 0; i <= 2 * limbs - 1; i++) {
+            b.append("        long c").append(i).append(";\n");
+        }
+        b.append("\n");
+        b.append("        // products are computed once and reused by both their lo/hi columns\n");
+        for (String p : products) {
+            b.append(p);
+        }
+        b.append("\n");
+        for (String c : columns) {
+            b.append(c);
+        }
+        b.append("\n");
+        b.append("        return Wide").append(width).append(".of(");
+        for (int i = 0; i < returnColumns.length; i++) {
+            if (i > 0) {
+                b.append(", ");
+            }
+            b.append("c").append(returnColumns[i]);
+        }
+        b.append(");\n");
+        b.append("    }\n");
+        return b.toString();
+    }
+}

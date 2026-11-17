@@ -1,13 +1,13 @@
 package com.scalarwide.bench;
 
-import com.scalarwide.MutableWide128;
-import com.scalarwide.MutableWide256;
-import com.scalarwide.Wide1024;
-import com.scalarwide.Wide128;
-import com.scalarwide.Wide256;
-import com.scalarwide.Wide384;
-import com.scalarwide.Wide512;
-import com.scalarwide.Wide768;
+import com.scalarwide.main.integer.MutableWide128;
+import com.scalarwide.main.integer.MutableWide256;
+import com.scalarwide.main.integer.Wide1024;
+import com.scalarwide.main.integer.Wide128;
+import com.scalarwide.main.integer.Wide256;
+import com.scalarwide.main.integer.Wide384;
+import com.scalarwide.main.integer.Wide512;
+import com.scalarwide.main.integer.Wide768;
 import org.bouncycastle.math.raw.Nat;
 import org.bouncycastle.math.raw.Nat128;
 import org.bouncycastle.math.raw.Nat256;
