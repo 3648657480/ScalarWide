@@ -2,6 +2,18 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 2.0.1 — 文档重组（无代码变更）
+
+> patch 级：只动文档结构与引用，不改任何类、方法或语义。
+
+- `docs/` 按组重构，根目录只保留 `bench.md`：
+  - `docs/bench/`：87 个原始跑批 CSV 与日志（`.gitignore` 同步到新路径）
+  - `docs/design/`：DESIGN、INLINE、LAYOUT、HETEROGENEOUS、TWO-LINES
+  - `docs/guide/`：使用指南（新 `README.md`）、SPEC、SEMANTICS、WIDE-FORMATS、WIDE-CRYPTO、
+    B1280-CONTAINER、COMPATIBILITY
+  - `docs/history/`：BRANCHES、FUTURE-WORK、WORKSTATION、BRIEF、HANDOFF
+- `docs/BENCH.md` → `docs/bench.md`；全部引用、javadoc 与包名同步。
+- 新增 `docs/guide/README.md`：按「整数 / 浮点 / 容器 / 加密」四条路径给出用法与文档地图。
 ## 2.0.0 — 两组四包重构（破坏性）
 
 > **破坏性变更**：包名全部改变，`fp` 子项目并回主模块。按 SemVer 升主版本。
