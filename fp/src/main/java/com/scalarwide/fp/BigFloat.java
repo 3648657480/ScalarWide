@@ -157,6 +157,15 @@ public final class BigFloat {
         return sign != 0;
     }
 
+    /** Package-private view of the mantissa for the wide-format differential tests. */
+    long[] limbs() {
+        return mag;
+    }
+
+    /** Package-private view of the kind code for the wide-format differential tests. */
+    byte kindCode() {
+        return kind;
+    }
     public int scaleExponent() {
         return exp;
     }
