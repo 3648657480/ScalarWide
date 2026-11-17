@@ -19,7 +19,8 @@ class ModArithTest {
 
     private static final long SEED = 12345L;
     private static final int N = 2000;
-    private static final int[] WIDTHS = {2, 4, 8};
+    /** 2 = 128, 4 = 256, 6 = 384, 8 = 512, 9 = 576 lanes (ECC P-521 uses 9). */
+    private static final int[] WIDTHS = {2, 4, 6, 8, 9};
 
     @Test
     void addModAndSubModMatchBigInteger() {
@@ -244,6 +245,33 @@ class ModArithTest {
             ModArith.fromBytesBE(bytes, 0, back);
             assertArrayEquals(v, back, "round trip");
         }
+    }
+
+    @Test
+    void p521MersennePrimeWorksAtNineLimbs() {
+        // P-521 uses p = 2^521 - 1; nine 64-bit limbs hold it with 55 spare bits.
+        BigInteger p521 = BigInteger.ONE.shiftLeft(521).subtract(BigInteger.ONE);
+        int len = 9;
+        long[] p = toLimbs(p521, len);
+        long[] minusOne = toLimbs(p521.subtract(BigInteger.ONE), len);
+        long[] out = new long[len];
+
+        // (p-1)^2 mod p == 1, because p-1 == -1
+        ModArith.mulMod(minusOne, minusOne, p, out);
+        assertEquals(BigInteger.ONE, toBig(out), "(p-1)^2 mod p");
+
+        // (p-1) + 1 == 0, (p-1) - 1 == p-2
+        long[] one = toLimbs(BigInteger.ONE, len);
+        ModArith.addMod(minusOne, one, p, out);
+        assertEquals(BigInteger.ZERO, toBig(out), "(p-1)+1");
+        ModArith.subMod(minusOne, one, p, out);
+        assertEquals(p521.subtract(BigInteger.TWO), toBig(out), "(p-1)-1");
+
+        // 2^521 needs bit 521, which nine limbs hold; p itself does not reach it.
+        long[] two521 = toLimbs(BigInteger.ONE.shiftLeft(521), len);
+        assertTrue(ModArith.testBit(two521, 521), "bit 521 fits in nine limbs");
+        assertFalse(ModArith.testBit(p, 521), "p = 2^521-1 has no bit 521");
+        assertEquals(521, toBig(p).bitLength(), "p is 521 bits");
     }
 
     @Test
