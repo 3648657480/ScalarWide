@@ -283,6 +283,177 @@ class ModArithTest {
                 () -> ModArith.mulMod(new long[2], new long[2], m, new long[2]));
     }
 
+    // ---------------------------------------------------------------- Montgomery
+
+    @Test
+    void montgomeryMatchesBigIntegerAtEveryWidth() {
+        Random rnd = new Random(SEED + 10);
+        BigInteger two64 = BigInteger.ONE.shiftLeft(64);
+        for (int len : WIDTHS) {
+            BigInteger r = BigInteger.ONE.shiftLeft(64 * len);
+            for (int i = 0; i < N / 2; i++) {
+                BigInteger m = oddModulus(rnd, len);
+                BigInteger a = randomBelow(rnd, m);
+                BigInteger b = randomBelow(rnd, m);
+                long[] ml = toLimbs(m, len);
+                long[] al = toLimbs(a, len);
+                long[] bl = toLimbs(b, len);
+
+                // n0 = -m^-1 mod 2^64
+                long n0 = ModArith.n0inv(ml);
+                assertEquals(BigInteger.ONE.negate().mod(two64),
+                        unsigned(ml[0]).multiply(unsigned(n0)).mod(two64), "n0inv len=" + len);
+
+                // toMont / fromMont round trip
+                long[] am = new long[len];
+                ModArith.toMont(al, ml, am);
+                assertEquals(a.multiply(r).mod(m), toBig(am), "toMont len=" + len);
+                long[] back = new long[len];
+                ModArith.fromMont(am, ml, back);
+                assertEquals(a, toBig(back), "toMont->fromMont len=" + len);
+
+                // mulMont(a, b) == a*b*R^-1 mod m
+                long[] out = new long[len];
+                ModArith.mulMont(al, bl, ml, out);
+                assertEquals(a.multiply(b).mod(m).multiply(r.modInverse(m)).mod(m), toBig(out),
+                        "mulMont len=" + len);
+
+                // the whole Montgomery pipeline is the plain product
+                long[] bm = new long[len];
+                ModArith.toMont(bl, ml, bm);
+                ModArith.mulMont(am, bm, ml, out);
+                ModArith.fromMont(out, ml, out);
+                assertEquals(a.multiply(b).mod(m), toBig(out), "montgomery pipeline len=" + len);
+            }
+        }
+    }
+
+    @Test
+    void montgomeryNeighbourhoodAndExtremeModuli() {
+        Random rnd = new Random(SEED + 11);
+        int len = 4;
+        long[] out = new long[len];
+        // m = 1: every residue is 0, R mod 1 = 0, n0 = -1
+        long[] one = new long[len];
+        one[0] = 1L;
+        long[] zero = new long[len];
+        assertEquals(-1L, ModArith.n0inv(one), "n0inv(1)");
+        ModArith.mulMod(zero, zero, one, out);
+        assertEquals(BigInteger.ZERO, toBig(out), "mulMod mod 1");
+        ModArith.powMod(zero, zero, one, out);
+        assertEquals(BigInteger.ZERO, toBig(out), "powMod mod 1");
+        ModArith.toMont(zero, one, out);
+        assertEquals(BigInteger.ZERO, toBig(out), "toMont mod 1");
+
+        for (int i = 0; i < N / 4; i++) {
+            BigInteger m = oddModulus(rnd, len);
+            long[] ml = toLimbs(m, len);
+            BigInteger[] vals = {
+                    BigInteger.ZERO, BigInteger.ONE, BigInteger.TWO,
+                    m.shiftRight(1), m.subtract(BigInteger.TWO), m.subtract(BigInteger.ONE)};
+            for (BigInteger a : vals) {
+                for (BigInteger b : vals) {
+                    ModArith.mulMod(toLimbs(a, len), toLimbs(b, len), ml, out);
+                    assertEquals(a.multiply(b).mod(m), toBig(out), "mulMod neighbourhood");
+                }
+            }
+            // the modulus that fills the width completely, and one whose top limb is 0x8000...
+            BigInteger fill = BigInteger.ONE.shiftLeft(64 * len).subtract(BigInteger.ONE);
+            BigInteger half = BigInteger.ONE.shiftLeft(64 * len - 1).add(BigInteger.ONE);
+            for (BigInteger mm : new BigInteger[] {fill, half, BigInteger.valueOf(3)}) {
+                long[] mml = toLimbs(mm, len);
+                for (BigInteger a : new BigInteger[] {
+                        BigInteger.ZERO, BigInteger.ONE, mm.subtract(BigInteger.ONE)}) {
+                    for (BigInteger b : new BigInteger[] {
+                            BigInteger.ZERO, BigInteger.ONE, mm.subtract(BigInteger.ONE)}) {
+                        ModArith.mulMod(toLimbs(a, len), toLimbs(b, len), mml, out);
+                        assertEquals(a.multiply(b).mod(mm), toBig(out), "mulMod modulus=" + mm);
+                        ModArith.powMod(toLimbs(a, len), toLimbs(BigInteger.valueOf(5), len), mml, out);
+                        assertEquals(a.modPow(BigInteger.valueOf(5), mm), toBig(out), "powMod modulus=" + mm);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void montgomeryEvenModulusFallsBackAndRejects() {
+        Random rnd = new Random(SEED + 12);
+        for (int len : WIDTHS) {
+            for (int i = 0; i < N / 8; i++) {
+                BigInteger m = new BigInteger(len * 64, rnd).setBit(len * 64 - 1).clearBit(0);
+                BigInteger a = randomBelow(rnd, m);
+                BigInteger b = randomBelow(rnd, m);
+                long[] ml = toLimbs(m, len);
+                long[] al = toLimbs(a, len);
+                long[] bl = toLimbs(b, len);
+                long[] out = new long[len];
+                ModArith.mulMod(al, bl, ml, out);
+                assertEquals(a.multiply(b).mod(m), toBig(out), "mulMod even len=" + len);
+                BigInteger exp = new BigInteger(m.bitLength(), rnd).mod(m);
+                ModArith.powMod(al, toLimbs(exp, len), ml, out);
+                assertEquals(a.modPow(exp, m), toBig(out), "powMod even len=" + len);
+                ModArith.powModCt(al, toLimbs(exp, len), ml, out);
+                assertEquals(a.modPow(exp, m), toBig(out), "powModCt even len=" + len);
+                assertThrows(ArithmeticException.class, () -> ModArith.n0inv(ml), "n0inv even");
+                assertThrows(ArithmeticException.class, () -> ModArith.toMont(al, ml, out), "toMont even");
+                assertThrows(ArithmeticException.class, () -> ModArith.fromMont(al, ml, out), "fromMont even");
+                assertThrows(ArithmeticException.class, () -> ModArith.mulMont(al, bl, ml, out), "mulMont even");
+            }
+        }
+    }
+
+    @Test
+    void montgomeryP521FixedPoints() {
+        BigInteger p = BigInteger.ONE.shiftLeft(521).subtract(BigInteger.ONE);
+        BigInteger r = BigInteger.ONE.shiftLeft(64 * 9);
+        int len = 9;
+        long[] pl = toLimbs(p, len);
+        long[] pm1 = toLimbs(p.subtract(BigInteger.ONE), len);
+        long[] out = new long[len];
+        assertEquals(BigInteger.ONE.negate().mod(BigInteger.ONE.shiftLeft(64)),
+                unsigned(pl[0]).multiply(unsigned(ModArith.n0inv(pl)))
+                        .mod(BigInteger.ONE.shiftLeft(64)), "n0inv(p)");
+
+        long[] pm1m = new long[len];
+        ModArith.toMont(pm1, pl, pm1m);
+        assertEquals(p.subtract(BigInteger.ONE).multiply(r).mod(p), toBig(pm1m), "toMont(p-1)");
+        ModArith.mulMont(pm1m, pm1m, pl, out);
+        ModArith.fromMont(out, pl, out);
+        assertEquals(BigInteger.ONE, toBig(out), "(p-1)^2 mod p");
+
+        // R mod p is 2^(576-521) = 2^55, and fromMont maps it back to 1
+        long[] one = toLimbs(BigInteger.ONE, len);
+        long[] rm = new long[len];
+        ModArith.toMont(one, pl, rm);
+        assertEquals(BigInteger.TWO.pow(55), toBig(rm), "R mod p");
+        ModArith.fromMont(rm, pl, out);
+        assertEquals(BigInteger.ONE, toBig(out), "fromMont(R)");
+        ModArith.mulMont(rm, rm, pl, out);
+        assertEquals(BigInteger.TWO.pow(55), toBig(out), "R*R*R^-1 = R");
+    }
+
+    @Test
+    void montgomeryExhaustiveSmallModuli() {
+        // Every pair below m for the smallest odd moduli, at widths whose top limbs are zero:
+        // exercises hidden leading zeros, m = 1, and the 1-limb / 9-limb loop bounds.
+        for (int len : new int[] {1, 2, 3, 9}) {
+            for (long mv = 1; mv <= 31; mv += 2) {
+                BigInteger m = BigInteger.valueOf(mv);
+                long[] ml = toLimbs(m, len);
+                for (long x = 0; x < mv; x++) {
+                    for (long y = 0; y < mv; y++) {
+                        long[] out = new long[len];
+                        ModArith.mulMod(toLimbs(BigInteger.valueOf(x), len),
+                                toLimbs(BigInteger.valueOf(y), len), ml, out);
+                        assertEquals(BigInteger.valueOf(x * y).mod(m), toBig(out),
+                                "mulMod m=" + mv + " len=" + len + " x=" + x + " y=" + y);
+                    }
+                }
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private static BigInteger rotateLeft(BigInteger v, int k, int width) {
@@ -318,6 +489,12 @@ class ModArithTest {
             work = work.shiftRight(64);
         }
         return out;
+    }
+
+    /** A {@code long} read as unsigned. */
+    static BigInteger unsigned(long v) {
+        BigInteger w = BigInteger.valueOf(v & Long.MAX_VALUE);
+        return v < 0 ? w.setBit(63) : w;
     }
 
     static BigInteger toBig(long[] limbs) {

@@ -10,13 +10,17 @@ import java.math.BigInteger;
  * same array length, and that length is the width. Values are unsigned; the modulus {@code m} must
  * be non-zero and, for the modular operations, {@code a, b < m}.
  *
- * <p><b>Constant time</b>: {@link #ctCompare}, {@link #ctSelect} and {@link #powModCt} are written
- * without data-dependent branches or memory indices. Everything else has data-dependent control
- * flow (early exits, division, trailing-zero scans) and must not be used with secret operands —
- * see {@code docs/WIDE-CRYPTO.md}.
+ * <p><b>Constant time</b>: {@link #ctCompare}, {@link #ctSelect} and {@link #ctSwap} are written
+ * without data-dependent branches or memory indices, and the Montgomery core ({@link #mulMont})
+ * has a fixed operation count, but its closing conditional subtraction still branches on the
+ * operands. Everything else has data-dependent control flow (early exits, division, leading-zero
+ * scans) and must not be used with secret operands — see {@code docs/WIDE-CRYPTO.md}.
  *
- * <p>This is the correctness-first version: {@link #mulMod} reduces with a full product and a
- * division. Montgomery reduction is the planned optimisation (see the doc), not implemented yet.
+ * <p><b>Multiplication</b>: an odd modulus takes the Montgomery path — CIOS reduction
+ * ({@link #mulMont}) with no division, {@code n0 = -m^{-1} mod 2^64} computed once per call by
+ * {@link #n0inv}. An even modulus has no Montgomery form and falls back to the full product plus
+ * {@link Limbs#divmod} (same result, much slower). Widths are arbitrary: the loops are bounded by
+ * {@code m.length}, so the non-power-of-two 9-limb P-521 width works like any other.
  */
 public final class ModArith {
 
@@ -261,13 +265,27 @@ public final class ModArith {
     // ---------------------------------------------------------------- modular multiply
 
     /**
-     * {@code (a * b) mod m}. Correctness-first: a full {@code 2L}-limb product followed by a
-     * division. Montgomery reduction is the planned optimisation.
+     * {@code (a * b) mod m}. An odd modulus takes the Montgomery path: {@code a} is mapped to
+     * {@code a*R mod m} (one division, see {@link #toMont}) and the product is finished by
+     * {@link #mulMont}, i.e. {@code REDC((a*R) * b) = a*b}. An even modulus has no Montgomery form
+     * and falls back to a full {@code 2L}-limb product plus {@link Limbs#divmod}. Both require
+     * {@code a, b < m}.
      *
      * @throws ArithmeticException if {@code m} is zero
      */
     public static void mulMod(long[] a, long[] b, long[] m, long[] out) {
         requireNonZero(m);
+        if ((m[0] & 1L) == 0L) {
+            mulModDiv(a, b, m, out);
+            return;
+        }
+        long[] am = new long[m.length];
+        toMont(a, m, am);
+        mulMontCore(am, b, m, n0inv(m), new long[m.length + 2], out);
+    }
+
+    /** Fallback for even moduli: no Montgomery form exists, so reduce by division. */
+    private static void mulModDiv(long[] a, long[] b, long[] m, long[] out) {
         int len = a.length;
         long[] prod = new long[2 * len];
         long[] full = Limbs.mul(a, b);
@@ -278,6 +296,148 @@ public final class ModArith {
         long[] r = new long[2 * len];
         Limbs.divmod(prod, den, q, r);
         System.arraycopy(r, 0, out, 0, len);
+    }
+
+    // ---------------------------------------------------------------- Montgomery
+
+    /**
+     * The Montgomery constant {@code n0 = -m^{-1} mod 2^64} of an odd modulus.
+     *
+     * <p>{@code m[0] * n0 == -1 (mod 2^64)}, which is exactly what the CIOS reduction needs to
+     * clear one limb per round. It depends only on {@code m}, so a caller that performs many
+     * multiplications modulo the same {@code m} computes it once.
+     *
+     * <p>Newton iteration on {@code x <- x * (2 - m[0] * x)} doubles the number of correct low
+     * bits per step; the seed {@code x = m[0]} is already correct modulo {@code 2^3}, so five
+     * steps reach 96 bits and the low 64 are exact.
+     *
+     * @throws ArithmeticException if {@code m} is zero or even
+     */
+    public static long n0inv(long[] m) {
+        requireOdd(m);
+        long m0 = m[0];
+        long inv = m0;
+        for (int i = 0; i < 5; i++) {
+            inv *= 2L - m0 * inv;
+        }
+        return -inv;
+    }
+
+    /**
+     * Maps {@code a} into the Montgomery domain: {@code a * R mod m} with {@code R = 2^(64n)}
+     * ({@code n = m.length}). The result is always {@code < m}.
+     *
+     * <p>The mapping itself costs one {@code 2n}-limb division ({@link Limbs#divmod}); it is meant
+     * to be paid once per exponentiation, not per multiplication.
+     *
+     * @throws ArithmeticException if {@code m} is zero or even
+     */
+    public static void toMont(long[] a, long[] m, long[] out) {
+        requireOdd(m);
+        int n = m.length;
+        long[] num = new long[2 * n];
+        System.arraycopy(a, 0, num, n, n);
+        long[] den = new long[2 * n];
+        System.arraycopy(m, 0, den, 0, n);
+        long[] q = new long[2 * n];
+        java.util.Arrays.fill(out, 0L);
+        Limbs.divmod(num, den, q, out);
+    }
+
+    /**
+     * Maps a Montgomery residue back: {@code a * R^{-1} mod m}. Requires {@code a < m}, i.e. a
+     * value produced by {@link #toMont} or {@link #mulMont}; one reduction, no division.
+     *
+     * @throws ArithmeticException if {@code m} is zero or even
+     */
+    public static void fromMont(long[] a, long[] m, long[] out) {
+        requireOdd(m);
+        int n = m.length;
+        long[] one = new long[n];
+        one[0] = 1L;
+        mulMontCore(a, one, m, n0inv(m), new long[n + 2], out);
+    }
+
+    /**
+     * Montgomery product {@code a * b * R^{-1} mod m} (CIOS: one interleaved pass of
+     * multiply-and-reduce, {@code 2n^2} limb products, no division). Requires an odd modulus and
+     * {@code a, b < m}; the width is whatever {@code m.length} is, so 9-limb P-521 is fine.
+     *
+     * @throws ArithmeticException if {@code m} is zero or even
+     */
+    public static void mulMont(long[] a, long[] b, long[] m, long[] out) {
+        requireOdd(m);
+        mulMontCore(a, b, m, n0inv(m), new long[m.length + 2], out);
+    }
+
+    /**
+     * Coarsely integrated operand scanning (Koç-Acar-Kaliski): each outer round multiplies by one
+     * limb of {@code b}, adds one limb of headroom, then clears the low limb again with the
+     * multiple of {@code m} that {@code n0} selects. The accumulator stays below {@code 2m}, so a
+     * single conditional subtraction finishes the reduction.
+     *
+     * <p>A two-pass variant (column product plus row reduction, the delayed-carry shape the
+     * hand-tuned {@code Wide*} kernels use) was measured in the same harness and came out
+     * identical at 4/6 limbs and 1 ns slower at 9 — the loop is bound by the limb-product chain,
+     * not by the carry bookkeeping — so the simpler interleaved pass is kept.
+     *
+     * <p>{@code t} is scratch of at least {@code n + 2} limbs, distinct from {@code a} and
+     * {@code b}; {@code out} may alias either operand (it is written only at the end).
+     */
+    private static void mulMontCore(long[] a, long[] b, long[] m, long n0, long[] t, long[] out) {
+        int n = m.length;
+        java.util.Arrays.fill(t, 0L);
+        for (int i = 0; i < n; i++) {
+            long bi = b[i];
+            long c = 0L;
+            for (int j = 0; j < n; j++) {
+                long aj = a[j];
+                long lo = aj * bi;
+                long hi = Math.unsignedMultiplyHigh(aj, bi);
+                long s1 = t[j] + c;
+                long k1 = Long.compareUnsigned(s1, t[j]) < 0 ? 1L : 0L;
+                long s2 = s1 + lo;
+                long k2 = Long.compareUnsigned(s2, s1) < 0 ? 1L : 0L;
+                t[j] = s2;
+                c = hi + k1 + k2;
+            }
+            long s = t[n] + c;
+            t[n] = s;
+            t[n + 1] = Long.compareUnsigned(s, c) < 0 ? 1L : 0L;
+
+            long u = t[0] * n0;
+            c = 0L;
+            for (int j = 0; j < n; j++) {
+                long mj = m[j];
+                long lo = mj * u;
+                long hi = Math.unsignedMultiplyHigh(mj, u);
+                long s1 = t[j] + c;
+                long k1 = Long.compareUnsigned(s1, t[j]) < 0 ? 1L : 0L;
+                long s2 = s1 + lo;
+                long k2 = Long.compareUnsigned(s2, s1) < 0 ? 1L : 0L;
+                c = hi + k1 + k2;
+                if (j > 0) {
+                    t[j - 1] = s2;
+                }
+            }
+            long sr = t[n] + c;
+            long kr = Long.compareUnsigned(sr, c) < 0 ? 1L : 0L;
+            t[n - 1] = sr;
+            t[n] = t[n + 1] + kr;
+        }
+        long borrow = 0L;
+        for (int i = 0; i < n; i++) {
+            long ti = t[i];
+            long d = ti - m[i];
+            long b1 = Long.compareUnsigned(ti, m[i]) < 0 ? 1L : 0L;
+            long r = d - borrow;
+            long b2 = borrow != 0L && Long.compareUnsigned(r, d) > 0 ? 1L : 0L;
+            borrow = b1 + b2;
+            out[i] = r;
+        }
+        if (t[n] - borrow == -1L) {
+            System.arraycopy(t, 0, out, 0, n);
+        }
     }
 
     private static long[] propagate(long[] a, int len) {
@@ -295,10 +455,41 @@ public final class ModArith {
      * {@code base^exp mod m}. Data-dependent: skips leading zero bits and only multiplies on set
      * bits, so it is <em>not</em> constant time.
      *
+     * <p>An odd modulus squares and multiplies in the Montgomery domain (the base is mapped with
+     * {@link #toMont}) and converts back once at the end; an even modulus keeps the plain
+     * multiply-then-divide loop.
+     *
      * @throws ArithmeticException if {@code m} is zero
      */
     public static void powMod(long[] base, long[] exp, long[] m, long[] out) {
         requireNonZero(m);
+        if ((m[0] & 1L) == 0L) {
+            powModDiv(base, exp, m, out);
+            return;
+        }
+        int len = m.length;
+        long n0 = n0inv(m);
+        long[] t = new long[len + 2];
+        long[] one = new long[len];
+        one[0] = 1L;
+        long[] acc = new long[len];
+        long[] b = new long[len];
+        long[] tmp = new long[len];
+        toMont(one, m, acc);
+        toMont(base, m, b);
+        for (int i = Limbs.bitLength(exp) - 1; i >= 0; i--) {
+            mulMontCore(acc, acc, m, n0, t, tmp);
+            System.arraycopy(tmp, 0, acc, 0, len);
+            if (testBit(exp, i)) {
+                mulMontCore(acc, b, m, n0, t, tmp);
+                System.arraycopy(tmp, 0, acc, 0, len);
+            }
+        }
+        mulMontCore(acc, one, m, n0, t, out);
+    }
+
+    /** {@link #powMod} for an even modulus: no Montgomery form, so multiply and divide. */
+    private static void powModDiv(long[] base, long[] exp, long[] m, long[] out) {
         int len = m.length;
         long[] acc = new long[len];
         long[] tmp = new long[len];
@@ -322,12 +513,40 @@ public final class ModArith {
     /**
      * {@code base^exp mod m} with a fixed schedule: every bit squares and every bit multiplies, the
      * two candidates are combined with {@link #ctSelect}. No branch or memory index depends on
-     * {@code exp}.
+     * {@code exp}. An odd modulus runs the loop in the Montgomery domain, whose limb count is
+     * fixed for the whole exponentiation (the final reduction still ends in a conditional
+     * subtraction, so this is not yet a strictly branch-free path — see the doc).
      *
      * @throws ArithmeticException if {@code m} is zero
      */
     public static void powModCt(long[] base, long[] exp, long[] m, long[] out) {
         requireNonZero(m);
+        if ((m[0] & 1L) == 0L) {
+            powModCtDiv(base, exp, m, out);
+            return;
+        }
+        int len = m.length;
+        long n0 = n0inv(m);
+        long[] t = new long[len + 2];
+        long[] one = new long[len];
+        one[0] = 1L;
+        long[] acc = new long[len];
+        long[] b = new long[len];
+        long[] squared = new long[len];
+        long[] product = new long[len];
+        toMont(one, m, acc);
+        toMont(base, m, b);
+        for (int i = exp.length * 64 - 1; i >= 0; i--) {
+            mulMontCore(acc, acc, m, n0, t, squared);
+            mulMontCore(squared, b, m, n0, t, product);
+            int bit = testBit(exp, i) ? 1 : 0;
+            ctSelect(squared, product, bit, acc);
+        }
+        mulMontCore(acc, one, m, n0, t, out);
+    }
+
+    /** {@link #powModCt} for an even modulus. */
+    private static void powModCtDiv(long[] base, long[] exp, long[] m, long[] out) {
         int len = m.length;
         long[] acc = new long[len];
         acc[0] = 1L;
@@ -457,6 +676,13 @@ public final class ModArith {
     private static void requireNonZero(long[] m) {
         if (isZero(m)) {
             throw new ArithmeticException("modulus is zero");
+        }
+    }
+
+    private static void requireOdd(long[] m) {
+        requireNonZero(m);
+        if ((m[0] & 1L) == 0L) {
+            throw new ArithmeticException("Montgomery arithmetic requires an odd modulus");
         }
     }
 
