@@ -4,6 +4,12 @@
 
 Working rules for any agent or contributor on ScalarWide. Binding.
 
+## Line boundary
+
+Main 组与 MC 组（`C:\Project-ScalarWide-2560`）是**有意分叉**的两组 INT+FP，
+不是同一份源码的两个视图：两边的 `Wide*` 已经是不同的类，**两个 jar 永不同 classpath**。
+加密代码只进 `ModArith`，不得改动 `Wide*`/`Limbs` 热路径。详见 `docs/TWO-LINES.md`。
+
 ## Correctness discipline
 
 - **The BigInteger differential test is the gate.** No operation ships without
