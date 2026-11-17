@@ -2,6 +2,47 @@
 
 > Current version: see repo-root `VERSION` (the single authority).
 
+## 2.0.0 — 两组四包重构（破坏性）
+
+> **破坏性变更**：包名全部改变，`fp` 子项目并回主模块。按 SemVer 升主版本。
+> 本版本没有行为变更，只有结构、命名与新增功能。
+
+### 迁移：包名对照
+
+| 1.0.x | 2.0.0 |
+|---|---|
+| `com.scalarwide.Wide128…Wide1024` | `com.scalarwide.main.integer.Wide128…Wide1024` |
+| `com.scalarwide.MutableWide128/256` | `com.scalarwide.main.integer.MutableWide128/256` |
+| `com.scalarwide.Limbs` / `Carry` | `com.scalarwide.main.integer.Limbs` / `Carry` |
+| `com.scalarwide.ModArith` | `com.scalarwide.main.integer.ModArith` |
+| `com.scalarwide.fp.Binary256/640/1280` | `com.scalarwide.main.fp.Binary256/640/1280` |
+| `com.scalarwide.fp.BigFloat` / `FpFormat` / `Decimal` / `Exact` | `com.scalarwide.main.fp.*` |
+| `com.scalarwide.mc.WideChunkPos` 等 MC 类型 | `com.scalarwide.mc.integer.*` |
+| `com.scalarwide.mc.Binary1280`（容器） | `com.scalarwide.mc.fp.Binary1280` |
+
+### 结构
+
+- 单仓库、单 Gradle 模块、四个包：`main.integer`（核心 + 加密）、`main.fp`（通用浮点）、
+  `mc.integer`（MC 整数：核心副本 + 宽键 + 平表）、`mc.fp`（MC 容器）。
+- `fp` 子项目并回根模块；`mc` 分支与工作树已删除（旧 tip 保留为 tag `mc-final`）。
+- 两组的同名类不是同一个类，可各自优化；正确性缺陷需双组同修（见 `docs/TWO-LINES.md`）。
+
+### 新增
+
+- `mc.fp.Binary256` / `Binary640` 坐标容器（p=237 / 616），与 1280 容器同一 API，
+  共用参数化基类 `mc.fp.Container`；均零分配。
+- `main.integer.Montgomery`：Montgomery 上下文（缓存 `n0inv` 与 `R² mod m`），
+  批量模乘从每次一次除法降到纯 CIOS。
+- `main.integer.ModArith` 的 SHA lane 原语（`rotlEach/rotrEach/rotrEach32/shrEach32`、
+  大端 64 位字存取）。
+
+### 兼容性
+
+- `java.util`/`java.math` 之外无新依赖；仍为 Java 21 字节码（工具链 25）。
+- 两个文件的旧版本历史条目因编码损坏不可读，保留原样；新条目自本版起为 UTF-8。
+
+## 2.0.0 之前的历史条目（文件编码在 1.0.x 期间损坏，保留原样）
+
 ## 1.0.3 — `toString` 去掉 BigInteger 往返
 
 > patch 级（`docs/COMPATIBILITY.md` §6）：纯性能。既有签名、语义与输出格式完全一致
