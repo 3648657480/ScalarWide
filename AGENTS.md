@@ -39,7 +39,10 @@ Working rules for any agent or contributor on ScalarWide. Binding.
   the algorithm level, never object nesting in fields.
 - Benchmarks: CPU-affinity-pinned JMH (`docs/BENCH.md`); every ratio must state
   its caliber (object API; cold/warm; low-half vs full product).
-- Restoring file content from git: never pipe `git show` into PowerShell text and write it back —\n  the pipeline decodes UTF-8 bytes with the console code page. Use `cmd /c "git cat-file blob ..."`\n  for raw bytes, or the editor tools.\n- Chinese docs/files: edit only via editor tools (UTF-8), never PowerShell
+- Restoring file content from git: never pipe `git show` into PowerShell text and write it back —
+  the pipeline decodes UTF-8 bytes with the console code page. Use `cmd /c "git cat-file blob ..."`
+  for raw bytes, or the editor tools.
+- Chinese docs/files: edit only via editor tools (UTF-8), never PowerShell
   Get-Content/Set-Content.
 - Version bumps: `VERSION` + `CHANGELOG.md` only.
 - Do not push to a remote unless the user's proxy is on (user controls it).
