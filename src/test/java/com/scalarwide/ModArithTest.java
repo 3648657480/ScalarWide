@@ -188,6 +188,44 @@ class ModArithTest {
     }
 
     @Test
+    void laneRotationsMatchShaShapes() {
+        Random rnd = new Random(SEED + 8);
+        for (int len : WIDTHS) {
+            long[] v = new long[len];
+            for (int i = 0; i < len; i++) {
+                v[i] = rnd.nextLong();
+            }
+            for (int k : new int[] {1, 8, 19, 28, 34, 39, 41, 61}) {
+                long[] rotR = v.clone();
+                ModArith.rotrEach(rotR, k);
+                long[] rotL = v.clone();
+                ModArith.rotlEach(rotL, k);
+                long[] shr = v.clone();
+                ModArith.shrEach(shr, k);
+                for (int i = 0; i < len; i++) {
+                    assertEquals(Long.rotateRight(v[i], k), rotR[i], "rotrEach " + k);
+                    assertEquals(Long.rotateLeft(v[i], k), rotL[i], "rotlEach " + k);
+                    assertEquals(v[i] >>> k, shr[i], "shrEach " + k);
+                }
+            }
+            for (int k : new int[] {2, 7, 13, 6, 11, 25}) {
+                long[] rot = v.clone();
+                ModArith.rotrEach32(rot, k);
+                long[] shr = v.clone();
+                ModArith.shrEach32(shr, k);
+                for (int i = 0; i < len; i++) {
+                    long lo = Integer.toUnsignedLong(Integer.rotateRight((int) v[i], k));
+                    long hi = Integer.toUnsignedLong(Integer.rotateRight((int) (v[i] >>> 32), k));
+                    assertEquals((hi << 32) | lo, rot[i], "rotrEach32 " + k);
+                    long slo = (v[i] & 0xFFFF_FFFFL) >>> k;
+                    long shi = (v[i] >>> 32) >>> k;
+                    assertEquals((shi << 32) | slo, shr[i], "shrEach32 " + k);
+                }
+            }
+        }
+    }
+
+    @Test
     void modulusZeroIsRejected() {
         long[] m = new long[2];
         assertThrows(ArithmeticException.class,

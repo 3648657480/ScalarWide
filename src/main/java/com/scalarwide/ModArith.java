@@ -112,6 +112,69 @@ public final class ModArith {
         }
     }
 
+    // ---------------------------------------------------------------- lane-wise (SHA)
+
+    /**
+     * Rotates <b>each 64-bit limb</b> left by {@code k}. This is the SHA-512 / BLAKE2 shape: the
+     * state is a vector of independent words, so the rotation must not carry across limbs (use
+     * {@link #rotl} for a whole-width rotation).
+     */
+    public static void rotlEach(long[] a, int k) {
+        int s = Math.floorMod(k, 64);
+        if (s == 0) {
+            return;
+        }
+        for (int i = 0; i < a.length; i++) {
+            a[i] = Long.rotateLeft(a[i], s);
+        }
+    }
+
+    /** Rotates each 64-bit limb right by {@code k}; the SHA-512 / BLAKE2 shape. */
+    public static void rotrEach(long[] a, int k) {
+        int s = Math.floorMod(k, 64);
+        if (s == 0) {
+            return;
+        }
+        for (int i = 0; i < a.length; i++) {
+            a[i] = Long.rotateRight(a[i], s);
+        }
+    }
+
+    /** Rotates each <b>32-bit half</b> of every limb right by {@code k}; the SHA-256 shape. */
+    public static void rotrEach32(long[] a, int k) {
+        int s = Math.floorMod(k, 32);
+        for (int i = 0; i < a.length; i++) {
+            long v = a[i];
+            long lo = Integer.toUnsignedLong(Integer.rotateRight((int) v, s));
+            long hi = Integer.toUnsignedLong(Integer.rotateRight((int) (v >>> 32), s));
+            a[i] = (hi << 32) | lo;
+        }
+    }
+
+    /** Shifts each 64-bit limb right by {@code k}, zero-filling; used by the SHA sigma functions. */
+    public static void shrEach(long[] a, int k) {
+        int s = k & 63;
+        if (s == 0) {
+            return;
+        }
+        for (int i = 0; i < a.length; i++) {
+            a[i] >>>= s;
+        }
+    }
+
+    /** Shifts each 32-bit half right by {@code k}, zero-filling; the SHA-256 shape. */
+    public static void shrEach32(long[] a, int k) {
+        int s = k & 31;
+        if (s == 0) {
+            return;
+        }
+        for (int i = 0; i < a.length; i++) {
+            long v = a[i];
+            long lo = (v & 0xFFFF_FFFFL) >>> s;
+            long hi = (v >>> 32) >>> s;
+            a[i] = (hi << 32) | lo;
+        }
+    }
     // ---------------------------------------------------------------- modular add / sub
 
     /**
