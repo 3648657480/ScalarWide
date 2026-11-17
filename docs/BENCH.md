@@ -2192,16 +2192,51 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar B1280Bench -prof gc -f 3 -wi 6 -i 8 -w 
 |---|---:|---:|---:|---:|
 | `scalePow2` | **0.31 ns** | **0.32 ns** | 11 ns | 6.7 ns |
 | `floorLow64Frac` | **1.73 ns** | **1.45 ns** | 19 ns | 11.8 ns |
-| `mulSmall` | **78.8 ns** | **70.4 ns** | 540 ns | 340 ns |
+| `mulSmall` | **60.5 ns** | **68.3 ns** | 540 ns | 340 ns |
 | `addSmall` | **5.4 ns** | **12.8 ns** | 需求单估 10–20 | — |
 | `compare` | 5.2 ns | 7.4 ns | 10 ns（需求单 v1.1 放宽） | — |
 | 分配 | ≤0.001 B/次 | ≤0.001 B/次 | 0 | 0 |
 
 按需求单 **v1.1** 的调用次数折算（`mulSmall` 13,475、`addSmall` 13,475、
-`scalePow2` / `floorLow64Frac` 各 186,200、`compare` 1,225），**每 chunk 宽容器 ≈ 1.63 ms**
-（预算 8 ms，余量 4.9×）。
+`scalePow2` / `floorLow64Frac` 各 186,200、`compare` 1,225），**每 chunk 宽容器 ≈ 1.4–1.5 ms**
+（预算 8 ms，余量 5.3×）。
 
 `addSmall` 两档差别来自 delta 落在哪个肢：@2^53 → li=18（只动 2 个肢），@2^1027 → li=3（动 17 个）。
+
+### 一次真正的火焰图归因（2026-11-17，`mulSmall` 78.8 → 60.5 ns）
+
+这个项目此前只有 JMH + 分配量两条腿，**没有上过剖面**。这一轮第一次用：
+
+```bash
+./gradlew :fp:jmhJar
+java -jar fp/build/libs/fp-1.0.3-jmh.jar B1280Bench.b1280MulSmall -f 1 -wi 3 -i 5 -w 1s -r 1s \
+  -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints \
+                  -XX:StartFlightRecording=filename=mul.jfr,settings=profile"
+jfr view hot-methods mul.jfr
+```
+
+> 坑：`-XX:StartFlightRecording` 必须走 `-jvmArgsAppend`，JMH 是在**子 JVM**里跑基准的；
+> 传给父进程会得到一个空记录。
+
+结论：`Binary1280.mulSmall` **self 占 96.46%**，其余是 `Blackhole.consume`，
+即时间确实在核里，不在 harness。
+
+再用隔离探针把核拆开（同一 JVM 内、同循环形状）：
+
+| 变体 | ns/调用 |
+|---|---:|
+| 裸 20 肢 × 1 肢（局部数组） | 23.5 |
+| 裸 + 归一化右移（无逐肢分支） | 31.3 |
+| 裸 + 归一化右移（**带逐肢三元分支**） | 49.2 |
+| 容器 `mulSmall`（带分支） | 68.0 |
+| 20 个字段而非数组 | 51.7 |
+
+两件事因此确定：
+
+1. **归一化循环里的 `drop >= 64` 三元分支按肢求值，白白吃掉 ~18 ns**。
+   把它提到循环外（`drop == 64` 单独一条路径）后，容器 `mulSmall` 从 78.8 降到 **60.5 ns**。
+2. 剩下的 ~29 ns 是**数组字段访问 + 边界检查**（字段版 51.7 vs 数组版 68.6）。
+   再往上要重排整个类的字段布局，收益约 17%，而 50 ms 档预算还有 8× 余量——记录不返工。
 
 三处"别扫不该扫的 limb"：
 

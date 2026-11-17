@@ -325,18 +325,30 @@ public final class Binary1280 {
             long hi = Math.unsignedMultiplyHigh(m[i], mag);
             long s = lo + carry;
             carry = hi + (Long.compareUnsigned(s, lo) < 0 ? 1L : 0L);
-            staged[i] = s;
+            m[i] = s;
         }
-        staged[LIMBS] = carry;
-        int bits = bitLength(staged);
+        // The product can exceed the window by at most 64 bits, one whole limb plus a remainder.
+        int bits = carry != 0L
+                ? LIMBS * 64 + 64 - Long.numberOfLeadingZeros(carry)
+                : bitLength(m);
         int drop = bits - PRECISION;
-        if (drop <= 0) {
-            System.arraycopy(staged, 0, m, 0, LIMBS);
-        } else {
-            shiftRightInto(staged, drop, m);
+        if (drop > 0) {
+            long higher = carry;
+            if (drop == 64) {
+                for (int i = LIMBS - 1; i >= 0; i--) {
+                    long cur = m[i];
+                    m[i] = higher;
+                    higher = cur;
+                }
+            } else {
+                for (int i = LIMBS - 1; i >= 0; i--) {
+                    long cur = m[i];
+                    m[i] = (cur >>> drop) | (higher << (64 - drop));
+                    higher = cur;
+                }
+            }
             lsbExp += drop;
         }
-        Arrays.fill(staged, 0L);
     }
 
     /**
