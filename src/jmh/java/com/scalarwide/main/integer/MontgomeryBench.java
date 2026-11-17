@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Montgomery context benchmarks for the widths that have generated kernels (4/6/9 limbs).
- * The "before" numbers in {@code docs/BENCH.md} (E3) are the same operations on the generic loop.
+ * The "before" numbers in {@code docs/bench.md} (E3) are the same operations on the generic loop.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)

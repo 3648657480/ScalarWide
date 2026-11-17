@@ -180,7 +180,7 @@
   4. `toString`/`toHexString`：Long2 自研实现快约 3×（本库委托 `BigInteger`，实现来源不同）。
   5. 对象布局与内存足迹相同（48 B/对象；1000 元素数组 52.016 B/key）。
 - 与本仓记录的对照：
-  - 内联结构（56 B 编排器 + 列块、`MaxFreqInlineSize≈325` 预算）见 `docs/INLINE.md`；
+  - 内联结构（56 B 编排器 + 列块、`MaxFreqInlineSize≈325` 预算）见 `docs/design/INLINE.md`；
     "内联失败导致退化"的先例见本文件 §2026-10-10 P7（`mulFullInto8` 1509 B 全拒内联）。
   - 报告测得当前 `col0..col3` 为 163–227 B，与 `INLINE.md`（0.4.0）记录的尺寸已不同；
     尺寸余量应以当前字节码为准（报告方向与本仓既有记录一致）。
@@ -269,7 +269,7 @@ cmd /c start "swM" /b /wait /affinity 1 "<jdk25>\bin\java.exe" -jar "build\libs\
 ## 2026-10-08 · 1.4 拆小重构（0.3.0 → 0.4.0，锁核）
 
 目的：把 256 的 `mul`/`mulHigh`/`mulFull` 从巨石拆成"可被 C2 热内联的编排器 + 列块"，
-为 1.5/1.6 的组合铺路（探针结论见 `docs/INLINE.md`）。
+为 1.5/1.6 的组合铺路（探针结论见 `docs/design/INLINE.md`）。
 
 - 结构探针（PrintInlining，`%TEMP%\opencode\inline-probe-14.log`）：
 
@@ -952,7 +952,7 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 | 1024.shr | 16.23 | **8.25** | 2.0× | 2.3× |
 
 - 分支分离落地：`mc`（≤512 剪枝 + 极致）发布 `mc-v0.11.1`（37808 B vs main 54705 B）；
-  本项为 mc 先行、按 `docs/BRANCHES.md` 策略**回流 main** 的补丁级纯收益（ConsumerApiTest 绿 = drop-in）。
+  本项为 mc 先行、按 `docs/history/BRANCHES.md` 策略**回流 main** 的补丁级纯收益（ConsumerApiTest 绿 = drop-in）。
 - main 剩余已知退化：**1024.mulHigh 0.71×、768.mulHigh 0.92×**（架构上限，已记录）；其余全数领先。
 
 ## 2026-10-10 · P10：数学完整性（div/rem/pow/bitCount/min/max/abs）+ 除法 v1 速度账
@@ -1028,7 +1028,7 @@ jar：`bench/p0.jar`、`bench/paradd.jar`、`bench/p2.jar`、`bench/p4.jar`、`b
 
 ## 2026-11-05 · Round 0+1（main）：`toBigInteger` 单趟字节桥——19.3×
 
-- 起因：G2 首屏交接（`docs/HANDOFF-2026-11-05-g2-perf.md`）。消费者把宽值当 BigInteger 用
+- 起因：G2 首屏交接（`docs/history/HANDOFF-2026-11-05-g2-perf.md`）。消费者把宽值当 BigInteger 用
   （`toBigInteger().intValue()/longValueExact()/bitLength()/add()`），而 `toBigInteger()` 是六个
   宽度 + `toString()` + `toHexString()` 的**共同汇聚点**（`Limbs.toBigInteger(pack())`）。
 - 原实现是 `v = v.shiftLeft(64).or(limb)` 逐 limb 循环：**二次复杂度**、每 limb 两个临时 BigInteger。
@@ -2178,7 +2178,7 @@ java -jar fp/build/libs/fp-1.0.3-jmh.jar b256Fma -prof gc -f 2 -wi 5 -i 5 -w 1s 
 
 ### E1：Binary1280 容器（G1.1 需求单，2026-11-17）
 
-需求与语义见 `docs/B1280-CONTAINER.md`；这里是性能记录。命令：
+需求与语义见 `docs/guide/B1280-CONTAINER.md`；这里是性能记录。命令：
 
 ```bash
 ./gradlew :fp:jmhJar
@@ -2343,7 +2343,7 @@ java -jar build/libs/ScalarWide-1.0.3-jmh.jar ModArithBench -prof gc \
 **要把单次 `mulMod` 真打到 ~100 ns，需要改形状（都超出本轮范围）**：① 按宽度展开的专用核
 （4/6/8/9 肢各一份生成代码，像 `GenMul` 那样）；② Montgomery 上下文（缓存 `n0` 与
 `R² mod m`，`toMont` 退化成一次 `mulMont`，`mulMod` 就能落到 ~280 ns，但要新增 API 载体）。
-两条都记进 `docs/WIDE-CRYPTO.md` §6。
+两条都记进 `docs/guide/WIDE-CRYPTO.md` §6。
 
 ### E4：mc.fp 容器 256/640 首轮基线（2026-11-17）
 

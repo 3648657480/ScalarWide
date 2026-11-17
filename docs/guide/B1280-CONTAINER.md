@@ -4,7 +4,7 @@
 > 实现：**mc 线** `C:\Project-ScalarWide-2560\src\main\java\com\scalarwide\mc\Binary1280.java`
 > 门禁：mc 线 `src/test/java/com/scalarwide/mc/Binary1280Test.java`（8 例）
 > 基准：迁移前在主线 `fp` 的 `B1280Bench` 上测得；mc 线没有 jmh 模块，脚本未随行，
-> 数字与命令保留在 `docs/BENCH.md` 的 E1 节。
+> 数字与命令保留在 `docs/bench.md` 的 E1 节。
 >
 > **两条线已彻底分开**：主线只有通用浮点 `com.scalarwide.main.fp.Binary1280`（不可变值语义），
 > mc 线只有容器 `com.scalarwide.mc.fp.Binary1280`（可变 scratch，零分配）。两者同名不同物，

@@ -1,6 +1,6 @@
 # 通用宽浮点格式（Binary256 / Binary640 / Binary1280）
 
-> 适用范围：`com.scalarwide.fp` 下的**通用浮点类型**。
+> 适用范围：`com.scalarwide.main.fp` 下的**通用浮点类型**。
 > 另有一个同名的 **1280 位坐标容器**，它不在本仓库主线，而在 `mc` 分支工作树
 > （`C:\Project-ScalarWide-2560`），是给远域地形用的可变 scratch 类型——两者同名但不同物，
 > 见 §6。
@@ -89,6 +89,6 @@ a.compareTo(b);                               // 全序（-0 < +0，NaN 最大�
 
 ## 7. 性能现状
 
-新类型尚未做 JMH 基准（`Binary256` 的数字见 `docs/BENCH.md`）。就结构而言：
+新类型尚未做 JMH 基准（`Binary256` 的数字见 `docs/bench.md`）。就结构而言：
 `add`/`subtract` 在 `2L+1` 肢帧上对齐后一次舍入，`multiply` 是 `L×L` schoolbook + 一次舍入，
-`divide` 用 `Limbs.divmod`。基准与优化留到下一轮，届时按本仓库纪律记进 `docs/BENCH.md`。
+`divide` 用 `Limbs.divmod`。基准与优化留到下一轮，届时按本仓库纪律记进 `docs/bench.md`。

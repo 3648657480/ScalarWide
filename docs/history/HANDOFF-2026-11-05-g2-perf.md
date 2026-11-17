@@ -61,7 +61,7 @@ ChunkAccess.getSection(int)
   （`new BigInteger(bytes)`）、`shiftRight(bits)`（`of(toBigInteger().shiftRight(bits))`）、
   `toString()`。
 - 现有 BENCH 的历史结论：≤512 位 add/sub/mul 与 BC Nat 持平或领先；768/1024 位的 add 落后
-  15–25%，`mulHigh` 同列为待办（见 `docs/BENCH.md` 与相应 csv）。这些都是"真待办"，不要
+  15–25%，`mulHigh` 同列为待办（见 `docs/bench.md` 与相应 csv）。这些都是"真待办"，不要
   在交接里当成已完成。
 
 ## 4. 建议的优化方向（按预期收益）

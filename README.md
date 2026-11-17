@@ -6,20 +6,20 @@
 > 为"宽域坐标 / 大数 key / 加密原型"场景准备：**正确性以 BigInteger 对拍为准，性能以 JMH 实测为准。**
 
 版本：见仓库根 `VERSION`（唯一权威），当前 **2.0.0**。2.0.0 是**破坏性重构**（包名全部改变），
-迁移表见 `CHANGELOG.md`。实现矩阵与全部实测（含负结果）见 `docs/DESIGN.md`、`docs/BENCH.md`
+迁移表见 `CHANGELOG.md`。实现矩阵与全部实测（含负结果）见 `docs/design/DESIGN.md`、`docs/bench.md`
 （**账本顶部有单页「当前权威基线」**）。
 
 > **性能快照（1.0.3 批次，工作站 7950X / JDK 25 / 锁核）**：`toBigInteger` **19.3×**、
 > `toHexString` **16.0×**、`hashCode` **14.1×**、字节编解码 **4.6–5.3×**、`bitLength` **3.01×**、
 > `toString` **2.84×**、`mulHigh` **1.65–2.66×**、`mul` **1.24–1.92×**、`add`/`sub` **1.09–1.75×**；
 > 与 Long2 0.1.8 全项对拍（1024 档 18 项）：**7 胜 / 8 平 / 3 负**。
-> **2.0.0 新增实测**（`docs/BENCH.md` E4–E6）：容器 `mulSmall` 23.2 ns(@256) / 42.3 ns(@640)、
+> **2.0.0 新增实测**（`docs/bench.md` E4–E6）：容器 `mulSmall` 23.2 ns(@256) / 42.3 ns(@640)、
 > 零分配；Montgomery 域内乘法 4 肢 **41.7 ns**（循环版 85.1）、6 肢 **82.2 ns**（142.0）；
 > 无状态 `powMod` 9 肢 1505 → **406 µs**（3.7×），分配降到 1/500。
 
 ## 这是什么
 
-单仓库、单模块、**四个包**，两组各自演进（详见 `docs/TWO-LINES.md`）：
+单仓库、单模块、**四个包**，两组各自演进（详见 `docs/design/TWO-LINES.md`）：
 
 | 包 | 内容 |
 |---|---|
@@ -34,7 +34,7 @@
 - 默认语义：算术按 2^N 回绕；`compareTo` = 无符号序（与 `equals` 一致，适合做 key）；
   移位量必须在 `[0, N)`，否则抛 `IllegalArgumentException`。
 - 加密：`ModArith` 提供位访问、整宽/逐 lane 旋转、模加/减/乘/幂、`gcd`、`modInverse`、
-  `ctCompare/ctSelect/ctSwap`、大端 64 位字存取；**常数时间声明逐条写在类注释与 `docs/WIDE-CRYPTO.md`**。
+  `ctCompare/ctSelect/ctSwap`、大端 64 位字存取；**常数时间声明逐条写在类注释与 `docs/guide/WIDE-CRYPTO.md`**。
 - 浮点：`Binary256/640/1280` 支持 `add/subtract/multiply/divide/sqrt/fma/compare/toString`；
   MC 容器只提供 `set/setFrom/copyFrom/addSmall/mulSmall/scalePow2/floorLow64Frac/compareTo`。
 
@@ -71,9 +71,9 @@
 - 版本号见 `VERSION`；消费者只钉依赖坐标，升级 = 改一行版本号 + 重构建。
 - **2.0.0 是破坏性变更**：包名重构（`com.scalarwide.*` → `com.scalarwide.main.integer.*` 等）、
   `fp` 子项目并回主模块、`mc` 分支内容并入 `mc.*` 包。迁移表见 `CHANGELOG.md` 顶部。
-- 公开 API 面与消费者回归契约见 `docs/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
+- 公开 API 面与消费者回归契约见 `docs/guide/COMPATIBILITY.md`（测试：`ConsumerApiTest`）。
 - **单分支**：仓库只有 `main`。两组的边界（同名类不是同一个类、加密只进 main、正确性缺陷双组同修）
-  写在 `docs/TWO-LINES.md` 与 `AGENTS.md`。
+  写在 `docs/design/TWO-LINES.md` 与 `AGENTS.md`。
 
 ## 快速使用
 
@@ -109,7 +109,7 @@ double frac = c.floorLow64Frac(low);
 | 1024 | 4×256 · 逼近 double 上限 | 直算；`mulHigh` 改列累加内核（1.0.1） |
 
 浮点：`Binary256`（p=237）、`Binary640`（p=616）、`Binary1280`（p=1252）。MC 容器同精度。
-基准数字（BigInteger 同场）与全部负结果见 `docs/BENCH.md`。
+基准数字（BigInteger 同场）与全部负结果见 `docs/bench.md`。
 
 **不覆盖**：1e306 量级的原始坐标（≈1020 bit）。原始坐标应保持"大数坐标 + 局部窗口"的分层设计。
 
@@ -122,15 +122,23 @@ src/main/java/com/scalarwide/mc/integer    MC 整数（核心副本 + 宽键 + �
 src/main/java/com/scalarwide/mc/fp         MC 容器（256/640/1280）
 src/test/java/...                          BigInteger 对拍门禁（含消费者契约）
 src/jmh/java/...                           JMH 基准与诊断探针
-docs/                                      DESIGN / BENCH / TWO-LINES / COMPATIBILITY / WIDE-CRYPTO / WIDE-FORMATS ……
+docs/
+├─ bench.md                                性能数字与口径（docs 根唯一文件）
+├─ bench/                                  原始跑批 CSV / 日志
+├─ design/                                 DESIGN / INLINE / LAYOUT / HETEROGENEOUS / TWO-LINES
+├─ guide/                                  使用指南（README）/ SPEC / SEMANTICS / WIDE-FORMATS /
+│                                          WIDE-CRYPTO / B1280-CONTAINER / COMPATIBILITY
+└─ history/                                BRANCHES / FUTURE-WORK / WORKSTATION / BRIEF / HANDOFF
 ```
+
+**从 `docs/guide/README.md` 开始读**——它按「整数 / 浮点 / 容器 / 加密」四条路径给出用法与文档地图。
 
 ## 路线
 
 - **已完成**：0.1.x 基线 → 附魔轮（寄存器化/展开）→ 直算化引擎 + Knuth-D 除法 + 商模式除法 +
   字节序列化 → 1.0.0 冻结 → 2.0.0 两组四包重构 + 容器 256/640 + Montgomery 上下文与展开核。
 - **未竟**：Montgomery 9 肢的形状优化（展开实测更慢）、严格常数时间（CT 模幂/逆元）、
-  `powMod` 窗口化、容器 `compareTo` 基准重测。见 `docs/FUTURE-WORK.md` 与 `docs/WIDE-CRYPTO.md`。
+  `powMod` 窗口化、容器 `compareTo` 基准重测。见 `docs/history/FUTURE-WORK.md` 与 `docs/guide/WIDE-CRYPTO.md`。
 - **久期**：SIMD 冻结为实验项（标量是产品，SIMD 是 oracle 对照下的实验）。
 
 ## 许可

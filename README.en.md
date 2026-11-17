@@ -9,9 +9,9 @@
 
 Version: see repo-root `VERSION` (single authority). **Closed at `1.0.0` and in maintenance
 mode** - only bugfix and consumer-driven performance / additive work at patch level is
-accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPATIBILITY.md`
-§6, deferred work in `docs/FUTURE-WORK.md`; implementation matrix and all measurements
-(including negative results) in `CHANGELOG.md`, `docs/DESIGN.md`, `docs/BENCH.md`
+accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/guide/COMPATIBILITY.md`
+§6, deferred work in `docs/history/FUTURE-WORK.md`; implementation matrix and all measurements
+(including negative results) in `CHANGELOG.md`, `docs/design/DESIGN.md`, `docs/bench.md`
 (the ledger opens with a one-page **current authoritative baseline**).
 
 > **1.0.3 performance snapshot** (workstation 7950X / JDK 25 / pinned): `toBigInteger`
@@ -35,7 +35,7 @@ accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPAT
   `IllegalArgumentException` is thrown.
 - Composition layer: 384/512/768/1024 multiplication composes 128/256 atom
   block products (512/384 also have direct add/compare); design and boundaries
-  in `docs/DESIGN.md` / `docs/INLINE.md`; the package-private `Limbs` engine
+  in `docs/design/DESIGN.md` / `docs/design/INLINE.md`; the package-private `Limbs` engine
   is the permanent internal oracle in the three-way differential testing.
 
 ## Build / test / bench
@@ -67,7 +67,7 @@ accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPAT
   GitHub Releases and put it on the classpath.
 - API entry points: `Wide128/256/384/512/768/1024` (immutable value types),
   `MutableWide128/256` (allocation-free scratch); semantics in the Javadoc and
-  `docs/DESIGN.md`.
+  `docs/design/DESIGN.md`.
 - Red lines: `MutableWide*` are not thread-safe and never valid as map keys;
   `-Dscalarwide.guard=true` enables best-effort cross-thread misuse detection
   (`IllegalStateException`; zero cost when off).
@@ -78,15 +78,15 @@ accepted; `1.0.3` is one such batch. Public-API freeze semantics in `docs/COMPAT
   zero code changes**: version numbers are decoupled, a consumer only pins the
   dependency coordinate. Within the `1.0.x` patch line, releases are performance /
   bugfix / additive only (signatures and semantics frozen - see
-  `docs/COMPATIBILITY.md` §6) - upgrading means changing one dependency version
+  `docs/guide/COMPATIBILITY.md` §6) - upgrading means changing one dependency version
   and rebuilding.
 - Breaking changes only enter a new minor line with a migration note; the
   protected public API surface and the consumer regression contract are in
-  `docs/COMPATIBILITY.md` (test: `ConsumerApiTest`).
+  `docs/guide/COMPATIBILITY.md` (test: `ConsumerApiTest`).
 - One branch (`main`) with four packages: `main.integer` (core integers + `ModArith` +
   `Montgomery`), `main.fp` (general floats), `mc.integer` (MC integer copy + wide keys),
   `mc.fp` (coordinate containers 256/640/1280). Same-named classes across the two groups are
-  **different classes**; the boundary is in `docs/TWO-LINES.md`.
+  **different classes**; the boundary is in `docs/design/TWO-LINES.md`.
 
 ## Quick use
 
@@ -105,10 +105,10 @@ BigInteger hi = k0.mulHigh(k1).toBigInteger();
 | 256 | atom - general purpose (keys, hashing, mixing) | main atom |
 | 384 | 3x128 - relay | composed + direct; all ops implemented |
 | 512 | 2x256 - single-cache-line data domain | composed + direct; all ops implemented |
-| 768 | 3x256 - extra-large coordinates | direct; `mulHigh` now uses the column-accumulator kernel (1.0.1, see `docs/BENCH.md`) |
-| 1024 | 4x256 - double's exponent ceiling | direct; `mulHigh` now uses the column-accumulator kernel (1.0.1, see `docs/BENCH.md`) |
+| 768 | 3x256 - extra-large coordinates | direct; `mulHigh` now uses the column-accumulator kernel (1.0.1, see `docs/bench.md`) |
+| 1024 | 4x256 - double's exponent ceiling | direct; `mulHigh` now uses the column-accumulator kernel (1.0.1, see `docs/bench.md`) |
 
-Benchmark numbers (BigInteger side by side) and all negative results: `docs/BENCH.md`.
+Benchmark numbers (BigInteger side by side) and all negative results: `docs/bench.md`.
 
 **Not covered**: raw coordinates near 1e306 (~1020 bits). Raw coordinates stay
 on the "big coordinate + local window" layered design; this library covers the
@@ -129,7 +129,7 @@ docs/                             DESIGN / BENCH / BRANCHES / COMPATIBILITY / FU
   Knuth-D division + quotient-only division + byte serialization; (the `mc` line adds
   the hard-wiring layer and the Java 17+ multi-release overlay).
 - **Frozen (`1.0.0`)**: maintenance mode - deferred work (batch/SoA, large-table
-  sharding, `rem` q-skip, 768/1024 `mulHigh`) in `docs/FUTURE-WORK.md` (with trigger
+  sharding, `rem` q-skip, 768/1024 `mulHigh`) in `docs/history/FUTURE-WORK.md` (with trigger
   conditions).
 - **Long term**: SIMD stays frozen as an experiment (scalar is the product, SIMD is
   the experiment against the scalar oracle).

@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Consumer-view smoke test: uses ONLY the public API surface in the patterns a
  * consumer (framework) relies on. This is the drop-in contract for the 0.11
  * line - breaking this test means a breaking change, which must go to a new
- * minor line with a migration note (see docs/COMPATIBILITY.md).
+ * minor line with a migration note (see docs/guide/COMPATIBILITY.md).
  */
 class ConsumerApiTest {
 

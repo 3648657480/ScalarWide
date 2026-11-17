@@ -9,7 +9,7 @@ Working rules for any agent or contributor on ScalarWide. Binding.
 仓库是**一个模块、四个包**：`com.scalarwide.main.integer`（核心 + 加密）、`main.fp`（通用浮点）、
 `mc.integer`（MC 组整数副本 + 宽键）、`mc.fp`（MC 组容器 256/640/1280）。
 两组的同名类**不是同一个类**，各自独立优化；加密只进 `main.integer.ModArith`，
-不得为它改 `Wide*`/`Limbs` 热路径。正确性缺陷必须双组同修。详见 `docs/TWO-LINES.md`。
+不得为它改 `Wide*`/`Limbs` 热路径。正确性缺陷必须双组同修。详见 `docs/design/TWO-LINES.md`。
 
 ## Correctness discipline
 
@@ -25,8 +25,8 @@ Working rules for any agent or contributor on ScalarWide. Binding.
 - **Benchmark before optimizing.** One variable per round; if the JMH delta is
   not real, revert.
 - JMH is the only accepted performance evidence (warmup + measurement + fork);
-  record commands and results in `docs/BENCH.md`.
-- Enchantment order (from `docs/DESIGN.md`): register/unroll -> zero-allocation
+  record commands and results in `docs/bench.md`.
+- Enchantment order (from `docs/design/DESIGN.md`): register/unroll -> zero-allocation
   API -> inlining verification (`-XX:+PrintInlining`) -> `VarHandle` evaluation.
   SIMD stays frozen.
 
@@ -37,7 +37,7 @@ Working rules for any agent or contributor on ScalarWide. Binding.
   shift range, mod-2^N wrapping); internal code stays comment-free.
 - Representation red line: flat little-endian limbs only - composition stays at
   the algorithm level, never object nesting in fields.
-- Benchmarks: CPU-affinity-pinned JMH (`docs/BENCH.md`); every ratio must state
+- Benchmarks: CPU-affinity-pinned JMH (`docs/bench.md`); every ratio must state
   its caliber (object API; cold/warm; low-half vs full product).
 - Restoring file content from git: never pipe `git show` into PowerShell text and write it back —
   the pipeline decodes UTF-8 bytes with the console code page. Use `cmd /c "git cat-file blob ..."`

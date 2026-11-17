@@ -25,7 +25,7 @@
 - 单仓库、单 Gradle 模块、四个包：`main.integer`（核心 + 加密）、`main.fp`（通用浮点）、
   `mc.integer`（MC 整数：核心副本 + 宽键 + 平表）、`mc.fp`（MC 容器）。
 - `fp` 子项目并回根模块；`mc` 分支与工作树已删除（旧 tip 保留为 tag `mc-final`）。
-- 两组的同名类不是同一个类，可各自优化；正确性缺陷需双组同修（见 `docs/TWO-LINES.md`）。
+- 两组的同名类不是同一个类，可各自优化；正确性缺陷需双组同修（见 `docs/design/TWO-LINES.md`）。
 
 ### 新增
 
@@ -39,11 +39,11 @@
 ### 兼容性
 
 - 除 `java.util`/`java.math` 外无新依赖；仍为 Java 21 字节码（工具链 25）。
-- 性能数字见 `docs/BENCH.md`（E4 容器基线、E5 Montgomery 上下文、E6 展开核 A/B）。
+- 性能数字见 `docs/bench.md`（E4 容器基线、E5 Montgomery 上下文、E6 展开核 A/B）。
 
 ## 1.0.3 — `toString` 去掉 BigInteger 往返
 
-> patch 级（`docs/COMPATIBILITY.md` §6）：纯性能。既有签名、语义与输出格式完全一致
+> patch 级（`docs/guide/COMPATIBILITY.md` §6）：纯性能。既有签名、语义与输出格式完全一致
 > （逐字符对照 `BigInteger.toString()` 验证）。
 
 ### 性能
@@ -72,7 +72,7 @@
 
 ## 1.0.2 — 最小长度编码器整肢化 + 全积阶梯补全
 
-> patch 级（`docs/COMPATIBILITY.md` §6）：纯性能 + 一个纯增量 API。既有签名与语义未变。
+> patch 级（`docs/guide/COMPATIBILITY.md` §6）：纯性能 + 一个纯增量 API。既有签名与语义未变。
 
 ### 性能
 
@@ -105,9 +105,9 @@
 
 ## 1.0.1 — 消费者驱动性能批次（G2 首屏）
 
-> 纯性能 + 一个纯增量 API（`Wide512.mulFull(Wide512) → Wide1024`），按 `docs/COMPATIBILITY.md` §6
+> 纯性能 + 一个纯增量 API（`Wide512.mulFull(Wide512) → Wide1024`），按 `docs/guide/COMPATIBILITY.md` §6
 > 属 **patch 级：一行替换、无感**。既有公开签名与语义未变（`ConsumerApiTest` 冻结门全绿）。
-> 全部数据 = 工作站 7950X / JDK 25 / 锁核 LP0，记录见 `docs/BENCH.md` 2026-11-05/06 各轮。
+> 全部数据 = 工作站 7950X / JDK 25 / 锁核 LP0，记录见 `docs/bench.md` 2026-11-05/06 各轮。
 
 ### 性能
 
@@ -142,9 +142,9 @@
 
 ### 记录与负结果
 
-- `docs/BENCH.md` 新增 12 个章节，含 **5 个负结果**：批量交错（重叠 = 0）、分带并行（更慢）、
+- `docs/bench.md` 新增 12 个章节，含 **5 个负结果**：批量交错（重叠 = 0）、分带并行（更慢）、
   列内三进位元（P16 复现）、单值 SIMD（≤1%）、Karatsuba（有落点但不划算）。
-- `docs/LAYOUT.md` 订正：原"缓存一个 `int` 要 +8 B（128 +25%）"的前提错误，JOL 实测该字段
+- `docs/design/LAYOUT.md` 订正：原"缓存一个 `int` 要 +8 B（128 +25%）"的前提错误，JOL 实测该字段
   落在对象头对齐空档，六档尺寸不变。
 - 发现的硬限制：HotSpot `HugeMethodLimit` 的可编译边界落在 **215–240 项**之间；越界后
   **静默不编译**（实测慢 45–90×）。
@@ -154,10 +154,10 @@
 
 ## 1.0.0 — 冻结（项目结项）
 
-> **冻结起点**：公开 API 的签名与语义自本版起冻结（版本语义见 `docs/COMPATIBILITY.md` §6）。
+> **冻结起点**：公开 API 的签名与语义自本版起冻结（版本语义见 `docs/guide/COMPATIBILITY.md` §6）。
 > 两线同步冻结：`main` → `v1.0.0`、`mc` → `mc-v1.0.0`。项目转入**维护模式**：
 > 只接受 bug 修复与消费者驱动的性能/纯增量（patch 级）；未竟优化归档于
-> `docs/FUTURE-WORK.md`（带触发条件）。
+> `docs/history/FUTURE-WORK.md`（带触发条件）。
 
 ### 冻结面
 
@@ -169,14 +169,14 @@
 ### 结项时两线状态
 
 - `main`：全宽度 128–1024；直算化引擎 + Knuth-D 除法 + 商模式除法 + 字节序列化；
-  768/1024 `mulHigh` 为已记录的架构短板（行向量路线三次证伪，见 `docs/BENCH.md`）。
+  768/1024 `mulHigh` 为已记录的架构短板（行向量路线三次证伪，见 `docs/bench.md`）。
 - `mc`：≤512 零已知退化；MC 工具包（`LongLongFlatMap` / `Wide256FlatMap` /
   `McWarmup` / 稀疏宽断派发 / `DivMagic`）+ Java 17+ MR-JAR（`META-INF/versions/21`）。
 
 ### 发布纪律
 
-- CI（GitHub Actions）**绿了才打 tag**（`docs/BRANCHES.md`）；JitPack 自动构建；
-  升级通道（patch/minor/major）见 `docs/COMPATIBILITY.md` §6。
+- CI（GitHub Actions）**绿了才打 tag**（`docs/history/BRANCHES.md`）；JitPack 自动构建；
+  升级通道（patch/minor/major）见 `docs/guide/COMPATIBILITY.md` §6。
 
 ## 0.11.6
 
@@ -234,7 +234,7 @@
   (2.63x), 256: 52.8 vs 82.7 (1.57x), 512: 94.2 vs 170.9 (1.81x), 1024: 216.9
   vs 421.0 (1.94x); the 0.11.3 v1 engine was 9-46x slower than the new one.
   Remaining known BigInteger regressions: only 1024.mulHigh 0.71x /
-  768.mulHigh 0.92x (`docs/BENCH.md` P11).
+  768.mulHigh 0.92x (`docs/bench.md` P11).
 
 ## 0.11.3
 
@@ -252,7 +252,7 @@
 - Division v1 (`Limbs.divmod`, binary shift-subtract - correctness first) is
   **behind BigInteger**: 128: 146.8 vs 41.7 ns (0.28x), 256: 1183 vs 81.5
   (0.07x), 512: 3286 vs 170.1 (0.05x), 1024: 9971 vs 418.9 (0.04x) ns. A
-  Knuth-D fast path is the planned next measured round (`docs/BENCH.md` P10).
+  Knuth-D fast path is the planned next measured round (`docs/bench.md` P10).
 
 ## 0.11.2
 
@@ -264,10 +264,10 @@
   non-negative path. 384: 6.74 -> 2.17 ns, 512: 13.31 -> 4.95 ns (was 0.92x
   behind `BigInteger.shiftRight`, now 2.5x ahead), 768: 11.66 -> 6.08 ns,
   1024: 16.23 -> 8.25 ns. Pure win ported back from the `mc` branch per
-  `docs/BRANCHES.md`; drop-in (no API change, `ConsumerApiTest` green).
+  `docs/history/BRANCHES.md`; drop-in (no API change, `ConsumerApiTest` green).
 - **Repository split**: `main` = full library (all widths/tools); `mc` =
   MC-facing fork pruned to <=512 with zero known BigInteger regressions
-  (first cut: `mc-v0.11.1`). Branch policy and sync rules: `docs/BRANCHES.md`.
+  (first cut: `mc-v0.11.1`). Branch policy and sync rules: `docs/history/BRANCHES.md`.
 
 ## 0.11.1
 
@@ -277,7 +277,7 @@
   `limb(i)` switch calls to direct field reads at the 16 call sites. 1024
   `mulHigh` 415.6 -> 311.9 ns (-25%), 1024 `mul` 178.3 -> 146.8 ns (-18%);
   768 unchanged (already at the atom floor). Root cause recorded in
-  `docs/BENCH.md` P7: the 1509-byte `mulFullInto8` never inlines; per-call
+  `docs/bench.md` P7: the 1509-byte `mulFullInto8` never inlines; per-call
   argument extraction dominated. Remaining gap to `BigInteger.multiply+shift`
   is architectural (16 non-inlinable atom calls vs a monolithic schoolbook).
 
@@ -313,7 +313,7 @@
   (shared-mutable race, per-thread pattern, parallel scaling), `BatchProbe`
   (object vs flat-SoA vs BigInteger layouts), `RealKeyStats`/`RealKeyBench`
   (far-key workload distribution), plus `bigMulHigh`/`shr` comparators.
-- `docs/BENCH.md` rounds K (compare carries), P0-P6 (direct-implementation
+- `docs/bench.md` rounds K (compare carries), P0-P6 (direct-implementation
   sweep, gap audit) and the iron-man results, including negative results.
 
 ### Measured (workstation Ryzen 7950X, JDK 21)
@@ -357,7 +357,7 @@
   already allocation-free thanks to escape analysis (48 B/op = result only,
   same as the mutable chain), so the carrier API wins nothing there; its value
   is limited to scratch living across method boundaries or in fields
-  (`docs/BENCH.md`, Round F).
+  (`docs/bench.md`, Round F).
 
 ## 0.9.0
 
@@ -389,7 +389,7 @@
   measured 210.7 ns/op vs 208.3 ns/op for separate `mul` + `mulHigh`; the
   sharing does not materialize under the C2 inlining budget, so the API,
   benchmark and test were removed and the negative result recorded in
-  `docs/BENCH.md`.
+  `docs/bench.md`.
 
 ## 0.7.0
 
@@ -434,7 +434,7 @@
 - `Wide512.mulHigh` still fails escape analysis (832 B/op vs 80 B/op for mul):
   its inline tree (~1.5kB) exceeds the C2 inlining budget; two attempted fixes
   (branchless body, smaller `add`) did not change the allocation rate. Parked
-  with measurements in `docs/BENCH.md` and `docs/INLINE.md`.
+  with measurements in `docs/bench.md` and `docs/design/INLINE.md`.
 
 ## 0.6.0
 
@@ -475,7 +475,7 @@
 
 ### Docs
 
-- `docs/INLINE.md`: inline probe records (0.3.0 monolith verdicts, 0.4.0
+- `docs/design/INLINE.md`: inline probe records (0.3.0 monolith verdicts, 0.4.0
   re-verification).
 
 ## 0.3.0
@@ -495,7 +495,7 @@
 
 - Public API now carries its semantics in Javadoc (unsigned `compareTo`,
   `mul` low / `mulHigh` high / `mulFull` full product, shift range, wrapping).
-- `docs/DESIGN.md`: v2 conclusions landed (dual-atom structure, flat-limb red
+- `docs/design/DESIGN.md`: v2 conclusions landed (dual-atom structure, flat-limb red
   line, `mulFull`-only multiplication primitive, SoA dual-track API, inline
   probe before step 1.6, benchmark calibers).
 
@@ -503,7 +503,7 @@
 
 - `mulFull` vs `BigInteger.multiply` (CPU-pinned, full-product caliber):
   Wide128 3.1x faster (6.16 vs 19.25 ns/op); Wide256 at parity (34.94 vs
-  35.59 ns/op). Data in `docs/BENCH.md`.
+  35.59 ns/op). Data in `docs/bench.md`.
 
 ## 0.2.0
 
@@ -515,7 +515,7 @@
   mul / mulHigh. `Wide384` keeps the generic `Limbs` engine (correctness-first).
   The BigInteger differential suite is unchanged and green.
 
-### Performance (CPU-pinned JMH, see docs/BENCH.md)
+### Performance (CPU-pinned JMH, see docs/bench.md)
 
 - Wide256: 2.3x-4.4x faster than 0.1.0 across add/sub/mul/and/shl/ushr; no
   regressions. Wide128: mul 5.7x faster; simple ops unchanged (the 0.1.0
@@ -538,4 +538,4 @@
   side-by-side baselines.
 - The package-private `Limbs` engine is the shared reference implementation;
   register-specialized hot paths and zero-allocation APIs are future
-  enchantment rounds (see `docs/DESIGN.md`).
+  enchantment rounds (see `docs/design/DESIGN.md`).

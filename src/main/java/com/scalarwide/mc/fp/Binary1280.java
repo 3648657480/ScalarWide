@@ -10,7 +10,7 @@ package com.scalarwide.mc.fp;
  *
  * <p>This is deliberately not a general arithmetic type: {@code add}/{@code subtract}/wide
  * {@code multiply} are out of scope because they cannot meet the container budget
- * (see {@code docs/B1280-CONTAINER.md}). Only the four operations a per-octave noise loop needs are
+ * (see {@code docs/guide/B1280-CONTAINER.md}). Only the four operations a per-octave noise loop needs are
  * provided, and every one of them rewrites this instance instead of returning a new value, so a
  * caller that reuses one container per axis allocates nothing inside the loop.
  *

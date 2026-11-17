@@ -1,9 +1,9 @@
 # 宽整数加密 / 加速指令集（ModArith）
 
-> 位置：`com.scalarwide.ModArith`。作用对象是小端 `long[]` 肢向量，宽度 = 数组长度。
+> 位置：`com.scalarwide.main.integer.ModArith`。作用对象是小端 `long[]` 肢向量，宽度 = 数组长度。
 > **等长契约**（与 `Limbs` 相同）：所有操作数、输出、模数必须同长度；越界长度会算错或越界。
 > 上一轮目标：**把指令铺全、把语义钉死**；本轮（E3）目标：**乘法去除法**——
-> Montgomery CIOS 进 `mulMod` / `powMod` / `powModCt`。数字见 `docs/BENCH.md` §E3。
+> Montgomery CIOS 进 `mulMod` / `powMod` / `powModCt`。数字见 `docs/bench.md` §E3。
 
 ## 0. 三个用途，三套要求（别只按 RSA 设计）
 
@@ -31,7 +31,7 @@ rotl/rotr 是整宽度；rotlEach/rotrEach/rotrEach32 是逐 lane。
 | 位访问 | `testBit setBit clearBit flipBit getLowestSetBit reverseBitsInLimbs` | 位索引按整个宽度算，越界是 no-op（`testBit` 返回 false） |
 | 旋转 | `rotl rotr` | `k` 取模宽度，支持负数 |
 | 模加/减 | `addMod subMod` | 按 `(carry \|\| sum ≥ m)` 选减、按 `borrow` 选加 |
-| 模乘 | `mulMod` | **奇数模数：Montgomery CIOS**（一次 `toMont` 转换 + `mulMont`）；偶数模数：全积 + `Limbs.divmod` 回退。单次乘法两种路径实测打平（见 `docs/BENCH.md` §E3），收益在模幂 |
+| 模乘 | `mulMod` | **奇数模数：Montgomery CIOS**（一次 `toMont` 转换 + `mulMont`）；偶数模数：全积 + `Limbs.divmod` 回退。单次乘法两种路径实测打平（见 `docs/bench.md` §E3），收益在模幂 |
 | 模幂 | `powMod` | 平方-乘，跳过前导零位（**非常数时间**）；奇数模数全程在 Montgomery 域 |
 | 模幂 CT | `powModCt` | 固定调度：每位都平方、都乘，再用 `ctSelect` 选；奇数模数在 Montgomery 域 |
 | Montgomery | `n0inv mulMont toMont fromMont` | `n0 = -m^-1 mod 2^64`（Newton 迭代 5 步）；CIOS 支持任意肢数；`toMont` 是唯一还要除法的环节（每次模幂只付一次） |
@@ -86,7 +86,7 @@ rotl/rotr 是整宽度；rotlEach/rotrEach/rotrEach32 是逐 lane。
    分配降到 1/500；实测 `powMod` 3.70–5.0×。**但单次 `mulMod` 只拿到 1.31×（646.9 vs 846.3 ns）**，
    与偶数模数的纯除法回退打平（655.6 ns）：单次乘法必须付一次 ×R 变换（`toMont` 9 肢 403 ns），
    静态 API 下这一步就是一次除法。`mulMont`（输入已在域内）9 肢 281 ns / 4 肢 64 ns。
-   数字与口径见 `docs/BENCH.md` §E3。
+   数字与口径见 `docs/bench.md` §E3。
 2. **无分配（部分完成）**：`mulMod` 从"5 个 `2L` 数组"降到 **488/664/928 B/op**（`toMont` 的
    被除数/除数/商 + Montgomery 的 `n+2` scratch），`mulMont` **64/80/104 B/op**；
    `powMod` 从 208,913/420,187/919,538 B/op 降到 **984/1337/1867 B/op**。

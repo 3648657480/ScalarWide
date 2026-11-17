@@ -7,7 +7,7 @@
 
 - 接受：bug 修复；**消费者驱动**（有真实使用方 + 可复现数据）的性能优化与纯增量 API。
 - 不接受：无需求的破坏性重构、投机性 API 扩张（那算新项目开工）。
-- 所有落地走 patch 级（纯增量/性能/修复）；冻结语义见 `docs/COMPATIBILITY.md` §6。
+- 所有落地走 patch 级（纯增量/性能/修复）；冻结语义见 `docs/guide/COMPATIBILITY.md` §6。
 
 ## 按需唤醒清单
 
@@ -27,12 +27,12 @@
 
 1. 触发条件满足 → 开实验记录，沿用 BENCH/Provenance 纪律（同机、同 JDK 口径、预期先行）；
 2. 以 patch 级落地（性能/纯增量）；若无法避免破坏性 → 按 `COMPATIBILITY.md` §6 评估 `2.0`；
-3. CI 全绿 + tag 纪律不变（见 `docs/BRANCHES.md`）。
+3. CI 全绿 + tag 纪律不变（见 `docs/history/BRANCHES.md`）。
 
 ## 度量基建（保留，无需重建）
 
 工作站（7950X，基准 JDK 25 口径；JDK 21 为历史口径，**跨 JDK 数据不可混用**）、
-`docs/BENCH.md` 账本（含全部负结果 + 顶部单页基线）、JMH 套件（`gradlew jmh` / `jmhJar`）、
+`docs/bench.md` 账本（含全部负结果 + 顶部单页基线）、JMH 套件（`gradlew jmh` / `jmhJar`）、
 `tools/bench-pinned.ps1`（锁核运行器，支持跨机 JDK）、`tools/ws/*`（工作站驱动脚本）、
 `tools/gen-colmul.ps1`（参数化列内核生成器）、CI 矩阵（21/25 + package）、`ConsumerApiTest` 契约门。
 

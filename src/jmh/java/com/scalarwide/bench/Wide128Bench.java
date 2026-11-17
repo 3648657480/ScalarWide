@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * 算术基准（比较体系 v2，2026-10-14）：性能对照 = 同场景加速库（{@link NatCompareBench}，
  * BouncyCastle 定宽 limb 内核）与自有版本前后对比；BigInteger 仅用于正确性对拍（测试套件），
- * 性能基准中不再出现（详见 docs/BENCH.md 口径声明）。
+ * 性能基准中不再出现（详见 docs/bench.md 口径声明）。
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)

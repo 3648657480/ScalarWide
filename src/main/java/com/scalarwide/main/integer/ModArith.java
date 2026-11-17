@@ -14,7 +14,7 @@ import java.math.BigInteger;
  * without data-dependent branches or memory indices, and the Montgomery core ({@link #mulMont})
  * has a fixed operation count, but its closing conditional subtraction still branches on the
  * operands. Everything else has data-dependent control flow (early exits, division, leading-zero
- * scans) and must not be used with secret operands — see {@code docs/WIDE-CRYPTO.md}.
+ * scans) and must not be used with secret operands — see {@code docs/guide/WIDE-CRYPTO.md}.
  *
  * <p><b>Multiplication</b>: an odd modulus takes the Montgomery path — CIOS reduction
  * ({@link #mulMont}) with no division, {@code n0 = -m^{-1} mod 2^64} computed once per call by
