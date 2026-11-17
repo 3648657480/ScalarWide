@@ -14,7 +14,7 @@ import java.math.BigInteger;
  *
  * @param <T> the concrete format
  */
-abstract class BinaryWide<T extends BinaryWide<T>> implements Comparable<T> {
+public abstract class BinaryWide<T extends BinaryWide<T>> implements Comparable<T> {
 
     final FpFormat format;
     final byte kind;

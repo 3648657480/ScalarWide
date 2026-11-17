@@ -2254,3 +2254,31 @@ jfr view hot-methods mul.jfr
 门禁：`Binary1280Test` 8 例——`set`/`setFrom`/`mulSmall`/`floorLow64Frac` 各 5000 组 BigInteger
 精确对拍、`addSmall` 5000 组 + 交叉零/重归一化定点，外加 2^53 / 2^600 / 2^1016 / 2^1027 的
 ±0.5 定点与正负号。
+
+### E2：通用 Binary640 / Binary1280（2026-11-17，首轮基准）
+
+新类型此前**一次基准都没跑过**。命令：
+
+```bash
+./gradlew :fp:jmhJar
+java -jar fp/build/libs/fp-1.0.3-jmh.jar WideBench -prof gc -f 2 -wi 5 -i 5 -w 1s -r 1s
+```
+
+口径：笔记本、未绑核、JDK 25.0.3；每个方法 256 次调用，已折算**单次**。
+
+| op | @640 | @1280 | 备注 |
+|---|---:|---:|---|
+| dd | **95.7 ns / 328 B** | **126 ns / 488 B** | 本轮优化后 |
+| subtract | 113 ns / 339 B | 188 ns / 508 B | |
+| multiply | 142 ns / 336 B | 211 ns / 576 B | |
+| divide | 633 ns / 1208 B | 1419 ns / 2168 B | |
+| sqrt | 2330 ns / 4340 B | 4890 ns / 8525 B | 走 BigInteger |
+| 	oString(40) | 1497 ns / 4233 B | 1707 ns / 5009 B | |
+| compareTo | 5.4 ns / 0 B | 6.6 ns / 0 B | |
+
+**本轮改动**：dd 原来用 2L+1 肢的精确对齐帧，改为「帧坐在 big 的 LSB 下一位、
+small 右移 gap-1、丢掉的位进 sticky」的 L+1 帧：@1280 **250 → 126 ns**，
+分配 **648 → 488 B**；@640 130 → 96 ns。
+
+一个坑：帧底必须比 big 的 LSB **再低一位**，否则右移丢掉的尾数没有 guard 位，
+1 ulp 的平局判错（与容器那次 dropProd 缺 guard 是同一类）。

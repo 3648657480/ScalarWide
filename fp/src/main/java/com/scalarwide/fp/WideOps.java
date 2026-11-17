@@ -105,35 +105,92 @@ final class WideOps {
         Value small = gap >= 0 ? b : a;
         gap = Math.abs(gap);
         boolean sameSign = a.sign() == b.sign();
-        int frameExp;
-        long[] m;
+        // Frame sits one bit below big's LSB so the shifted-out tail still has a guard bit; big is
+        // shifted up by one and small down by (gap-1). One spare limb is enough.
+        long[] m = new long[l + 1];
+        placeAt(m, 1, big.mag());
         boolean sticky = false;
         boolean down = false;
-        if (gap > p + 2) {
-            // The smaller operand sits entirely below big's rounding point.
-            frameExp = big.exp();
-            m = new long[l + 1];
-            placeAt(m, 0, big.mag());
+        if (gap == 0) {
+            if (sameSign) {
+                addShifted(m, 1, small.mag());
+            } else if (compareFrames(m, big.mag(), small.mag()) <= 0) {
+                long[] neg = new long[m.length];
+                placeAt(neg, 1, small.mag());
+                subFrameAt(neg, 1, big.mag());
+                return pack(f, small.sign(), big.exp() - 1, neg, false, false);
+            } else {
+                subFrameAt(m, 1, small.mag());
+            }
+        } else if (gap >= p + 3) {
             sticky = true;
             down = !sameSign;
+        } else if (sameSign) {
+            sticky = shiftRightAdd(m, small.mag(), gap - 1);
         } else {
-            // Frame sits on the smaller exponent; big is shifted up and still fits.
-            frameExp = small.exp();
-            m = new long[2 * l + 1];
-            placeAt(m, gap, big.mag());
-            if (sameSign) {
-                addShifted(m, 0, small.mag());
-            } else if (gap == 0 && compareFrames(m, big.mag(), small.mag()) <= 0) {
-                long[] neg = new long[m.length];
-                placeAt(neg, 0, small.mag());
-                subFrameAt(neg, 0, big.mag());
-                m = neg;
-                return pack(f, small.sign(), frameExp, m, false, false);
-            } else {
-                subFrameAt(m, 0, small.mag());
+            sticky = shiftRightSub(m, small.mag(), gap - 1);
+            down = sticky;
+        }
+        return pack(f, big.sign(), big.exp() - 1, m, sticky, down);
+    }
+    /** {@code frame += src >> shift}; returns whether any bit was dropped. */
+    private static boolean shiftRightAdd(long[] frame, long[] src, int shift) {
+        int li = shift >>> 6;
+        int bs = shift & 63;
+        boolean dropped = anyDropped(src, li, bs);
+        long carry = 0L;
+        for (int i = 0; i < frame.length; i++) {
+            int j = i + li;
+            long v = j < src.length ? src[j] >>> bs : 0L;
+            if (bs != 0 && j + 1 < src.length) {
+                v |= src[j + 1] << (64 - bs);
+            }
+            long t = frame[i] + v;
+            long c = Long.compareUnsigned(t, frame[i]) < 0 ? 1L : 0L;
+            long s = t + carry;
+            if (carry != 0L && Long.compareUnsigned(s, t) < 0) {
+                c = 1L;
+            }
+            frame[i] = s;
+            carry = c;
+        }
+        return dropped;
+    }
+
+    /** {@code frame -= src >> shift}; returns whether any bit was dropped. */
+    private static boolean shiftRightSub(long[] frame, long[] src, int shift) {
+        int li = shift >>> 6;
+        int bs = shift & 63;
+        boolean dropped = anyDropped(src, li, bs);
+        long borrow = 0L;
+        for (int i = 0; i < frame.length; i++) {
+            int j = i + li;
+            long v = j < src.length ? src[j] >>> bs : 0L;
+            if (bs != 0 && j + 1 < src.length) {
+                v |= src[j + 1] << (64 - bs);
+            }
+            long d = frame[i] - v;
+            long br = Long.compareUnsigned(frame[i], v) < 0 ? 1L : 0L;
+            long r = d - borrow;
+            if (borrow != 0L && Long.compareUnsigned(r, d) > 0) {
+                br = 1L;
+            }
+            frame[i] = r;
+            borrow = br;
+        }
+        return dropped;
+    }
+
+    private static boolean anyDropped(long[] src, int li, int bs) {
+        for (int i = 0; i < li && i < src.length; i++) {
+            if (src[i] != 0L) {
+                return true;
             }
         }
-        return pack(f, big.sign(), frameExp, m, sticky, down);
+        if (bs != 0 && li < src.length) {
+            return (src[li] & ((1L << bs) - 1L)) != 0L;
+        }
+        return false;
     }
     // ---------------------------------------------------------------- multiply
 
