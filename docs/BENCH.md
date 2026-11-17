@@ -2074,3 +2074,63 @@ pack512   (393 bytes)  failed to inline: callee is too large
 这条也是本笔记本口径的局限：混合架构（P/E core）加上无锁频，
 跑间波动可达 1.5×。凡是没有独立证据（分配量、指令数）佐证的时间差，
 都不应当作结论。
+
+### C1：fma 走 16 肢 1024 位帧（2026-11-17 接手轮）
+
+| benchmark | 基线 ns | 现 ns | 提速 | 基线 B/op | 现 B/op | 分配降 |
+|---|---:|---:|---:|---:|---:|---:|
+| `b256Fma` | 230974.82 | **114202.39** | **2.02×** | 1208 | **200** | **6.04×** |
+
+口径：笔记本 `Intel Core Ultra 7 155H`，JDK 25.0.3，**未绑核**，
+`-prof gc -f 2 -wi 5 -i 5 -w 1s -r 1s`，前后各跑一次；改动前的数字来自
+`git worktree` 里的 `86134a9`（同一个 jar 目标、同一条命令）：
+
+```bash
+git worktree add --detach <tmp> 86134a9
+./gradlew jar && ./gradlew :fp:jmhJar
+java -jar fp/build/libs/fp-1.0.3-jmh.jar b256Fma -prof gc -f 2 -wi 5 -i 5 -w 1s -r 1s
+```
+
+> 坑：`jar` 与 `:fp:jmhJar` **不能在同一次调用里请求**（Gradle 报
+> "uses this output of task ':jar' without declaring an explicit or implicit
+> dependency"），必须分两次跑。
+
+`ns/op` 是 1024 次调用的合计，**单次调用 = ns/op ÷ 1024**（225.6 → 111.5 ns）。
+误差臂 ±29% / ±37%，所以**收益以分配量 6.04× 为准**，时间是同向旁证。
+
+做法：`Arithmetic.fma` 不再构造 `Exact` / `Wide512` / `Wide1024`，改为
+
+1. 4×4 肢积直接写进 `long[16]` 帧（新增 `mulIntoFrame`，与 `mulFramed` 的
+   16 次 `mulAdd` 重复一份——`mulFramed` 的字节码大小是 136 B/op 的前提，
+   不合并是为了不让那条热路径的尺寸变化）；
+2. 取 `exp = min(expP, expC)` 对齐到同一 LSB 网格，同号相加、异号相减；
+3. 截断到 512 位 + sticky，交给现成的 `pack512` —— **舍入点仍然只有一个**。
+
+三个实现细节值得记：
+
+- **网格指数小 ≠ 数值小**。乘积是 474 位、`c` 只有 237 位，所以
+  `expP < expC` 时**不能**断定 `|c|` 更大（第一版就是这么错的：符号翻反、
+  指数跑到 602）。改为在帧内做减法并看**借位**：借位即说明乘积更小，
+  取反并取 `c` 的符号。这一步不要再用指数比较。
+- **`dropProd` 分支要留 2 个 guard 位**。`c` 主导、整个乘积掉出帧时，
+  帧里只剩 `c` 的 237 位（恰好 p 位），`pack512` 的 `down` 变换先减一、
+  之后没有低位可看，于是把 `c - tiny` 判成 `c - 1`（差 1 ulp 的又一次）。
+  给该分支加两 bit 低位余量（`exp -= 2`）后 guard/sticky 才成立；
+  前提是**被丢掉的尾数比帧 LSB 低 270 位以上**。
+- 两条 drop 分支（`expP - expC > 512` / `expC - expP > 768`）
+  **旧的 20000 组随机测试永远打不到**（指数只取 `[-60,60]`，最大 gap ≈ 416）。
+  把新测试拿去跑**改动前的 HEAD，直接报
+  `exponent expected 859 but was 622`**——这两条分支从 1.0.3 起就是错的。
+  所以这一轮是**顺带的正确性修复**，不只是性能改动。
+
+新增测试（fp 39 → 40）：
+
+- `FmaP5Test.wideExponentGapRoundsOnce`：指数取 `[-700, 700]`，5000 组，
+  专打两条 drop 分支；
+- `landmarks` 补 3 条**精确平局**断言：`1 + 2^-237` 舍到偶；
+  `1 - 2^-237` 在 `[0.5,1)` 的网格上可精确表示、**不是**平局；
+  经 2p 位乘积构造的 `1 + 1.5×2^-236` 平局。
+
+剩余：200 B = 帧 144 + 结果 56。帧仍逃逸，因为 `pack512`（286 B）未稳定内联；
+要再降到 56 B 需要和 `addFramed` 同样的内联战。**fma 已不是分配最大的项**——
+`b256ToString` 仍是 7021 B/op，是下一项。

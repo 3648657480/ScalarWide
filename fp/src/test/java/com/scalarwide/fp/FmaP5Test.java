@@ -32,6 +32,19 @@ class FmaP5Test {
     }
 
     @Test
+    void wideExponentGapRoundsOnce() {
+        // The narrow random range never produces a gap wide enough to push one operand entirely
+        // out of the frame, which is a separate branch. This covers that branch and its ties.
+        Random rnd = new Random(SEED + 2);
+        for (int i = 0; i < N / 4; i++) {
+            Binary256 a = randomWide(rnd);
+            Binary256 b = randomWide(rnd);
+            Binary256 c = randomWide(rnd);
+            assertRef("fma-wide", refFma(a, b, c), a.fma(b, c));
+        }
+    }
+
+    @Test
     void singleRoundingIsObservable() {
         // Find at least one case where fma differs from multiply-then-add; otherwise the gate
         // above could be passed by an implementation that rounds twice.
@@ -60,6 +73,14 @@ class FmaP5Test {
                 Binary256.ONE.fma(Binary256.ONE, Binary256.NEGATIVE_INFINITY));
         // 2*3 + 4 = 10 exactly
         assertEquals(Binary256.of(10.0), Binary256.of(2.0).fma(Binary256.of(3.0), Binary256.of(4.0)));
+        // Exact ties: 1 + 2^-237 sits midway between 1 and 1 + 2^-236, so it rounds to even.
+        Binary256 half = Binary256.of(0x1p-237);
+        assertEquals(Binary256.ONE, Binary256.ONE.fma(Binary256.ONE, half));
+        // Below 1 the spacing halves, so this one is exact rather than a tie.
+        assertEquals(Binary256.ONE.subtract(half), Binary256.ONE.fma(Binary256.ONE, half.negate()));
+        // A tie one binade up, reached through the 2p-bit product rather than the addend.
+        Binary256 odd = Binary256.ONE.add(Binary256.of(0x1p-236));
+        assertEquals(Binary256.ONE.add(Binary256.of(0x1p-235)), half.fma(Binary256.ONE, odd));
     }
 
     // ---------------------------------------------------------------- reference
@@ -146,6 +167,13 @@ class FmaP5Test {
 
     private static Binary256 random(Random rnd) {
         int exp = rnd.nextInt(120) - 60;
+        return Binary256.raw(rnd.nextBoolean() ? 1 : 0, exp,
+                rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
+    }
+
+    /** Exponents far enough apart to overflow a 1024-bit frame in either direction. */
+    private static Binary256 randomWide(Random rnd) {
+        int exp = rnd.nextInt(1400) - 700;
         return Binary256.raw(rnd.nextBoolean() ? 1 : 0, exp,
                 rnd.nextLong(), rnd.nextLong(), rnd.nextLong(), topLimb(rnd));
     }

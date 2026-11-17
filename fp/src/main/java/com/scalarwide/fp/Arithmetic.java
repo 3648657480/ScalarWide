@@ -14,6 +14,8 @@ final class Arithmetic {
     private static final Wide1024 ZERO = Wide1024.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     /** Frame width in limbs for the 512-bit path: every value except an fma product fits. */
     private static final int FRAME512 = 8;
+    /** Frame width in limbs for the fma path: an exact 2p-bit product plus an aligned addend. */
+    private static final int FRAME1024 = 16;
 
     /** bitLength of a fixed 8-limb frame. */
     private static int bitLength8(long[] m) {
@@ -218,7 +220,7 @@ final class Arithmetic {
     }
     /** Adds {@code v} at limb {@code i}, propagating the carry. */
     private static void addAt(long[] acc, int i, long v) {
-        while (v != 0L && i < 8) {
+        while (v != 0L && i < acc.length) {
             long old = acc[i];
             acc[i] = old + v;
             v = Long.compareUnsigned(acc[i], old) < 0 ? 1L : 0L;
@@ -443,77 +445,215 @@ final class Arithmetic {
         return Binary256.raw(sign, e, q.limb(0), q.limb(1), q.limb(2), q.limb(3));
     }
     /**
-     * {@code a*b + c} with exactly <em>one</em> rounding.
+     * {@code a*b + c} with exactly <em>one</em> rounding, in a 16-limb frame.
      *
      * <p>The product is exact (2p bits) and {@code c} is aligned into the same fixed-point frame,
-     * so no intermediate result is ever rounded. When the exponent gap exceeds what a 1024-bit
-     * frame can hold, the smaller operand becomes a sticky tail — it is then more than 512 bits
-     * below the other's LSB and cannot affect anything above the rounding point except by
-     * making the result inexact.
+     * so nothing is rounded before the shared {@link #pack512}. Once the exponent gap exceeds what
+     * the frame can hold, the smaller operand collapses into a sticky tail; it is then more than
+     * 270 bits below the frame's LSB, so it can only make the result inexact — never move it
+     * across a rounding boundary.
      */
     static Binary256 fma(Binary256 a, Binary256 b, Binary256 c) {
-        Exact p = Exact.mul(a, b);
-        // Pick the frame: normally the smaller exponent so both fit exactly. If the gap is too
-        // wide for the 1024-bit container, sit on the dominant operand and let the other become a
-        // sticky tail (it is then more than its own width below the frame's LSB).
-        int expP = p.exp();
-        int expC = c.scaleExponent();
+        long c0 = c.limb(0);
+        long c1 = c.limb(1);
+        long c2 = c.limb(2);
+        long c3 = c.limb(3);
+        int expP = a.scaleExponent() + b.scaleExponent() - 2 * (P - 1);
+        int expC = c.scaleExponent() - (P - 1);
+        boolean prodSign = a.signBit() != b.signBit();
+        boolean sameSign = prodSign == c.signBit();
+
         int exp;
-        if (expP <= expC) {
-            exp = expC - expP <= 768 ? expP : expC;
+        boolean dropProd = false;
+        boolean dropC = false;
+        if (expP >= expC) {
+            if (expP - expC <= 512) {
+                exp = expC;
+            } else {
+                exp = expP;
+                dropC = true;
+            }
+        } else if (expC - expP <= 768) {
+            exp = expP;
         } else {
-            exp = expP - expC <= 512 ? expC : expP;
+            exp = expC;
+            dropProd = true;
         }
 
-        Wide1024 prod;
-        boolean prodSticky;
-        int dP = p.exp() - exp;
-        if (dP < 0) {
-            // frame sits above the product: its LSB is below the frame, so it is pure tail
-            prod = Wide1024.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            prodSticky = true;
-        } else if (dP <= 512) {
-            Wide512 m = p.mag();
-            prod = Wide1024.of(m.limb(0), m.limb(1), m.limb(2), m.limb(3),
-                    m.limb(4), m.limb(5), m.limb(6), m.limb(7),
-                    0, 0, 0, 0, 0, 0, 0, 0).shl(dP);
-            prodSticky = false;
+        long[] f = new long[FRAME1024];
+        int sign;
+        if (dropProd) {
+            // The dropped product sits more than 270 bits below the frame's LSB, so it is a pure
+            // sticky tail. Two spare low bits are kept: without them the rounder would have no
+            // guard position to express "at or below" when the addend is a bare p-bit value.
+            sign = c.signBit() ? 1 : 0;
+            exp = expC - 2;
+            addShifted4(f, 2, c0, c1, c2, c3);
         } else {
-            prod = Wide1024.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            prodSticky = true;
+            mulIntoFrame(f, a, b);
+            if (expP > exp) {
+                Limbs.shl(f, expP - exp, f);
+            }
+            if (dropC) {
+                sign = prodSign ? 1 : 0;
+            } else if (sameSign) {
+                sign = prodSign ? 1 : 0;
+                addShifted4(f, expC - exp, c0, c1, c2, c3);
+            } else if (subShifted4(f, expC - exp, c0, c1, c2, c3)) {
+                Limbs.neg(f, f);
+                sign = c.signBit() ? 1 : 0;
+            } else {
+                sign = prodSign ? 1 : 0;
+            }
         }
 
-        Wide1024 add;
-        boolean addSticky;
-        int dC = c.scaleExponent() - exp;
-        if (dC < 0) {
-            add = Wide1024.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            addSticky = true;
-        } else if (dC <= 768) {
-            add = Wide1024.of(c.limb(0), c.limb(1), c.limb(2), c.limb(3),
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).shl(dC);
-            addSticky = false;
-        } else {
-            add = Wide1024.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            addSticky = true;
+        boolean sticky = dropProd || dropC;
+        boolean down = sticky && !sameSign;
+        int bits = Limbs.bitLength(f);
+        if (bits == 0) {
+            return Binary256.ZERO;
         }
+        int shift = 0;
+        if (bits > 512) {
+            shift = bits - 512;
+            sticky |= anyBelow16(f, shift);
+            Limbs.ushr(f, shift, f);
+        }
+        return pack512(sign, exp + shift + (P - 1), f, sticky, down);
+    }
 
-        boolean prodSign = p.sign() != 0;
-        boolean addSign = c.signBit();
-        boolean sticky = prodSticky || addSticky;
-        if (prodSign == addSign) {
-            return pack(prodSign ? 1 : 0, exp, prod.add(add), sticky, false);
+    /** The exact 4x4 limb product of {@code a} and {@code b}, written into a 16-limb frame. */
+    private static void mulIntoFrame(long[] f, Binary256 a, Binary256 b) {
+        long a0 = a.limb(0);
+        long a1 = a.limb(1);
+        long a2 = a.limb(2);
+        long a3 = a.limb(3);
+        long b0 = b.limb(0);
+        long b1 = b.limb(1);
+        long b2 = b.limb(2);
+        long b3 = b.limb(3);
+        mulAdd(f, 0, a0, b0);
+        mulAdd(f, 1, a0, b1);
+        mulAdd(f, 1, a1, b0);
+        mulAdd(f, 2, a0, b2);
+        mulAdd(f, 2, a1, b1);
+        mulAdd(f, 2, a2, b0);
+        mulAdd(f, 3, a0, b3);
+        mulAdd(f, 3, a1, b2);
+        mulAdd(f, 3, a2, b1);
+        mulAdd(f, 3, a3, b0);
+        mulAdd(f, 4, a1, b3);
+        mulAdd(f, 4, a2, b2);
+        mulAdd(f, 4, a3, b1);
+        mulAdd(f, 5, a2, b3);
+        mulAdd(f, 5, a3, b2);
+        mulAdd(f, 6, a3, b3);
+    }
+
+    /** Adds the 4-limb magnitude {@code c}, shifted left by {@code shift}, into the frame. */
+    private static void addShifted4(long[] f, int shift, long c0, long c1, long c2, long c3) {
+        int li = shift >>> 6;
+        int bs = shift & 63;
+        long w0 = c0;
+        long w1 = c1;
+        long w2 = c2;
+        long w3 = c3;
+        long w4 = 0L;
+        if (bs != 0) {
+            w4 = c3 >>> (64 - bs);
+            w3 = (c3 << bs) | (c2 >>> (64 - bs));
+            w2 = (c2 << bs) | (c1 >>> (64 - bs));
+            w1 = (c1 << bs) | (c0 >>> (64 - bs));
+            w0 = c0 << bs;
         }
-        int cmp = prod.compareUnsigned(add);
-        if (cmp == 0) {
-            return sticky
-                    ? pack(addSign ? 1 : 0, exp, ONE, true, true)
-                    : (prodSign ? Binary256.NEGATIVE_ZERO : Binary256.ZERO);
+        long carry = addLimb(f, li, w0, 0L);
+        carry = addLimb(f, li + 1, w1, carry);
+        carry = addLimb(f, li + 2, w2, carry);
+        carry = addLimb(f, li + 3, w3, carry);
+        carry = addLimb(f, li + 4, w4, carry);
+        for (int i = li + 5; carry != 0L && i < FRAME1024; i++) {
+            carry = addLimb(f, i, 0L, carry);
         }
-        if (cmp > 0) {
-            return pack(prodSign ? 1 : 0, exp, prod.sub(add), sticky, sticky);
+    }
+
+    /**
+     * Subtracts the 4-limb magnitude {@code c}, shifted left by {@code shift}, from the frame.
+     * A true return means the frame held the smaller magnitude, so {@code f} now holds the
+     * two's-complement difference and must be negated by the caller.
+     */
+    private static boolean subShifted4(long[] f, int shift, long c0, long c1, long c2, long c3) {
+        int li = shift >>> 6;
+        int bs = shift & 63;
+        long w0 = c0;
+        long w1 = c1;
+        long w2 = c2;
+        long w3 = c3;
+        long w4 = 0L;
+        if (bs != 0) {
+            w4 = c3 >>> (64 - bs);
+            w3 = (c3 << bs) | (c2 >>> (64 - bs));
+            w2 = (c2 << bs) | (c1 >>> (64 - bs));
+            w1 = (c1 << bs) | (c0 >>> (64 - bs));
+            w0 = c0 << bs;
         }
-        return pack(addSign ? 1 : 0, exp, add.sub(prod), sticky, sticky);
+        long borrow = subLimb(f, li, w0, 0L);
+        borrow = subLimb(f, li + 1, w1, borrow);
+        borrow = subLimb(f, li + 2, w2, borrow);
+        borrow = subLimb(f, li + 3, w3, borrow);
+        borrow = subLimb(f, li + 4, w4, borrow);
+        for (int i = li + 5; borrow != 0L && i < FRAME1024; i++) {
+            borrow = subLimb(f, i, 0L, borrow);
+        }
+        return borrow != 0L;
+    }
+
+    private static long addLimb(long[] f, int i, long v, long carry) {
+        if (i >= FRAME1024) {
+            return carry;
+        }
+        long cur = f[i];
+        long s = cur + v;
+        long c = Long.compareUnsigned(s, cur) < 0 ? 1L : 0L;
+        long r = s + carry;
+        if (carry != 0L && Long.compareUnsigned(r, s) < 0) {
+            c++;
+        }
+        f[i] = r;
+        return c;
+    }
+
+    private static long subLimb(long[] f, int i, long v, long borrow) {
+        if (i >= FRAME1024) {
+            return borrow;
+        }
+        long cur = f[i];
+        long d = cur - v;
+        long b = Long.compareUnsigned(cur, v) < 0 ? 1L : 0L;
+        long r = d - borrow;
+        if (borrow != 0L && Long.compareUnsigned(r, d) > 0) {
+            b++;
+        }
+        f[i] = r;
+        return b;
+    }
+
+    /** Any bit strictly below {@code i} (i.e. in {@code [0, i-1]}) of a 16-limb frame. */
+    private static boolean anyBelow16(long[] m, int i) {
+        if (i <= 0) {
+            return false;
+        }
+        int li = i >> 6;
+        for (int j = 0; j < li && j < FRAME1024; j++) {
+            if (m[j] != 0L) {
+                return true;
+            }
+        }
+        if (li >= FRAME1024) {
+            return false;
+        }
+        int bi = i & 63;
+        long mask = bi == 0 ? 0L : (1L << bi) - 1L;
+        return (m[li] & mask) != 0L;
     }
 
     /** Widens a 512-bit magnitude into the 1024-bit rounding frame. */
