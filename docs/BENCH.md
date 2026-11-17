@@ -2344,3 +2344,35 @@ java -jar build/libs/ScalarWide-1.0.3-jmh.jar ModArithBench -prof gc \
 （4/6/8/9 肢各一份生成代码，像 `GenMul` 那样）；② Montgomery 上下文（缓存 `n0` 与
 `R² mod m`，`toMont` 退化成一次 `mulMont`，`mulMod` 就能落到 ~280 ns，但要新增 API 载体）。
 两条都记进 `docs/WIDE-CRYPTO.md` §6。
+
+### E4：mc.fp 容器 256/640 首轮基线（2026-11-17）
+
+`
+./gradlew :jmhJar
+java -jar build/libs/ScalarWide-1.0.3-jmh.jar ContainerBench -prof gc -f 1 -wi 5 -i 10 -w 1s -r 1s
+`
+
+口径：本机、未锁核、JDK 25.0.3、每个方法内循环 256 次，已折算**单次**。
+
+| op | @256 | @640 | 分配 |
+|---|---:|---:|---:|
+| mulSmall | 23.2 ns | 42.3 ns | ~0 |
+| setFrom(long[]) | 24.2 ns | 32.8 ns | ~0 |
+| copyFrom | 8.3 ns | 8.2 ns | ~0 |
+
+**注意**：compareTo 与 scalePow2 的循环不变量被 JIT 折叠（1.8 ns/256 次），数字不可用，
+需要改用每轮变化的操作数重测——已列入下一轮。
+
+### E5：Montgomery 上下文（main.integer.Montgomery）
+
+无状态 ModArith.mulMod 每次调用必须重进 Montgomery 域（一次除法，9 肢约 403 ns），
+所以它和纯除法路径打平（647 vs 656 ns）。上下文对象把 
+0inv 与 R^2 mod m 缓存起来：
+
+| 调用 | 次数 | 代价 |
+|---|---|---|
+| 	oMont / romMont | 每批一次 | 一次 mulMont（9 肢约 281 ns） |
+| mulMod（域内） | 每次乘法 | 纯 CIOS（9 肢约 281 ns） |
+
+批量乘法（如模幂、点乘）因此从「每次 647 ns」降到「每次约 281 ns」，约 2.3×。
+门禁：MontgomeryTest 6 例（mulMont/	oMont/romMont/域内乘/powMod/边界 + P-521 定点）。

@@ -1,0 +1,231 @@
+package com.scalarwide.main.integer;
+
+import java.math.BigInteger;
+import java.util.Arrays;
+
+/**
+ * Montgomery arithmetic context: caches {@code -m^-1 mod 2^64} and {@code R^2 mod m}
+ * ({@code R = 2^(64*limbs)}), so a fixed modulus pays the setup once and then every
+ * {@link #mulMod} is a bare CIOS multiply-reduce with no division.
+ *
+ * <p>This is the shape that makes repeated modular multiplications cheap: the stateless
+ * {@link ModArith#mulMod} must re-enter the Montgomery domain on every call (one division,
+ * measured at ~400 ns for 9 limbs), while here {@link #toMont}/{@link #fromMont} are paid once per
+ * batch and the inner loop is pure {@code 2n^2} limb products.
+ *
+ * <p>Operands are little-endian limb arrays of exactly {@code limbs()} words, all {@code < m}.
+ * The context owns scratch buffers and is <b>not</b> thread-safe: one context per thread.
+ */
+public final class Montgomery {
+
+    private final int n;
+    private final long[] m;
+    private final long n0inv;
+    private final long[] r2;
+    private final long[] t;
+    private final long[] tmp;
+    private final long[] oneBuf;
+    private final long[] acc;
+    private final long[] baseBuf;
+    private final long[] sqBuf;
+
+    /**
+     * Builds a context for an odd modulus.
+     *
+     * @throws ArithmeticException if the modulus is zero or even
+     */
+    public Montgomery(long[] modulus) {
+        if (modulus.length == 0) {
+            throw new ArithmeticException("modulus is empty");
+        }
+        for (long v : modulus) {
+            if (v != 0L) {
+                break;
+            }
+        }
+        if (isZero(modulus)) {
+            throw new ArithmeticException("modulus is zero");
+        }
+        if ((modulus[0] & 1L) == 0L) {
+            throw new ArithmeticException("Montgomery requires an odd modulus");
+        }
+        this.n = modulus.length;
+        this.m = modulus.clone();
+        this.n0inv = computeN0(m);
+        this.r2 = computeR2(m);
+        this.t = new long[2 * n + 2];
+        this.tmp = new long[n];
+        this.oneBuf = new long[n];
+        this.oneBuf[0] = 1L;
+        this.acc = new long[n];
+        this.baseBuf = new long[n];
+        this.sqBuf = new long[n];
+    }
+
+    /** Limb count of the modulus. */
+    public int limbs() {
+        return n;
+    }
+
+    /** {@code out = a * b * R^-1 mod m} (the raw Montgomery product). */
+    public void mulMont(long[] a, long[] b, long[] out) {
+        Arrays.fill(t, 0L);
+        for (int i = 0; i < n; i++) {
+            long bi = b[i];
+            long c = 0L;
+            for (int j = 0; j < n; j++) {
+                long lo = a[j] * bi;
+                long hi = Math.unsignedMultiplyHigh(a[j], bi);
+                long s = t[j] + lo;
+                long c1 = Long.compareUnsigned(s, t[j]) < 0 ? 1L : 0L;
+                long s2 = s + c;
+                long c2 = Long.compareUnsigned(s2, s) < 0 ? 1L : 0L;
+                t[j] = s2;
+                c = hi + c1 + c2;
+            }
+            long s = t[n] + c;
+            t[n + 1] = Long.compareUnsigned(s, t[n]) < 0 ? 1L : 0L;
+            t[n] = s;
+
+            long q = t[0] * n0inv;
+            long plo0 = q * m[0];
+            long phi0 = Math.unsignedMultiplyHigh(q, m[0]);
+            long s0 = t[0] + plo0;
+            long carry = phi0 + (Long.compareUnsigned(s0, t[0]) < 0 ? 1L : 0L);
+            for (int j = 1; j < n; j++) {
+                long plo = q * m[j];
+                long phi = Math.unsignedMultiplyHigh(q, m[j]);
+                long sum = t[j] + plo;
+                long c1 = Long.compareUnsigned(sum, t[j]) < 0 ? 1L : 0L;
+                long sum2 = sum + carry;
+                long c2 = Long.compareUnsigned(sum2, sum) < 0 ? 1L : 0L;
+                t[j - 1] = sum2;
+                carry = phi + c1 + c2;
+            }
+            long sum = t[n] + carry;
+            t[n - 1] = sum;
+            t[n] = t[n + 1] + (Long.compareUnsigned(sum, t[n]) < 0 ? 1L : 0L);
+        }
+        if (t[n] != 0L || compareUnsigned(t, m) >= 0) {
+            subInPlace(t, m);
+        }
+        System.arraycopy(t, 0, out, 0, n);
+    }
+
+    /** {@code out = a * R mod m}, i.e. enter the Montgomery domain. */
+    public void toMont(long[] a, long[] out) {
+        mulMont(a, r2, out);
+    }
+
+    /** {@code out = a * R^-1 mod m}, i.e. leave the Montgomery domain. */
+    public void fromMont(long[] a, long[] out) {
+        Arrays.fill(tmp, 0L);
+        System.arraycopy(a, 0, tmp, 0, n);
+        mulMont(tmp, oneBuf, out);
+    }
+
+    /**
+     * {@code base^exp mod m}, with the domain conversions paid once. Data-dependent (no
+     * constant-time claim).
+     */
+    public void powMod(long[] base, long[] exp, long[] out) {
+        Arrays.fill(acc, 0L);
+        acc[0] = 1L;
+        long[] b = baseBuf;
+        long[] sq = sqBuf;
+        toMont(acc, acc);
+        toMont(base, b);
+        int bits = bitLength(exp);
+        for (int i = bits - 1; i >= 0; i--) {
+            mulMont(acc, acc, sq);
+            System.arraycopy(sq, 0, acc, 0, n);
+            if (((exp[i >>> 6] >>> (i & 63)) & 1L) != 0L) {
+                mulMont(acc, b, sq);
+                System.arraycopy(sq, 0, acc, 0, n);
+            }
+        }
+        fromMont(acc, out);
+    }
+
+    // ---------------------------------------------------------------- setup helpers
+
+    private static long computeN0(long[] m) {
+        long inv = 1L;
+        for (int i = 0; i < 8; i++) {
+            inv *= 2L - m[0] * inv;
+        }
+        return -inv;
+    }
+
+    private static long[] computeR2(long[] m) {
+        BigInteger mod = toBig(m);
+        BigInteger r = BigInteger.ONE.shiftLeft(64 * m.length);
+        BigInteger r2 = r.multiply(r).mod(mod);
+        long[] out = new long[m.length];
+        BigInteger work = r2;
+        for (int i = 0; i < out.length; i++) {
+            out[i] = work.longValue();
+            work = work.shiftRight(64);
+        }
+        return out;
+    }
+
+    private static BigInteger toBig(long[] limbs) {
+        BigInteger v = BigInteger.ZERO;
+        for (int i = limbs.length - 1; i >= 0; i--) {
+            long limb = limbs[i];
+            BigInteger w = BigInteger.valueOf(limb & Long.MAX_VALUE);
+            if (limb < 0) {
+                w = w.setBit(63);
+            }
+            v = v.shiftLeft(64).or(w);
+        }
+        return v;
+    }
+
+    private static boolean isZero(long[] a) {
+        for (long v : a) {
+            if (v != 0L) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Compares the low {@code m.length} words of {@code t} with {@code m}. */
+    private static int compareUnsigned(long[] t, long[] m) {
+        for (int i = m.length - 1; i >= 0; i--) {
+            int c = Long.compareUnsigned(t[i], m[i]);
+            if (c != 0) {
+                return c;
+            }
+        }
+        return 0;
+    }
+
+    private static void subInPlace(long[] t, long[] m) {
+        long borrow = 0L;
+        for (int i = 0; i < m.length; i++) {
+            long d = t[i] - m[i];
+            long b = Long.compareUnsigned(t[i], m[i]) < 0 ? 1L : 0L;
+            long r = d - borrow;
+            if (borrow != 0L && Long.compareUnsigned(r, d) > 0) {
+                b = 1L;
+            }
+            t[i] = r;
+            borrow = b;
+        }
+        for (int i = m.length; i < t.length; i++) {
+            t[i] = 0L;
+        }
+    }
+
+    private static int bitLength(long[] a) {
+        for (int i = a.length - 1; i >= 0; i--) {
+            if (a[i] != 0L) {
+                return i * 64 + 64 - Long.numberOfLeadingZeros(a[i]);
+            }
+        }
+        return 0;
+    }
+}
