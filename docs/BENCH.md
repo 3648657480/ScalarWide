@@ -2376,3 +2376,24 @@ java -jar build/libs/ScalarWide-1.0.3-jmh.jar ContainerBench -prof gc -f 1 -wi 5
 
 批量乘法（如模幂、点乘）因此从「每次 647 ns」降到「每次约 281 ns」，约 2.3×。
 门禁：MontgomeryTest 6 例（mulMont/	oMont/romMont/域内乘/powMod/边界 + P-521 定点）。
+### E6：Montgomery 展开核 A/B（2026-11-17）
+
+生成器 GenMont 产出全展开 CIOS（常数下标、无内层循环），与通用循环版**同一次 JMH** 内对照：
+
+`
+java -jar build/libs/ScalarWide-2.0.0-jmh.jar 'MontgomeryBench.(mulMont|mulMontLooped)' \
+  -p limbs=N -f 2 -wi 5 -i 10 -w 1s -r 1s
+`
+
+| 肢数 | 展开核 | 循环版 | 结论 |
+|---|---:|---:|---|
+| 4 | **41.7 ns** | 85.1 ns | 展开 **2.04×**，保留 |
+| 6 | **82.2 ns** | 142.0 ns | 展开 **1.73×**，保留 |
+| 9 | 315.8 ns | **257.9 ns** | 展开 **慢 22%**，回退 |
+
+9 肢的展开核有 ~150 个内联肢体乘积，超出指令缓存，反而变慢——生成器的 WIDTHS 里已注明并
+**只在 4/6 肢派发**；9 肢走循环版。这条是「delta 不真实就回退」纪律的一次实际应用：
+三次 A/B 里有一次是负收益，按数据撤掉，没有保留「看起来更聪明」的展开代码。
+
+powMod（域内，上下文）：19.1 µs（4 肢）/ 65.5 µs（6 肢）/ 283.2 µs（9 肢，循环版）；
+分配 ≤ 2 B/op。
