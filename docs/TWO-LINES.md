@@ -30,7 +30,7 @@ src/main/java/com/scalarwide/
 ## 3. 规则
 
 1. **两组的同名类不是同一个类**：`com.scalarwide.main.integer.Wide512` 与
-   `com.scalarwide.mc.integer.Wide512` 是两份代码，行为可以不同（性能取舍不同）。
+   `com.scalarwide.mc.fp.integer.Wide512` 是两份代码，行为可以不同（性能取舍不同）。
 2. **加密代码只进 `main/integer/ModArith`**，不得为它改 `Wide*`/`Limbs` 热路径。
 3. **正确性缺陷必须双组同修**：任一组发现 `Wide*`/`Limbs`/容器语义缺陷，修复要在
    同一轮同步到另一组（性能改动不必同步）。行为不一致比速度不一致危险。

@@ -42,7 +42,7 @@
 - ≤512 全部算子对 BigInteger 领先；`mulHigh`/512 亦无退化；oracle + 消费者契约测试全绿。
 
 ### mc-v0.11.2（针对性冲击第一波，MC 专属工具包）
-- `com.scalarwide.mc.Wide256FlatMap`：交错槽开放寻址键映射（零分配、免装箱）——1M 键查找较
+- `com.scalarwide.mc.fp.Wide256FlatMap`：交错槽开放寻址键映射（零分配、免装箱）——1M 键查找较
   `HashMap<Wide256>` 快 ~1.24×、较 BigInteger 映射 ~1.7×。
-- `com.scalarwide.mc.McWarmup`：初始化预热——256 位首百次调用 5144→134 ns（38×）。
+- `com.scalarwide.mc.fp.McWarmup`：初始化预热——256 位首百次调用 5144→134 ns（38×）。
 - `FlatMapProbe` 新探测（flat/hashmap/big 三模式同 run 对照）。

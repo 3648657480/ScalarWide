@@ -20,7 +20,7 @@
 ## 2. 快速上手
 
 ```java
-import com.scalarwide.fp.Binary1280;
+import com.scalarwide.main.fp.Binary1280;
 
 Binary1280 a = Binary1280.of(1.5);            // 精确：每个有限 double 都能表示
 Binary1280 b = Binary1280.of("1e-300");       // 正确舍入的十进制解析
@@ -82,8 +82,8 @@ a.compareTo(b);                               // 全序（-0 < +0，NaN 最大�
 | 分配 | 每次运算分配结果 | **每次调用零分配** |
 | 四则 | 全 | 只 `mulSmall`（20×1），禁止 1280×1280 加减 |
 
-两者的**包与类型都不同**，不再是同一套通用 API：通用浮点是 `com.scalarwide.fp.Binary1280`，
-容器在 mc 线是 `com.scalarwide.mc.Binary1280`。即使把两条线放进同一个 classpath 也不会撞车，
+两者的**包与类型都不同**，不再是同一套通用 API：通用浮点是 `com.scalarwide.main.fp.Binary1280`，
+容器在 mc 线是 `com.scalarwide.mc.fp.Binary1280`。即使把两条线放进同一个 classpath 也不会撞车，
 但**不能混用**：容器的 `scalePow2/floorLow64Frac` 等是可变 scratch 语义，浮点的 `add/multiply`
 是不可变值语义。
 
