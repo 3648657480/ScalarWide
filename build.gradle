@@ -4,7 +4,8 @@ plugins {
     id 'signing'
 }
 
-group = 'com.scalarwide'
+// Maven Central 用 -PpublishGroup=io.github.3648657480 覆盖（新命名空间走 Portal）
+group = project.findProperty('publishGroup') ?: 'com.scalarwide'
 version = file('VERSION').text.trim()
 
 repositories {
@@ -16,6 +17,13 @@ repositories {
 
 java {
     withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    // Maven Central needs a javadoc jar; the tree has legacy comments that fail doclint.
+    options.addStringOption('Xdoclint:none', '-quiet')
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -161,10 +169,16 @@ publishing {
 
 signing {
     // Sign only when a key is configured; unsigned local builds must stay green.
-    required = project.hasProperty('signingKey')
-    if (project.hasProperty('signingKey')) {
-        useInMemoryPgpKeys(project.property('signingKey') as String,
-                project.property('signingPassword') as String)
+    // Accept either an inline armored key (-PsigningKey) or a file (-PsigningKeyFile).
+    def keyText = null
+    if (project.hasProperty('signingKeyFile')) {
+        keyText = new File(project.property('signingKeyFile')).getText('UTF-8')
+    } else if (project.hasProperty('signingKey')) {
+        keyText = project.property('signingKey') as String
+    }
+    required = keyText != null
+    if (keyText != null) {
+        useInMemoryPgpKeys(keyText, (project.findProperty('signingPassword') ?: '') as String)
         sign publishing.publications.maven
     }
 }
