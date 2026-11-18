@@ -89,4 +89,5 @@ ctx.fromMont(prod, r);
 | 规格 | `docs/guide/SPEC.md`、`SEMANTICS.md`、`WIDE-FORMATS.md`、`COMPATIBILITY.md` |
 | 加密 | `docs/guide/WIDE-CRYPTO.md` |
 | 容器 | `docs/guide/B1280-CONTAINER.md` |
+| 发版 | `docs/guide/RELEASING.md`（版本、标签、JitPack、Maven Central 与四个坑） |
 | 历史 | `docs/history/BRANCHES.md`、`FUTURE-WORK.md`、`WORKSTATION.md`、`BRIEF-*.md`、`HANDOFF-*.md` |
