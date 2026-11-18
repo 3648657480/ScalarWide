@@ -11,7 +11,7 @@
   发布到 JitPack 后看起来像个无主玩具，也是上 Maven Central 的硬门槛。
 - 接入 `signing` 插件与 Sonatype 中央仓配置，**仅在提供凭据时启用**
   （`-PsigningKey=… -PcentralUser=… -PcentralPassword=…`），本地与 JitPack 构建不受影响。
-- JitPack 的 `v2.0.2` 构建已确认成功（jar 336,726 B，与本地一致）；
+- **已发布到 Maven Central**：`io.github.3648657480:scalarwide:2.0.3`（Sonatype Central Portal，\n  产物经 GPG 签名并带 md5/sha1；`repo1.maven.org` 已同步并可下载）。\n- JitPack 的 `v2.0.2` 构建已确认成功（jar 336,726 B，与本地一致）；
   此前 2.x 从未构建过，导致 README 里的 JitPack 坐标实际不可解析。
 ## 2.0.2 — 基准方法论修正与全量对照（无代码变更）
 

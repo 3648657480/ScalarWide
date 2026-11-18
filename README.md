@@ -57,15 +57,21 @@
 
 ## 作为依赖使用（库的用法）
 
-- **JitPack（推荐，零安装）**：
+- **Maven Central（推荐，无需额外仓库）**：
+
+  ```groovy
+  dependencies { implementation 'io.github.3648657480:scalarwide:2.0.3' }
+  ```
+
+- **JitPack（备选）**：
 
   ```groovy
   repositories { maven { url 'https://jitpack.io' } }
-  dependencies { implementation 'com.github.3648657480:ScalarWide:v2.0.0' }
+  dependencies { implementation 'com.github.3648657480:ScalarWide:v2.0.3' }
   ```
 
-- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:2.0.0`；
-- **手动**：GitHub Releases 下载 `ScalarWide-2.0.0.jar`（+ `-sources.jar`）放入 classpath；
+- **本地安装**：`.\gradlew.bat publishToMavenLocal` → 坐标 `com.scalarwide:scalarwide:2.0.3`；
+- **手动**：GitHub Releases 下载 `ScalarWide-2.0.3.jar`（+ `-sources.jar`）放入 classpath；
 - 红线：`MutableWide*` 与 MC 容器非线程安全、永不可作 map 键；加 `-Dscalarwide.guard=true`
   可开启共享误用检测（best-effort，关闭时零成本）。
 
