@@ -1,0 +1,3 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.bench.CompetitorBench.l256Mul","avgt",1,10,9.566039,2.941847,"ns/op"
+"com.scalarwide.bench.CompetitorBench.w256Mul","avgt",1,10,9.063886,1.378233,"ns/op"
