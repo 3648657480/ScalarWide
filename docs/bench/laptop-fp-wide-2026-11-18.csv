@@ -1,0 +1,17 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: width"
+"com.scalarwide.main.fp.bench.WideBench.add","avgt",1,10,24693.716245,1420.366556,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.add","avgt",1,10,39819.154118,4552.848418,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.compareTo","avgt",1,10,1181.563141,101.537148,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.compareTo","avgt",1,10,1233.016819,98.732699,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.divide","avgt",1,10,157140.618878,63034.014598,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.divide","avgt",1,10,316804.444435,36953.088361,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.multiply","avgt",1,10,38145.976210,9990.184425,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.multiply","avgt",1,10,51304.934628,5789.629163,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.ofDouble","avgt",1,10,2430.404786,49.108218,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.ofDouble","avgt",1,10,5158.069023,214.906138,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.sqrt","avgt",1,10,631293.829158,154511.012217,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.sqrt","avgt",1,10,1097354.045402,86731.847262,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.subtract","avgt",1,10,27137.153940,2403.812260,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.subtract","avgt",1,10,34746.765646,1891.558048,"ns/op",1280
+"com.scalarwide.main.fp.bench.WideBench.toString40","avgt",1,10,343169.430087,42634.119886,"ns/op",640
+"com.scalarwide.main.fp.bench.WideBench.toString40","avgt",1,10,822384.803014,678885.122877,"ns/op",1280

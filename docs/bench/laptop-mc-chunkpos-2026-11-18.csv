@@ -1,0 +1,7 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit"
+"com.scalarwide.mc.integer.WideChunkPosBench.equalsOp","avgt",1,10,23.202582,1.041579,"ns/op"
+"com.scalarwide.mc.integer.WideChunkPosBench.hashCodeOp","avgt",1,10,0.567514,0.055180,"ns/op"
+"com.scalarwide.mc.integer.WideChunkPosBench.neighborLong","avgt",1,10,59.099272,1.879436,"ns/op"
+"com.scalarwide.mc.integer.WideChunkPosBench.ofBig","avgt",1,10,687.746965,79.201860,"ns/op"
+"com.scalarwide.mc.integer.WideChunkPosBench.ofLong","avgt",1,10,28.304437,1.124741,"ns/op"
+"com.scalarwide.mc.integer.WideChunkPosBench.toByteArray","avgt",1,10,50.487528,12.543042,"ns/op"
