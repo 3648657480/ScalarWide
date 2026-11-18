@@ -136,7 +136,7 @@ docs/
 ├─ bench/                                  原始跑批 CSV / 日志
 ├─ design/                                 DESIGN / INLINE / LAYOUT / HETEROGENEOUS / TWO-LINES
 ├─ guide/                                  使用指南（README）/ SPEC / SEMANTICS / WIDE-FORMATS /
-│                                          WIDE-CRYPTO / B1280-CONTAINER / COMPATIBILITY
+│                                          WIDE-CRYPTO / B1280-CONTAINER / COMPATIBILITY / RELEASING
 └─ history/                                BRANCHES / FUTURE-WORK / WORKSTATION / BRIEF / HANDOFF
 ```
 
