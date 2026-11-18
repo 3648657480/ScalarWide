@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
 group = 'com.scalarwide'
@@ -109,9 +110,65 @@ publishing {
         maven(MavenPublication) {
             from components.java
             artifactId = 'scalarwide'
+            pom {
+                name = 'ScalarWide'
+                description = 'Pure-scalar fixed-width big-integer library (128-1024 bit) plus ' +
+                        'correctly-rounded binary floating point (256/640/1280 bit) and ' +
+                        'zero-allocation coordinate containers.'
+                url = 'https://github.com/3648657480/ScalarWide'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id = '3648657480'
+                        name = 'ScalarWide maintainer'
+                        url = 'https://github.com/3648657480'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/3648657480/ScalarWide.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/3648657480/ScalarWide.git'
+                    url = 'https://github.com/3648657480/ScalarWide'
+                }
+                issueManagement {
+                    system = 'GitHub Issues'
+                    url = 'https://github.com/3648657480/ScalarWide/issues'
+                }
+            }
+        }
+    }
+    // Maven Central (Sonatype Central Portal) is only wired when credentials are supplied:
+    //   ./gradlew publish -PcentralUser=<token-user> -PcentralPassword=<token> -PsigningKey=...
+    // Without them the local build and JitPack keep working unchanged.
+    repositories {
+        if (project.hasProperty('centralUser') && project.hasProperty('centralPassword')) {
+            maven {
+                name = 'central'
+                url = project.findProperty('centralUrl') ?: 'https://s01.oss.sonatype.org/service/staging/deploy/maven2/'
+                credentials {
+                    username = project.property('centralUser')
+                    password = project.property('centralPassword')
+                }
+            }
         }
     }
 }
+
+signing {
+    // Sign only when a key is configured; unsigned local builds must stay green.
+    required = project.hasProperty('signingKey')
+    if (project.hasProperty('signingKey')) {
+        useInMemoryPgpKeys(project.property('signingKey') as String,
+                project.property('signingPassword') as String)
+        sign publishing.publications.maven
+    }
+}
+
 
 jar {
     manifest {
