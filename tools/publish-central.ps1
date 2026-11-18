@@ -82,8 +82,26 @@ Write-Host '== 4/5 uploading to Central Portal' -ForegroundColor Cyan
 $auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${TokenUser}:${TokenPassword}"))
 $headers = @{ Authorization = "Basic $auth" }
 $uri = "https://central.sonatype.com/api/v1/publisher/upload?name=$Artifact-$version&publishingType=USER_MANAGED"
-$form = @{ bundle = Get-Item $bundle }
-$id = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Form $form -TimeoutSec 300
+# HttpClient based multipart: works on both Windows PowerShell 5.1 and PowerShell 7.
+Add-Type -AssemblyName System.Net.Http
+$client = New-Object System.Net.Http.HttpClient
+$client.Timeout = [TimeSpan]::FromMinutes(10)
+$client.DefaultRequestHeaders.Authorization =
+    New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Basic', $auth)
+$multipart = New-Object System.Net.Http.MultipartFormDataContent
+$stream = [System.IO.File]::OpenRead($bundle)
+$filePart = New-Object System.Net.Http.StreamContent($stream)
+$multipart.Add($filePart, 'bundle', [System.IO.Path]::GetFileName($bundle))
+try {
+    $resp = $client.PostAsync($uri, $multipart).GetAwaiter().GetResult()
+    $body = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    if (-not $resp.IsSuccessStatusCode) { throw "upload failed: HTTP $([int]$resp.StatusCode) $body" }
+    $id = $body.Trim('"')
+} finally {
+    $stream.Dispose()
+    $multipart.Dispose()
+    $client.Dispose()
+}
 Write-Host "  deployment id: $id"
 
 Write-Host '== 5/5 polling validation' -ForegroundColor Cyan
