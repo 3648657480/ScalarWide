@@ -68,6 +68,14 @@ foreach ($name in $files) {
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $asc)) { throw "gpg signing failed for $name" }
 }
 
+# Central requires md5 + sha1 next to every file; publishToMavenLocal does not emit them.
+Write-Host '== 2b/5 writing md5 + sha1 checksums' -ForegroundColor Cyan
+Get-ChildItem $outDir -File | Where-Object { $_.Name -notmatch '\.(md5|sha1)$' } | ForEach-Object {
+    $md5 = (Get-FileHash -Path $_.FullName -Algorithm MD5).Hash.ToLower()
+    $sha1 = (Get-FileHash -Path $_.FullName -Algorithm SHA1).Hash.ToLower()
+    [System.IO.File]::WriteAllText("$($_.FullName).md5", $md5, (New-Object System.Text.UTF8Encoding($false)))
+    [System.IO.File]::WriteAllText("$($_.FullName).sha1", $sha1, (New-Object System.Text.UTF8Encoding($false)))
+}
 Write-Host '== 3/5 verifying artifacts and signatures' -ForegroundColor Cyan
 $missing = @()
 foreach ($f in $files) {
@@ -97,25 +105,13 @@ if (-not $TokenUser -or -not $TokenPassword) {
 }
 
 Write-Host '== 5/5 uploading to Central Portal' -ForegroundColor Cyan
-$auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${TokenUser}:${TokenPassword}"))
 $uri = "https://central.sonatype.com/api/v1/publisher/upload?name=$Artifact-$version&publishingType=USER_MANAGED"
-Add-Type -AssemblyName System.Net.Http
-$client = New-Object System.Net.Http.HttpClient
-$client.Timeout = [TimeSpan]::FromMinutes(10)
-$client.DefaultRequestHeaders.Authorization =
-    New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Basic', $auth)
-$multipart = New-Object System.Net.Http.MultipartFormDataContent
-$stream = [System.IO.File]::OpenRead($bundle)
-$multipart.Add((New-Object System.Net.Http.StreamContent($stream)), 'bundle',
-    [System.IO.Path]::GetFileName($bundle))
-try {
-    $resp = $client.PostAsync($uri, $multipart).GetAwaiter().GetResult()
-    $body = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-    if (-not $resp.IsSuccessStatusCode) { throw "upload failed: HTTP $([int]$resp.StatusCode) $body" }
-    $id = $body.Trim('"')
-} finally {
-    $stream.Dispose(); $multipart.Dispose(); $client.Dispose()
-}
+# curl, not HttpClient: the Portal WAF rejects the .NET client (403 HTML).
+$resp = & curl.exe -s -w "|%{http_code}" -u "${TokenUser}:${TokenPassword}" -F "bundle=@$bundle" $uri --max-time 900
+$code = ($resp -split '\|')[-1]
+$body = ($resp -split '\|')[0]
+if ($code -ne '201') { throw "upload failed: HTTP $code $body" }
+$id = $body.Trim().Trim('"')
 Write-Host "  deployment id: $id"
 
 $headers = @{ Authorization = "Basic $auth" }
