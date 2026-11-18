@@ -33,10 +33,14 @@ $groupPath = ($Group -replace '\.', '\')
 $outDir = Join-Path $env:USERPROFILE ".m2\repository\$groupPath\$Artifact\$version"
 
 Write-Host "== 1/5 publishing $Group`:$Artifact`:$version to mavenLocal (signed)" -ForegroundColor Cyan
-& .\gradlew.bat publishToMavenLocal `
-    "-PpublishGroup=$Group" `
-    "-PsigningKeyFile=$SigningKeyFile" `
-    "-PsigningPassword=$env:SIGNING_PASSWORD" --console=plain
+$gradleArgs = @(
+    "publishToMavenLocal",
+    "-PpublishGroup=$Group",
+    "-PsigningKeyFile=$SigningKeyFile",
+    "--console=plain"
+)
+$gradleOut = & .\gradlew.bat @gradleArgs 2>&1
+$gradleOut | ForEach-Object { Write-Host "  $_" }
 if ($LASTEXITCODE -ne 0) { throw 'gradle publishToMavenLocal failed' }
 
 Write-Host '== 2/5 verifying artifacts and signatures' -ForegroundColor Cyan

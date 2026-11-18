@@ -178,7 +178,8 @@ signing {
     }
     required = keyText != null
     if (keyText != null) {
-        useInMemoryPgpKeys(keyText, (project.findProperty('signingPassword') ?: '') as String)
+        def pw = (project.findProperty('signingPassword') ?: System.getenv('SIGNING_PASSWORD')) ?: ''
+        useInMemoryPgpKeys(keyText, pw as String)
         sign publishing.publications.maven
     }
 }
